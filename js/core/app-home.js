@@ -86,21 +86,41 @@
         ? window.akiniContacts.getActiveChatId()
         : null;
     }
+    var _recCache = { key: "", data: null };
     function o() {
       var t = i(),
         e = [];
-      if (t && window.akiniContacts && window.akiniContacts.getSession) {
-        var n = window.akiniContacts.getSession(t),
-          a = (n && n.messagesHTML) || "";
-        if (a) {
-          var o = document.createElement("div");
-          ((o.innerHTML = a),
-            (e = Array.prototype.slice.call(o.querySelectorAll(".msg-row")).filter(function (t) {
+      if (!t || !(window.akiniContacts && window.akiniContacts.getSession))
+        return { chatId: t, rows: e };
+      var a = "";
+      try {
+        a = window.__akiniChatLog
+          ? window.__akiniChatLog.html(t)
+          : (window.akiniContacts.getSession(t) || {}).messagesHTML || "";
+      } catch (_re) {}
+      /* 聊天记录面板的搜索是逐字触发的：同一份历史只解析一次，
+         否则每敲一个字都要 join/parse 几 MB HTML，安卓上直接卡死。 */
+      var _key = t + "|" + a.length;
+      try {
+        if (window.__akiniChatLog) _key += "|" + window.__akiniChatLog.count(t);
+      } catch (_ce) {}
+      if (_recCache.key === _key) return _recCache.data;
+      if (a) {
+        var o = document.createElement("div");
+        ((o.innerHTML = a),
+          (e = Array.prototype.slice
+            .call(o.querySelectorAll(".msg-row"))
+            .filter(function (t) {
               return !t.classList.contains("system");
+            })
+            /* 只缓存轻量文本字段，不长期持有几千个临时 DOM 节点 */
+            .map(function (t) {
+              return r(t);
             })));
-        }
       }
-      return { chatId: t, rows: e };
+      var _res = { chatId: t, rows: e };
+      _recCache = { key: _key, data: _res };
+      return _res;
     }
     function r(t) {
       var e = t.classList.contains("me"),
@@ -377,7 +397,7 @@
                       .slice(0, 5);
                   }
                   c.rows.forEach(function (t) {
-                    var e = r(t),
+                    var e = t,
                       i = (e.text || "").trim();
                     if (
                       i &&
@@ -450,7 +470,7 @@
             d = [];
           if (
             (l.rows.forEach(function (t, e) {
-              var a = r(t);
+              var a = t;
               ((a.idx = e), a.text && a.text.indexOf(n) > -1 && d.push(a));
             }),
             d.length)
@@ -1189,9 +1209,16 @@ function syncDualScreensData() {
             window.akiniContacts && window.akiniContacts.getActiveChatId ? window.akiniContacts.getActiveChatId() : "",
           t = document.getElementById("chatBody");
         if (e && t) {
-          var i = window.__akiniGetChatMem(e);
+          /* 回前台只补"空的聊天区"：以前这里发现内存历史比 DOM 长就整段 innerHTML，
+             一万条消息会在每次切回页面时重新解析几 MB HTML，是闪退的主要来源之一。 */
+          if (t.querySelectorAll(".msg-row").length) return;
+          var i = "";
+          try {
+            i = window.__akiniChatLog
+              ? window.__akiniChatLog.tail(e, 30)
+              : (window.akiniContacts.getSession(e) || {}).messagesHTML || "";
+          } catch (_te) {}
           i &&
-            i.length > (t.innerHTML || "").length + 40 &&
             ((t.innerHTML = i),
             window.__akiniMedia && window.__akiniMedia.resolve && window.__akiniMedia.resolve(t),
             (t.scrollTop = t.scrollHeight));

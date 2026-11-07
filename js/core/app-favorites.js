@@ -436,7 +436,15 @@
           var target = window.akiniContacts.getChatTarget(c.id);
           if (!target || target.type !== "contact") return;
           var session = window.akiniContacts.getSession(c.id);
-          var html = session && session.messagesHTML ? session.messagesHTML : "";
+          /* 只取最近 120 行：真正要收藏的是最近消息，没必要为一万条历史 join 整段 HTML */
+          var html = "";
+          try {
+            html = window.__akiniChatLog
+              ? window.__akiniChatLog.tail(c.id, 120)
+              : session && session.messagesHTML
+                ? session.messagesHTML
+                : "";
+          } catch (eTail) {}
           if (!html) return;
           var tmp = document.createElement("div");
           tmp.innerHTML = html;

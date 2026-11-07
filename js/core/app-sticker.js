@@ -1074,14 +1074,12 @@
     try {
       var _h = "";
       try {
-        _h = (window.akiniContacts.getSession(activeCid) || {}).messagesHTML || "";
+        /* 直接在落盘的原始 JSON 上扫：不 join 整段历史，正则兼容 JSON 里的转义引号 */
+        if (window.__akiniChatLog) _h = window.__akiniChatLog.raw(activeCid) || "";
+        if (!_h) _h = (window.akiniContacts.getSession(activeCid) || {}).messagesHTML || "";
+        if (!_h && window.__akiniChatLog) _h = window.__akiniChatLog.html(activeCid);
       } catch (e0) {}
-      if (!_h) {
-        try {
-          _h = window.__akiniChatLog ? window.__akiniChatLog.html(activeCid) : "";
-        } catch (e1) {}
-      }
-      var _re = /data-survey-id="([^"]+)"[^>]*data-survey-reply="0"/g,
+      var _re = /data-survey-id=\\?"([^"\\]+)\\?"[^>]*data-survey-reply=\\?"0\\?"/g,
         _m;
       while ((_m = _re.exec(_h))) _sentSurvey[_m[1]] = 1;
     } catch (e) {}
