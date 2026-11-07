@@ -8218,6 +8218,11 @@ window.__akiniResetHomeScroll = function () {
               } catch (m) {}
             if (!Array.isArray(e) || 0 === e.length) {
               if (window._restoringData) return [];
+              /* 启动未完成时真实联系人可能还在从 IndexedDB 恢复，
+                 此时把空数组缓存进 d 会导致 addContact 误判"没有联系人"
+                 而补建一个"对方"，之后真实数据再 merge 进来就变成两个联系人。
+                 启动未落地前只临时返回 []，不缓存，等真实数据恢复后重读。 */
+              if (!window.__akiniStorageRestored && !window.__akiniRestoreSettled) return [];
               e = [];
             }
             if (Array.isArray(e) && e.length > 0) {
@@ -8284,6 +8289,29 @@ window.__akiniResetHomeScroll = function () {
                   w(e);
                 } catch (f) {}
             } catch (y) {}
+            /* 清理启动兜底生成的占位联系人：当真实联系人已经恢复时，
+               把带 __autoPlaceholder 标记的"对方"清掉，避免和用户的默认联系人并存。
+               另外对历史遗留的无标记占位（旧版 bug 留下的"对方"且没有任何聊天记录）一并清掉。 */
+            try {
+              if (Array.isArray(e) && e.length > 1) {
+                var _real = e.filter(function (c) {
+                  if (!c) return false;
+                  if (c.__autoPlaceholder) return false;
+                  /* 老版本留下的无标记占位：名字就叫"对方"且一条消息都没有 → 删掉 */
+                  if (String(c.name || "") === "对方") {
+                    try {
+                      var _cnt = window.__akiniChatLog ? window.__akiniChatLog.count(c.id) : 0;
+                      if (!_cnt) return false;
+                    } catch (_cc) {}
+                  }
+                  return true;
+                });
+                if (_real.length > 0 && _real.length !== e.length) {
+                  e = _real;
+                  w(e);
+                }
+              }
+            } catch (_ph) {}
             return ((d = e), e);
           }
           function w(e) {
@@ -8654,22 +8682,27 @@ window.__akiniResetHomeScroll = function () {
               },
               getHomeAvatars: A,
               setHomeAvatars: T,
-              addContact: function (t, e) {
-                var n = m();
-                if (Array.isArray(n) && n.length) return n[0];
-                var i = localStorage.getItem("akini_ta_avatar") || "",
-                  a = {
+              addContact: function (t, e, isFallback) {
+                var arr = m();
+                if (Array.isArray(arr) && arr.length) return arr[0];
+                var taAvatar = localStorage.getItem("akini_ta_avatar") || "",
+                  ct = {
                     id: l("ta"),
                     name: t || "新联系人",
                     avatar:
                       e ||
-                      (i && window.__akiniIsDefaultAvatarToken && window.__akiniIsDefaultAvatarToken(i) ? "" : i) ||
+                      (taAvatar && window.__akiniIsDefaultAvatarToken && window.__akiniIsDefaultAvatarToken(taAvatar)
+                        ? ""
+                        : taAvatar) ||
                       window.AKINI_PRESET_COLOR_AVATAR ||
                       "",
                     note: window.pickWordCards ? window.pickWordCards(1) : "",
                     createdAt: Date.now(),
+                    /* 启动兜底自动补建的占位联系人：真实联系人恢复后要清掉，
+                       否则会和用户的默认联系人并存成两个"对方"。 */
+                    __autoPlaceholder: !!isFallback,
                   };
-                if (!Array.isArray(n) || 0 === n.length) {
+                if (!Array.isArray(arr) || 0 === arr.length) {
                   var o = null;
                   try {
                     var r = sessionStorage.getItem("akini_contacts_emergency");
@@ -8694,22 +8727,22 @@ window.__akiniResetHomeScroll = function () {
                         Array.isArray(f) && f.length > 0 && (o = f);
                       }
                     } catch (t) {}
-                  o && (d = n = o);
+                  o && (d = arr = o);
                 }
-                if (a.avatar && String(a.avatar).trim())
+                if (ct.avatar && String(ct.avatar).trim())
                   try {
-                    rt("akini_contact_avatar_" + a.id, a.avatar);
+                    rt("akini_contact_avatar_" + ct.id, ct.avatar);
                   } catch (t) {}
                 return (
-                  n.push(a),
-                  w(n),
-                  C(a.id, {
+                  arr.push(ct),
+                  w(arr),
+                  C(ct.id, {
                     messagesHTML: "",
                     unread: 0,
                     lastMsg: "",
                     lastTime: 0,
                   }),
-                  a
+                  ct
                 );
               },
               updateContact: function (t, e) {
@@ -9097,13 +9130,16 @@ window.__akiniDefaultContact = function () {
 try {
         if (
           !window._restoringData &&
-          (window.__akiniStorageRestored || !(window.akiniContacts.getContacts() || []).length)
+          /* 只有存储恢复落地后才补建默认联系人：否则真实联系人还在从 IDB 恢复，
+             这里先建一个"对方"、之后真实数据再 merge 进来，就会多出一个联系人。 */
+          window.__akiniStorageRestored &&
+          !(window.akiniContacts.getContacts() || []).length
         ) {
           window.akiniContacts.migrateContacts();
           var d = window.akiniContacts.getContacts();
           if (!d || !d.length) {
             try {
-              var _dc = window.akiniContacts.addContact("对方");
+              var _dc = window.akiniContacts.addContact("对方", null, true);
               if (_dc) {
               }
             } catch (e) {}
@@ -10303,7 +10339,7 @@ window.__akiniBindSettingsControls = function () {
           if (!window._restoringData) {
             var _cd = window.akiniContacts.getContacts();
             if (!_cd || !_cd.length) {
-              var _dc = window.akiniContacts.addContact("对方");
+              var _dc = window.akiniContacts.addContact("对方", null, true);
               if (_dc) {
               }
               _cd = window.akiniContacts.getContacts();

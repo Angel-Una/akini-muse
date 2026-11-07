@@ -811,7 +811,7 @@ window.__akiniRestoredDone = true;
       /* 默认联系人被清空时自动补回：和 原生 一样只有这一个对话框，而不是空白 */
       if (!contacts.length) {
         try {
-          var nc = C.addContact ? C.addContact("对方") : null;
+          var nc = C.addContact ? C.addContact("对方", null, true) : null;
           if (nc && nc.id) {
             contacts = C.getContacts() || [];
             try {
