@@ -857,7 +857,7 @@
     /* 启动期展开预算：朋友圈/iCity 图片会无限增长，全量换回 dataURL 等于把所有
        照片常驻内存（移动端首屏前就被杀进程）。只展开最近的一部分，剩余保留
        akini-ref:，由渲染层用 akiniStore.mediaGet 按需取图。 */
-    var _EXPAND_CAP = 8 * 1024 * 1024,
+    var _EXPAND_CAP = _safeBoot ? 2 * 1024 * 1024 : _bootTight ? 4 * 1024 * 1024 : 8 * 1024 * 1024,
       _expanded = 0,
       _skipped = {};
     if (k === "akini_posts" || k === "akini_posts_backup") {
