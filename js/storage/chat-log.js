@@ -15,6 +15,57 @@
   var _dirty = {};
   var _timers = {};
   var _stale = {}; /* 启动对账完成前读到的空数据，对账后必须重新水合 */
+  /* 内存预算：对齐 milk/zy —— 只把最近看过的会话留在内存里。
+     以前 _rows/_html 一旦填充就永不释放，连着翻十几个一万条的会话
+     进程内存会一路涨到闪退；这里按 LRU 淘汰，看新会话时自动丢掉旧的。 */
+  var _order = [],
+    _size = {},
+    _htmlSize = {};
+  var _BUDGET = (function () {
+    try {
+      var dm = navigator.deviceMemory || 0;
+      if (dm && dm <= 2) return 6 * 1024 * 1024;
+      if (dm && dm <= 4) return 10 * 1024 * 1024;
+    } catch (e) {}
+    return 14 * 1024 * 1024;
+  })();
+  function _rowsSize(a) {
+    var s = 0;
+    for (var i = 0; i < a.length; i++) s += (a[i] && a[i].html ? a[i].html.length : 0) + 24;
+    return s;
+  }
+  function _touch(id) {
+    var i = _order.indexOf(id);
+    if (i >= 0) _order.splice(i, 1);
+    _order.push(id);
+  }
+  function _drop(id) {
+    delete _rows[id];
+    delete _html[id];
+    delete _size[id];
+    delete _htmlSize[id];
+    var i = _order.indexOf(id);
+    if (i >= 0) _order.splice(i, 1);
+  }
+  function _evict(keep) {
+    var total = 0;
+    for (var i = 0; i < _order.length; i++) {
+      var k = _order[i];
+      total += (_size[k] || 0) + (_htmlSize[k] || 0);
+    }
+    var guard = _order.length * 2;
+    while (total > _BUDGET && _order.length > 1 && guard-- > 0) {
+      var victim = _order[0];
+      if (victim === keep || _stale[victim] || _dirty[victim] || _timers[victim]) {
+        _order.push(_order.shift());
+        continue;
+      }
+      var freed = (_size[victim] || 0) + (_htmlSize[victim] || 0);
+      _drop(victim);
+      total -= freed;
+    }
+  }
+
   var ROW_RE = /<div\b[^>]*class="[^"]*\bmsg-row\b[^"]*"[^>]*>/g;
 
   function key(id) {
@@ -85,17 +136,32 @@
       }
     } catch (e) {}
     try {
+      /* rawLSGet：普通 getItem 会触发存储层的 IndexedDB 水合。
+         启动时逐个 has()/last() 会话就会把所有聊天记录全量拉进内存
+         （milk/zy 不会）。聊天记录由打开会话时的显式异步加载负责，
+         这里只做无副作用的原始读取。 */
+      if (window.akiniStore && akiniStore.rawLSGet) return akiniStore.rawLSGet(key(id)) || "";
       return localStorage.getItem(key(id)) || "";
     } catch (e) {}
     return "";
   }
 
   function ensure(id) {
-    if (_rows[id]) return _rows[id];
+    if (_rows[id]) {
+      _touch(id);
+      return _rows[id];
+    }
     var a = normalize(readRaw(id));
     /* 冷启动对账还没完成：这份快照可能是空的/只有刚发的一条，
        先标记待水合，等 akini-storage-restored 后与完整历史合并。 */
     if (!window.__akiniStorageRestored) _stale[id] = 1;
+    /* 该会话的历史在 IDB 里被标记为「按需水合」（我们不希望启动时全量驻留）：
+       内存里空数组不代表真的空，必须先读回完整历史再写，否则会把历史覆盖没。 */
+    else {
+      try {
+        if (!a.length && window.__akiniDeferredKeys && window.__akiniDeferredKeys[key(id)]) _stale[id] = 1;
+      } catch (eD) {}
+    }
     /* 旧历史里的内联图片外置成 data-mh 占位，避免 JSON 里塞整段 base64 */
     for (var i = 0; i < a.length; i++) {
       try {
@@ -104,11 +170,15 @@
       } catch (e) {}
     }
     _rows[id] = a;
+    _size[id] = _rowsSize(a);
+    _touch(id);
+    _evict(id);
     return a;
   }
 
   function invalidate(id) {
     delete _html[id];
+    delete _htmlSize[id];
   }
 
   function has(id) {
@@ -137,13 +207,42 @@
   function rehydrate(id) {
     if (!_stale[id]) return;
     var cur = _rows[id] || [];
-    var merged = mergeRows(normalize(readRaw(id)), cur);
-    delete _stale[id];
-    if (merged.length !== cur.length) {
-      _rows[id] = merged;
-      invalidate(id);
+    /* 内存里没有任何新消息（只是被读过一次）：没有需要合并的东西，
+       直接摘标记，绝不能为了「对账」把整段历史从 IDB 读进内存。 */
+    if (!cur.length) {
+      delete _stale[id];
+      return;
     }
-    persistSoon(id);
+    var finish = function (raw) {
+      var merged = mergeRows(normalize(raw), cur);
+      delete _stale[id];
+      /* 没有新行就不写：以前这里无条件 persist，deferred 会话内存里是空数组，
+         会把 "[]" 写回去把完整历史清空（切会话后历史消失）。 */
+      if (merged.length !== cur.length) {
+        _rows[id] = merged;
+        _size[id] = _rowsSize(merged);
+        _touch(id);
+        invalidate(id);
+        persistSoon(id);
+      }
+    };
+    var raw = readRaw(id);
+    if (raw) {
+      finish(raw);
+      return;
+    }
+    /* deferred：正常同步读取拿不到内容，权威历史在 IndexedDB，按需读一次 */
+    if (window._idbStore && window._idbStore.get) {
+      try {
+        window._idbStore.get(key(id), function (v) {
+          try {
+            finish(v || "");
+          } catch (e) {}
+        });
+        return;
+      } catch (e) {}
+    }
+    finish("");
   }
 
   function full(id) {
@@ -152,6 +251,9 @@
     var s = "";
     for (var i = 0; i < a.length; i++) s += a[i].html;
     _html[id] = s;
+    _htmlSize[id] = s.length;
+    _touch(id);
+    _evict(id);
     return s;
   }
 
@@ -182,19 +284,8 @@
     return a.length ? a[a.length - 1] : null;
   }
 
-  function persist(id) {
-    /* 对账完成前写回会把「只有新消息」的短数组覆盖到完整历史上（表现就是聊天消失）。
-       先不落盘，等 akini-storage-restored 合并后再写。 */
-    if (_stale[id] && !window.__akiniStorageRestored) {
-      delete _timers[id];
-      _dirty[id] = 1;
-      _timers[id] = setTimeout(function () {
-        persist(id);
-      }, 800);
-      return;
-    }
-    delete _timers[id];
-    var a = _rows[id] || [];
+  var _persisting = {};
+  function _write(id, a) {
     var json = "[]";
     try {
       json = JSON.stringify(a);
@@ -205,6 +296,53 @@
       else localStorage.setItem(key(id), json);
     } catch (e) {}
     delete _dirty[id];
+  }
+  function persist(id) {
+    delete _timers[id];
+    /* 没有任何内存数据（只是被读过/被调度过）：不要为了“合并”把整段历史读进内存。
+       注意这里必须保留 _stale：之后如果有局部内容写回，还要靠它触发「先读回再合并」。 */
+    if (_stale[id] && !((_rows[id] || []).length)) {
+      delete _dirty[id];
+      return;
+    }
+    /* 内存里只有增量、权威历史还在 IDB（启动期按需水合模式）：
+       绝不能把短数组直接写回覆盖完整历史，先读回来合并再写。 */
+    if (_stale[id] && window._idbStore && window._idbStore.get) {
+      if (_persisting[id]) {
+        _dirty[id] = 1;
+        return;
+      }
+      _persisting[id] = 1;
+      try {
+        window._idbStore.get(key(id), function (raw) {
+          delete _persisting[id];
+          try {
+            var cur = _rows[id] || [];
+            var merged = mergeRows(normalize(raw), cur);
+            delete _stale[id];
+            _rows[id] = merged;
+            _size[id] = _rowsSize(merged);
+            _touch(id);
+            invalidate(id);
+            _write(id, merged);
+          } catch (e) {}
+        });
+        return;
+      } catch (e) {
+        delete _persisting[id];
+      }
+    }
+    /* 对账完成前写回会把「只有新消息」的短数组覆盖到完整历史上（表现就是聊天消失）。
+       先不落盘，等 akini-storage-restored 合并后再写。 */
+    if (_stale[id] && !window.__akiniStorageRestored) {
+      delete _timers[id];
+      _dirty[id] = 1;
+      _timers[id] = setTimeout(function () {
+        persist(id);
+      }, 800);
+      return;
+    }
+    _write(id, _rows[id] || []);
   }
 
   function persistSoon(id) {
@@ -218,6 +356,7 @@
   function pushRows(id, segments) {
     if (!segments || !segments.length) return;
     var a = ensure(id);
+    var add = 0;
     for (var i = 0; i < segments.length; i++) {
       var seg = segments[i];
       var h = seg.html;
@@ -226,7 +365,9 @@
           h = window.__akiniStripMedia(h);
       } catch (e) {}
       a.push({ ts: seg.ts || tsOf(h), html: h });
+      add += h.length + 24;
     }
+    _size[id] = (_size[id] || 0) + add;
     invalidate(id);
     persistSoon(id);
   }
@@ -236,7 +377,17 @@
     pushRows(id, splitHtml(html));
   }
 
-  function replace(id, v) {
+  /* opts: true 或 {silent, authoritative}
+     silent        —— 内容刚从 IDB 读出来，不需要再整段写回；
+     authoritative —— 这份就是完整历史（IDB/备份恢复），可以清掉待水合标记。 */
+  function replace(id, v, opts) {
+    var silent = opts === true || (opts && opts.silent);
+    var authoritative = opts === true || (opts && opts.authoritative);
+    var _loadedBefore = !!(_rows[id] && _rows[id].length);
+    var _deferred = false;
+    try {
+      _deferred = !!(window.__akiniDeferredKeys && window.__akiniDeferredKeys[key(id)]);
+    } catch (eD) {}
     var a = normalize(v);
     var old = full(id);
     /* 内容完全相同就不动，避免 restore/对账反复写库 */
@@ -246,8 +397,16 @@
       if (joined === old) return;
     }
     _rows[id] = a;
+    _size[id] = _rowsSize(a);
+    /* 只有确认是完整历史才摘掉待水合标记。普通 replace 的入参可能只是
+       「内存为空 + 新内容」拼出来的局部字符串（会话被 LRU 淘汰/启动未加载），
+       保留标记后 persist 会先读回 IDB 再合并，避免整段覆盖丢历史。 */
+    if (authoritative && window.__akiniStorageRestored) delete _stale[id];
+    else if (!authoritative && !_loadedBefore && _deferred && window.__akiniStorageRestored) _stale[id] = 1;
+    _touch(id);
+    _evict(id);
     invalidate(id);
-    persistSoon(id);
+    if (!silent) persistSoon(id);
   }
 
   /* session.messagesHTML 的兼容入口：整体字符串写回时，
@@ -279,6 +438,7 @@
     if (!maxRows || a.length <= maxRows) return 0;
     var cut = a.length - maxRows;
     a.splice(0, cut);
+    _size[id] = _rowsSize(a);
     invalidate(id);
     persistSoon(id);
     return cut;
@@ -299,6 +459,7 @@
       } catch (e) {}
     }
     if (changed) {
+      _size[id] = _rowsSize(a);
       invalidate(id);
       persistSoon(id);
     }
@@ -316,6 +477,11 @@
       delete _stale[k];
       delete _rows[k];
       delete _html[k];
+      delete _size[k];
+      delete _htmlSize[k];
+      var oi = _order.indexOf(k);
+      if (oi >= 0) _order.splice(oi, 1);
+      delete _persisting[k];
     }
     if (!id) {
       _rows = {};
@@ -323,6 +489,10 @@
       _dirty = {};
       _timers = {};
       _stale = {};
+      _order = [];
+      _size = {};
+      _htmlSize = {};
+      _persisting = {};
     }
   }
 

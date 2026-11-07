@@ -4136,9 +4136,13 @@ function Xt() {
                                     var n = "";
                                     try {
                                       if (e) {
-                                        window.__akiniChatLog && window.__akiniChatLog.replace(t, e);
-                                        var _lr = window.__akiniChatLog && window.__akiniChatLog.last(t);
-                                        n = _lr ? m(_lr.html) : "";
+                                        /* 只取最后一条做预览：不要 replace() 整个会话。
+                                           replace 会把整段历史解析成数组常驻内存，
+                                           会话多/消息长时正是启动闪退的来源。 */
+                                        var _s = String(e),
+                                          _p = _s.lastIndexOf('"html":"');
+                                        if (_p >= 0) _s = _s.slice(_p + 8);
+                                        n = m(_s);
                                       }
                                     } catch (_lrE) {}
                                     if (n)
@@ -4561,16 +4565,8 @@ function Zt(t, e) {
             _totalRows = window.__akiniChatLog ? window.__akiniChatLog.count(t) : 0;
             d = window.__akiniChatLog ? window.__akiniChatLog.tail(t, AKINI_CHAT_BATCH_SIZE) : "";
           } catch (_eLog) {}
-          if (!d)
-            try {
-              var _bk = localStorage.getItem("akini_chat_history_backup_" + t) || "";
-              if (_bk) {
-                d = _bk;
-                window.__akiniChatLog && window.__akiniChatLog.replace(t, _bk);
-                _totalRows = window.__akiniChatLog ? window.__akiniChatLog.count(t) : _totalRows;
-                d = window.__akiniChatLog ? window.__akiniChatLog.tail(t, AKINI_CHAT_BATCH_SIZE) : _bk;
-              }
-            } catch (eBk) {}
+          /* 旧的 localStorage 历史备份不再同步优先读取：启动期历史在 IDB 里按需加载，
+             先读一份陈旧备份会把 IDB 里的完整历史挡住。备份改到 IDB 为空时再兜底。 */
           /* 工作集只保留当前会话，其余靠数组/IDB 按需回读 */
           try {
             var _wf = Object.keys(W);
@@ -4640,9 +4636,24 @@ function Zt(t, e) {
               !d &&
                 _idbStore.get("akini_chat_history_" + t, function (e) {
                   if (window.__akiniChatGen !== w || window.akiniContacts.getActiveChatId() !== t) return;
-                  if (!e || typeof e !== "string") return;
+                  if (!e || typeof e !== "string") {
+                    /* IDB 里也没有：最后才退回旧的 localStorage 备份 */
+                    try {
+                      var _bk = localStorage.getItem("akini_chat_history_backup_" + t) || "";
+                      if (!_bk || !window.__akiniChatLog) return;
+                      window.__akiniChatLog.replace(t, _bk, { authoritative: true });
+                      window.__akiniChatTotal = window.__akiniChatTotal || {};
+                      window.__akiniChatTotal[t] = window.__akiniChatLog.count(t);
+                      var _hb = window.__akiniChatLog.tail(t, AKINI_CHAT_BATCH_SIZE);
+                      if (!_hb) return;
+                      W[t] = __akiniCapHistory(_hb, t, 150);
+                      f(_hb);
+                    } catch (_bkE) {}
+                    return;
+                  }
                   try {
-                    window.__akiniChatLog.replace(t, e);
+                    /* 内容刚从 IDB 读出来，和库里一致：不必写回，且它就是完整历史 */
+                    window.__akiniChatLog.replace(t, e, { silent: true, authoritative: true });
                     window.__akiniChatTotal = window.__akiniChatTotal || {};
                     window.__akiniChatTotal[t] = window.__akiniChatLog.count(t);
                     var _h = window.__akiniChatLog.tail(t, AKINI_CHAT_BATCH_SIZE);
@@ -9085,22 +9096,10 @@ window.__akiniResetHomeScroll = function () {
                       function o() {
                         a || ((a = !0), JSON.stringify(n) !== JSON.stringify(e) && (S(n), (c = !0)), l--, u());
                       }
-                      var r = Object.keys(n);
-                      if (!r.length) return void o();
-                      ((i = r.length),
-                        r.forEach(function (t) {
-                          (n[t].messagesHTML || "").trim()
-                            ? 0 === --i && o()
-                            : s("akini_chat_history_" + t, function (e) {
-                                if (e && "string" == typeof e && e.trim()) {
-                                  try {
-                                    if (window.__akiniChatLog) window.__akiniChatLog.replace(t, e);
-                                  } catch (_logS) {}
-                                  ((n[t].messagesHTML = e), (A[t] = e));
-                                }
-                                0 === --i && o();
-                              });
-                        }));
+                      /* 会话历史不在这里逐个从 IDB 读：聊天记录由 chat-log 按需加载。
+                         旧代码会对每个没有 messagesHTML 的会话读一遍完整历史并 replace，
+                         等于启动时把所有聊天记录全量拉进内存 —— 会话和消息一多就闪退。 */
+                      o();
                     } else (l--, u());
                   }),
                   ["akini_my_avatar", "akini_ta_avatar", "akini_icity_my_avatar", "akini_icity_ta_avatar"].forEach(
@@ -10699,7 +10698,7 @@ window.__akiniBindSettingsControls = function () {
                   (function () {
                     /* IDB 可能还是旧 HTML，也可能是数组 JSON：统一交给 chat-log 解析 */
                     try {
-                      window.__akiniChatLog && window.__akiniChatLog.replace(t, e);
+                      window.__akiniChatLog && window.__akiniChatLog.replace(t, e, { silent: true, authoritative: true });
                     } catch (_e) {}
                     var _log2 = window.__akiniChatLog;
                     window.__akiniChatTotal = window.__akiniChatTotal || {};
@@ -23267,6 +23266,14 @@ window.__akiniPatchAvatarCell = function (t, e) {
                         }))
                     : Object.keys(n).length > 0 &&
                       Object.keys(n).forEach(function (t) {
+                        /* 只给「当前会话」预加载历史；其余会话等用户点进去再按需读。
+                           旧代码在这里把每个会话的历史都从 IDB 读进内存并写回，
+                           等于启动即全量水合，会话/消息一多就闪退（milk/zy 不会）。 */
+                        try {
+                          if (!window.akiniContacts.getActiveChatId || window.akiniContacts.getActiveChatId() !== t) return;
+                        } catch (_actE) {
+                          return;
+                        }
                         var e = !1;
                         try {
                           W[t] && W[t].length && (e = !0);
@@ -23275,7 +23282,8 @@ window.__akiniPatchAvatarCell = function (t, e) {
                           _idbStore.get("akini_chat_history_" + t, function (e) {
                             if (e && typeof e === "string" && e.trim()) {
                               try {
-                                window.__akiniChatLog && window.__akiniChatLog.replace(t, e);
+                                // 内容就是从 IDB 读出的完整历史：不必再整段写回
+                                window.__akiniChatLog && window.__akiniChatLog.replace(t, e, { silent: true, authoritative: true });
                               } catch (_rE) {}
                               var _h = window.__akiniChatLog
                                 ? window.__akiniChatLog.tail(t, AKINI_CHAT_BATCH_SIZE)

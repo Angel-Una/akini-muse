@@ -1095,8 +1095,13 @@
     }
     /* 聊天媒体（akini_media_*）不进内存镜像：媒体模块已有 8MB 缓存，
        这里再存一份等于把每个发过的图片/表情都永久驻留内存（越用越大的根因）。
-       读取统一走 __akiniMedia.get（先命中 8MB 缓存，未命中再读 IDB）。 */
-    if (k.indexOf("akini_media_") !== 0) memSet(k, v);
+       读取统一走 __akiniMedia.get（先命中 8MB 缓存，未命中再读 IDB）。
+
+       聊天历史同理：会话内容由 chat-log 自己的 LRU（按设备内存 6/10/14MB）管理，
+       这里再存一份完整 JSON 会让「看过的每个会话」永久驻留内存 ——
+       chat-log 的 LRU 就白做了，翻的会话一多内存照样线性上涨。
+       写入仍然落 IndexedDB（下面 chat 分支负责），读取由打开会话时按需加载。 */
+    if (k.indexOf("akini_media_") !== 0 && k.indexOf("akini_chat_history") !== 0) memSet(k, v);
     if (k.indexOf("akini_chat_history") === 0 || _MEDIA_KEYS[k]) {
       markDirty(k);
       lsRemoveRaw(k);
@@ -1274,6 +1279,11 @@
         targets.forEach(function (k) {
           /* 按条数组副本只用于重建聊天 HTML，不单独占内存 */
           if (String(k).indexOf(MSGS_PRE) === 0) return;
+          /* 聊天记录不驻留内存：打开会话时由 chat-log 按需读 */
+          if (String(k).indexOf(CHAT_PRE) === 0) {
+            window.__akiniDeferredKeys[k] = 1;
+            return;
+          }
           /* 外置媒体/聊天图片：只登记为按需水合，绝不进内存镜像。
              它们只在渲染对应内容时由 idbGet 单独读取，常驻等于把全部图片永久压进堆里。 */
           var _ksR = String(k);
@@ -1393,6 +1403,14 @@
           /* 外置媒体 akini_mref_* 只在 _expandMedia 渲染朋友圈/iCity 时按需读取，
              启动期不读、不驻留，避免几百张图的 dataURL 在首屏前逐个反序列化。 */
           if (_ksf.indexOf("akini_mref_") === 0) {
+            window.__akiniDeferredKeys[k] = 1;
+            return;
+          }
+          /* 聊天记录对齐 milk/zy：启动期一条都不水合。
+             以前所有会话的整段历史都在这里被读进内存镜像，会话越多、
+             消息越长，首屏堆内存越大 —— 手机上一万条以上就会闪退。
+             现在只在打开某个会话时由 chat-log 单独从 IndexedDB 读取。 */
+          if (_ksf.indexOf(CHAT_PRE) === 0) {
             window.__akiniDeferredKeys[k] = 1;
             return;
           }

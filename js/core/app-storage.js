@@ -389,7 +389,8 @@
         /* 数组模型是唯一权威：整段导入先拆成 {ts,html} 数组再落盘 */
         try {
           if (window.__akiniChatLog) {
-            window.__akiniChatLog.replace(c.id, hist);
+            /* 导入是整段覆盖：标 authoritative，避免与 IDB 旧历史合并后导不进去 */
+            window.__akiniChatLog.replace(c.id, hist, { authoritative: true });
             window.__akiniChatLog.flush();
           } else if (store && typeof store.set === "function") store.set(k, hist);
           else localStorage.setItem(k, hist);

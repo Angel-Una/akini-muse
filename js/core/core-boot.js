@@ -421,7 +421,21 @@
         if (t[i]) return a(t[i]);
         var o = !1,
           r = function (r) {
-            o || ((o = !0), r && ((t[i] = r), e.push(i), (n += r.length)), a(r || null));
+            o ||
+              ((o = !0),
+              r &&
+                ((t[i] = r),
+                e.push(i),
+                (n += r.length),
+                /* get 路径同样要受 8MB 预算约束：以前只有 put 会淘汰，
+                   连续翻看聊天图片时缓存只增不减，用久了就把内存吃光闪退。 */
+                (function () {
+                  for (; n > 8388608 && e.length > 0; ) {
+                    var x = e.shift();
+                    x && t[x] && ((n -= t[x].length), delete t[x]);
+                  }
+                })()),
+              a(r || null));
           };
         try {
           window._idbStore.get("akini_media_" + i, function (t) {

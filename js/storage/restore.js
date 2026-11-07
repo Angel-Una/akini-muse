@@ -928,9 +928,15 @@ window.__akiniRestoredDone = true;
         if (!window.__akiniChatLog && sess.messagesHTML && sess.messagesHTML.trim().length > 0) continue;
         var html = "";
         try {
+          /* rawLSGet：普通 getItem 会触发存储层把该会话整段历史从 IDB 水合进内存。
+             这里只是给旧数据兜底，LS 没有就是没有，不能让每个会话都拉起一次。 */
+          var _rawGet =
+            window.akiniStore && window.akiniStore.rawLSGet
+              ? window.akiniStore.rawLSGet
+              : localStorage.getItem.bind(localStorage);
           html =
-            localStorage.getItem("akini_chat_history_" + sid) ||
-            localStorage.getItem("akini_chat_history_backup_" + sid) ||
+            _rawGet("akini_chat_history_" + sid) ||
+            _rawGet("akini_chat_history_backup_" + sid) ||
             "";
         } catch (e) {}
         if (html && html.trim() !== "" && html.trim() !== "null" && html.trim() !== "undefined") {
@@ -972,6 +978,39 @@ window.__akiniRestoredDone = true;
       if (window.__akiniChatLog) {
         try {
           best = window.__akiniChatLog.tail(activeId, 150);
+        } catch (e) {}
+      }
+      if (!best) {
+        /* 启动期不再把所有会话水合进内存，当前会话改为显式从 IDB 取一次。
+           只加载当前会话，且只注入最近 150 条。 */
+        try {
+          window._idbStore &&
+            window._idbStore.get &&
+            window._idbStore.get("akini_chat_history_" + activeId, function (rv) {
+              try {
+                if (!rv || !window.__akiniChatLog) return;
+                var body = document.getElementById("chatBody");
+                if (!body || body !== chatBody) return;
+                if (body.innerHTML && body.innerHTML.trim() !== "") return;
+                /* 内容刚从 IDB 读出来，和库里一致：不必写回，且它就是完整历史 */
+                window.__akiniChatLog.replace(activeId, rv, { silent: true, authoritative: true });
+                var t150 = window.__akiniChatLog.tail(activeId, 150);
+                if (!t150) return;
+                body.innerHTML = t150;
+                body.setAttribute("data-rendered-chat-id", activeId);
+                if (window.__akiniCleanGhostBubbles) {
+                  try {
+                    window.__akiniCleanGhostBubbles(body);
+                  } catch (e) {}
+                }
+                body.scrollTop = body.scrollHeight;
+                if (window.__akiniSetupChatMetaObserver) {
+                  try {
+                    window.__akiniSetupChatMetaObserver();
+                  } catch (e) {}
+                }
+              } catch (e) {}
+            });
         } catch (e) {}
       }
       if (!best) {
