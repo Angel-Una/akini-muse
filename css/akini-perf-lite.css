@@ -38,50 +38,21 @@ html body #watchChatBody .msg-row:not(.system) .bubble {
 
 /* 2) 第一屏磨砂文字卡：设计本就是"80% 白底渐隐融入壁纸"，不需要实时模糊 */
 html body .s1-frosted-content {
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
   background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,1) 42%, rgba(255,255,255,0.75) 58%, rgba(255,255,255,0.75) 66%, rgba(255,255,255,0.3) 86%, rgba(255,255,255,0) 100%);
   box-shadow: none;
 }
 
-/* 3) 固定输入栏/按钮：毛玻璃半径 20~28px → 14px，GPU 采样成本明显下降 */
-html body #app-chat .chat-input-bar .input-wrap,
-html body .chat-input-bar .input-wrap {
-  -webkit-backdrop-filter: blur(14px) saturate(160%) !important;
-  backdrop-filter: blur(14px) saturate(160%) !important;
-}
-html body #app-chat .chat-input-bar #plusMenuBtn,
-html body #app-chat .chat-input-bar #sendBtn,
-html body #app-chat .chat-top-bar #chatBackBtn,
-html body #app-chat .chat-top-bar #chatCallBtn,
-html body #app-chat .chat-top-bar .ta-name-pill {
-  -webkit-backdrop-filter: blur(12px) saturate(160%);
-  backdrop-filter: blur(12px) saturate(160%);
-}
-html body #emojiPanel,
-html body .emoji-panel,
 html body .plus-menu#plusMenu,
 html body .plus-menu-sheet {
   -webkit-backdrop-filter: blur(14px) saturate(160%) !important;
   backdrop-filter: blur(14px) saturate(160%) !important;
 }
 
-/* 4) 聊天顶栏 5 层渐进模糊：每层都是一次独立 GPU blur，保留前 2 层即可 */
-html body .chat-top-bar-blur .chat-blur-l3,
-html body .chat-top-bar-blur .chat-blur-l4,
-html body .chat-top-bar-blur .chat-blur-l5 {
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-
 /* 5) 滚动列表里"每条消息都一份"的其它毛玻璃：时间戳胶囊、系统消息气泡。
    这两类在聊天记录里同样会重复几十次，是气泡之外最大的滚动开销。 */
 html body #chatBody .timestamp-row::before,
 html body #companionMsgs .timestamp-row::before,
-html body #watchChatBody .timestamp-row::before,
-html body #chatBody .msg-row.system .bubble,
-html body #companionMsgs .msg-row.system .bubble,
-html body #watchChatBody .msg-row.system .bubble {
+html body #watchChatBody .timestamp-row::before {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }

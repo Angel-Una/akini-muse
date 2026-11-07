@@ -107,8 +107,6 @@
   gap: 2px;
 }
 
-/* akini-btn-material */
-#app-chat .chat-top-bar #chatBackBtn,#app-chat .chat-top-bar #chatCallBtn,#app-chat .chat-input-bar #plusMenuBtn,#app-chat .chat-input-bar #sendBtn,html body #app-chat #chatBackBtn,html body #app-chat #chatCallBtn,html body #app-chat #plusMenuBtn,html body #app-chat #sendBtn{background:rgba(255,255,255,0.25)!important;background-color:rgba(255,255,255,0.25)!important;backdrop-filter:saturate(180%) blur(12px)!important;-webkit-backdrop-filter:saturate(180%) blur(12px)!important;border:none!important;border-radius:50%!important;box-shadow:none!important}
 html body .app-item .icon-wrap .home-badge{position:absolute!important;top:-4px!important;right:-6px!important;width:18px!important;min-width:18px!important;max-width:18px!important;height:18px!important;padding:0!important;border-radius:50%!important;line-height:18px!important;text-align:center!important;overflow:hidden!important;white-space:nowrap!important;box-sizing:border-box!important}
 html body .app-item .icon-wrap .home-badge[data-count]:not([data-count="0"]):not(:empty){display:inline-flex!important;align-items:center!important;justify-content:center!important}
 
@@ -126,12 +124,6 @@ html body .cli-unread-badge,html body #chatBackUnreadBadge{display:inline-flex!i
 html.ios-lite .akini-shimmer, html.ios-lite .akini-pulse, html.ios-lite .akini-float, html.ios-lite .akini-spin {
   animation: none !important;
 }
-/* 白名单：恢复用户自定义的"模糊按键底图"（返回键/通话键/名字牌）——
-   只放开这三个按键，聊天页其余毛玻璃继续禁用，闪退防线不动 */
-html.ios-lite #app-chat .chat-top-bar .ta-name-pill {
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-}
 /* /磨砂白名单精确到元素本身——backdrop-filter 必须加在"持有半透明背景"的元素上。
    s1-frosted-content = 第一屏头像下方的磨砂文字卡（原生 blur 14px）；
    top-card = 第二屏顶部大卡（加错过地方，一并保留无害） */
@@ -147,11 +139,6 @@ html.ios-lite .s1-frosted-content {
 html.ios-lite .top-card {
   backdrop-filter: blur(18px) saturate(160%);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
-}
-/* Bug2：聊天页系统消息底图恢复磨砂（轻量单层 blur，内存代价极小，纳入白名单） */
-html.ios-lite #app-chat .chat-body .msg-row.system .bubble {
-  backdrop-filter: blur(12px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(150%) !important;
 }
 
 /* 组件样式 */
@@ -415,4 +402,10 @@ html body #app-chat .chat-input-bar-area .chat-input-bar #sendBtn{
   border:none!important;
   border-radius:50%!important;
   box-shadow:0 2px 8px rgba(0,0,0,.06)!important;
+}
+/* 系统消息模糊底图：设计要求保留的单层磨砂，所有机型统一 18px。
+   双写 #app-chat 提高优先级，压过主样式表里的 12px 基础值。 */
+html body #app-chat#app-chat .chat-body .msg-row.system .bubble {
+  -webkit-backdrop-filter:blur(18px) saturate(160%)!important;
+  backdrop-filter:blur(18px) saturate(160%)!important;
 }

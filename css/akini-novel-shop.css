@@ -138,8 +138,8 @@ body.dark-mode #app-shop {
 #app-novel-reader .nv-reader-header {
   background: var(--ns-paper) !important;
   border-bottom: 1px solid var(--ns-line) !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   padding-top: calc(8px + env(safe-area-inset-top, 0px)) !important;
 }
 #app-novel-reader .nv-reader-header button {

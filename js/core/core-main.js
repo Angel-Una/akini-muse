@@ -7101,7 +7101,7 @@ function An(t) {
           ((a.id = "__akiniCenterModal"),
             (a.className = "akini-center-modal-overlay"),
             (a.style.cssText =
-              "position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);"));
+              "position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;"));
           var o = document.createElement("div");
           ((o.className = "akini-center-modal-panel"),
             (o.style.cssText =
@@ -7207,7 +7207,7 @@ function An(t) {
           var o = document.createElement("div");
           ((o.id = "__akiniPromptModal"),
             (o.style.cssText =
-              "position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);"));
+              "position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;"));
           var r = document.createElement("div");
           r.style.cssText =
             "background:#fff;border-radius:24px;width:100%;max-width:320px;padding:24px 20px 20px;box-shadow:0 24px 80px rgba(0,0,0,.28);display:flex;flex-direction:column;gap:12px;";
