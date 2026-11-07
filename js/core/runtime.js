@@ -668,7 +668,14 @@ window.__akiniDefer2(function () {
 });
 
 (function () {
-  if (!/iP(hone|ad|od)/.test(navigator.userAgent)) return;
+  /* 原本只在 iOS 降载；Android Chrome 同样暴露 performance.memory，
+     低内存设备同样会因堆顶到上限被系统杀。有内存 API 的设备都启用降载。 */
+  var _hasMemApi = (function () {
+    try {
+      return !!(performance && performance.memory && performance.memory.jsHeapSizeLimit);
+    } catch (e) { return false; }
+  })();
+  if (!/iP(hone|ad|od)/.test(navigator.userAgent) && !_hasMemApi) return;
   var HEAP_LIMIT = 0.85;
   var IDLE_TIMEOUT = 25000;
   var lastInteraction = Date.now();
