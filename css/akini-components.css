@@ -410,8 +410,8 @@ html body #app-chat#app-chat .chat-body .msg-row.system .bubble {
   -webkit-backdrop-filter:blur(22px) saturate(180%)!important;
   backdrop-filter:blur(22px) saturate(180%)!important;
   border-radius:999px!important;
-  padding:5px 14px!important;
-  font-size:13px!important;
+  padding:3px 10px!important;
+  font-size:12px!important;
   color:#1a1a1a!important;
   border:none!important;
   box-shadow:none!important;
