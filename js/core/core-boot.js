@@ -535,12 +535,42 @@
    decoding=async，屏幕外的图不参与解码/解码延后，避免一次渲染几千张图把内存顶爆。
    聊天里的图片同样适用：视口内的图会立即加载，不受影响。 */
 (function () {
+  /* 聊天/陪伴气泡里的图最大只显示 160px，但浏览器默认按原图像素解码：
+     一张 2000x1500 的照片解码后约 12MB，聊天里放十几张就是 200MB+。
+     给气泡图补上按显示上限缩放的 width/height 属性，浏览器就会按小尺寸解码
+     （Chrome 的行为），原图字节与画质完全不变，只是不再把整张原图解码进内存。 */
+  var DECODE_CAP = 480; /* 160 CSS px × 3 倍屏 */
+  var BUBBLE_IMG =
+    "#chatBody .bubble img, #companionMsgs .msg-row img, #watchChatBody .msg-row img";
+  function capDecode(img) {
+    try {
+      if (img.__akCap || !img.matches || !img.matches(BUBBLE_IMG)) return;
+      var nw = img.naturalWidth,
+        nh = img.naturalHeight;
+      if (!nw || !nh) return;
+      img.__akCap = 1;
+      var m = Math.max(nw, nh);
+      if (m <= DECODE_CAP) return;
+      var r = DECODE_CAP / m;
+      img.setAttribute("width", String(Math.round(nw * r)));
+      img.setAttribute("height", String(Math.round(nh * r)));
+    } catch (e) {}
+  }
+  function hook(img) {
+    if (!img || img.tagName !== "IMG" || img.__akCapHook) return;
+    img.__akCapHook = 1;
+    if (img.complete) capDecode(img);
+    else img.addEventListener("load", function () { capDecode(img); }, { once: true });
+  }
   function mark(root) {
     try {
-      var imgs = root && root.querySelectorAll ? root.querySelectorAll("img:not([loading])") : [];
+      var imgs = root && root.querySelectorAll ? root.querySelectorAll("img") : [];
       for (var i = 0; i < imgs.length; i++) {
-        imgs[i].loading = "lazy";
-        imgs[i].decoding = "async";
+        if (!imgs[i].getAttribute("loading")) {
+          imgs[i].loading = "lazy";
+          imgs[i].decoding = "async";
+        }
+        hook(imgs[i]);
       }
     } catch (e) {}
   }
@@ -563,6 +593,7 @@
           if (n.tagName === "IMG") {
             n.loading = "lazy";
             n.decoding = "async";
+            hook(n);
           } else if (n.querySelector && n.querySelector("img")) {
             schedule();
           }
