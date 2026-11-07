@@ -450,33 +450,67 @@ body.dark-mode #wordbankOverlay .wb-toolbar .tool-btn svg {
   display: flex;
 }
 
-/* ===== zy 对齐：模糊半径收敛（只收非聊天/首页/陪伴区域） =====
-   zy 的 backdrop-filter 半径集中在 4-10px，Akini 这里是 20-24px（通话小窗 40px）。
-   GPU 采样成本随半径近似线性增长，这里把固定栏/弹窗/浮窗统一收到 12-14px，
-   观感仍是磨砂，但每帧开销明显下降。
-   聊天界面（返回/通话/昵称条/顶部模糊/输入栏/加号/发送/消息）、首页模块、陪伴界面不动。 */
-#mailComposeModal.mail-sheet-mask,
-#mailDetailModal.mail-detail-mask,
-#mailRecipientPickerModal.mail-picker-mask,
-#mailReplyModal.mail-detail-mask,
-#app-novel-reader .nv-reader-header,
-.wb-header,
-.wb-bottom,
-.wb-modal-header .back-btn,
-.wordbank-header .back-btn,
-.sticker-manager-overlay .manage-bg,
-.chat-menu-overlay .menu-bg,
-.chat-list-add-menu-overlay .chat-list-add-menu-panel,
-#msgContextMenu,
-#emojiPanel,
-.emoji-panel,
-.plus-menu#plusMenu,
-.plus-menu-sheet {
+/* ===== 模糊白名单（唯一来源） =====
+   只保留制作时明确要求的模糊：
+   1) 聊天界面：返回键 / 通话键 / 昵称条 / 顶部模糊 / 输入栏 / 加号键 / 加号弹窗 /
+      发送键 / 系统消息模糊底图
+   2) 首页模块的模糊
+   3) 陪伴界面
+   聊天消息的透明度过渡属于 animation/transition，不受这里影响。
+   其余所有位置（邮件、小说、词库、贴纸管理、表情面板、菜单遮罩、消息长按菜单、
+   通话小窗、各种弹窗、toast 等）一律清除 backdrop-filter。 */
+html body *:not(#akini-none),
+html body *:not(#akini-none)::before,
+html body *:not(#akini-none)::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* 1) 聊天界面 —— 顶部 */
+html body #app-chat .chat-wrapper .chat-top-bar button.back-btn#chatBackBtn,
+html body #app-chat .chat-top-bar #chatCallBtn,
+html body #app-chat .chat-top-bar .ta-name-pill {
+  -webkit-backdrop-filter: blur(22px) saturate(180%) !important;
+  backdrop-filter: blur(22px) saturate(180%) !important;
+}
+html body #app-chat .chat-top-bar .chat-top-action-btn {
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+}
+html body .chat-top-bar-blur .chat-blur-l1 {
+  -webkit-backdrop-filter: blur(2px) !important;
+  backdrop-filter: blur(2px) !important;
+}
+html body .chat-top-bar-blur .chat-blur-l2 {
+  -webkit-backdrop-filter: blur(3px) !important;
+  backdrop-filter: blur(3px) !important;
+}
+/* 1) 聊天界面 —— 输入栏 / 按钮 / 加号弹窗 */
+html body #app-chat .chat-input-bar-area {
   -webkit-backdrop-filter: blur(12px) saturate(160%) !important;
   backdrop-filter: blur(12px) saturate(160%) !important;
 }
-.call-mini-window,
-.call-mini-shrunk {
+html body #app-chat .chat-input-bar .input-wrap {
+  -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+  backdrop-filter: blur(18px) saturate(180%) !important;
+}
+html body #app-chat .chat-input-bar-area .chat-input-bar #plusMenuBtn,
+html body #app-chat .chat-input-bar-area .chat-input-bar #sendBtn {
+  -webkit-backdrop-filter: blur(22px) saturate(180%) !important;
+  backdrop-filter: blur(22px) saturate(180%) !important;
+}
+html body .plus-menu#plusMenu,
+html body .plus-menu-sheet {
   -webkit-backdrop-filter: blur(14px) saturate(160%) !important;
   backdrop-filter: blur(14px) saturate(160%) !important;
+}
+/* 1) 聊天界面 —— 系统消息模糊底图 */
+html body #app-chat .chat-body .msg-row.system .bubble,
+html body #app-chat .chat-body .msg-row.system.msg-row.system .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.img-bubble) {
+  -webkit-backdrop-filter: blur(12px) saturate(150%) !important;
+  backdrop-filter: blur(12px) saturate(150%) !important;
+}
+/* 2) 首页模块（保持原有取值，仅 iOS 的 top-card 原本有） */
+html.ios-lite body .top-card:not(#akini-none) {
+  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
+  backdrop-filter: blur(18px) saturate(160%) !important;
 }
