@@ -8289,29 +8289,9 @@ window.__akiniResetHomeScroll = function () {
                   w(e);
                 } catch (f) {}
             } catch (y) {}
-            /* 清理启动兜底生成的占位联系人：当真实联系人已经恢复时，
-               把带 __autoPlaceholder 标记的"对方"清掉，避免和用户的默认联系人并存。
-               另外对历史遗留的无标记占位（旧版 bug 留下的"对方"且没有任何聊天记录）一并清掉。 */
-            try {
-              if (Array.isArray(e) && e.length > 1) {
-                var _real = e.filter(function (c) {
-                  if (!c) return false;
-                  if (c.__autoPlaceholder) return false;
-                  /* 老版本留下的无标记占位：名字就叫"对方"且一条消息都没有 → 删掉 */
-                  if (String(c.name || "") === "对方") {
-                    try {
-                      var _cnt = window.__akiniChatLog ? window.__akiniChatLog.count(c.id) : 0;
-                      if (!_cnt) return false;
-                    } catch (_cc) {}
-                  }
-                  return true;
-                });
-                if (_real.length > 0 && _real.length !== e.length) {
-                  e = _real;
-                  w(e);
-                }
-              }
-            } catch (_ph) {}
+            /* 占位联系人的清理统一放到启动完成后的 _akiniCleanLegacyPlaceholder：
+               这里绝不能做，也不能在 m() 里解析聊天历史 —— 那会把整段会话水合成数组，
+               10k+ 消息的会话在启动时直接顶爆内存（闪退卡崩）。 */
             return ((d = e), e);
           }
           function w(e) {
@@ -8348,6 +8328,67 @@ window.__akiniResetHomeScroll = function () {
               "function" == typeof window._snapshotCritical && window._snapshotCritical();
             } catch (t) {}
           }
+          /* 占位联系人清理：等存储恢复落地后只做一次，且全程不解析聊天记录。
+             判断依据只有：是否当前会话、会话摘要（lastMsg/lastTime）、内存里的原始历史字符串。
+             只要占位联系人真的被用过（有消息/是当前会话），就永久摘掉 __autoPlaceholder 标记，
+             之后无论用户再加多少联系人都不会再把它当占位删掉。 */
+          function _akiniCleanLegacyPlaceholder() {
+            try {
+              if (window.__akiniLegacyPlaceholderCleaned) return;
+              if (!window.__akiniStorageRestored && !window.__akiniRestoreSettled) return;
+              window.__akiniLegacyPlaceholderCleaned = true;
+              var arr = m();
+              if (!Array.isArray(arr) || arr.length < 2) return;
+              var active = "";
+              try {
+                active =
+                  window.akiniContacts && window.akiniContacts.getActiveChatIdStrict
+                    ? window.akiniContacts.getActiveChatIdStrict()
+                    : window.akiniContacts && window.akiniContacts.getActiveChatId
+                      ? window.akiniContacts.getActiveChatId()
+                      : "";
+              } catch (_ac) {}
+              var sess = {};
+              try {
+                sess = (window.akiniContacts && window.akiniContacts.getSessions
+                  ? window.akiniContacts.getSessions()
+                  : null) || {};
+              } catch (_se) {}
+              var changed = false;
+              var keep = arr.filter(function (c) {
+                if (!c) return false;
+                var marked = !!c.__autoPlaceholder;
+                var sameName = String(c.name || "") === "对方";
+                if (!marked && !sameName) return true;
+                var used = false;
+                if (c.id === active) used = true;
+                var ms = sess[c.id];
+                if (!used && ms && (ms.lastMsg || ms.lastTime)) used = true;
+                if (!used) {
+                  var raw = "";
+                  try {
+                    raw =
+                      window.akiniStore && window.akiniStore.memoryGet
+                        ? window.akiniStore.memoryGet("akini_chat_history_" + c.id) || ""
+                        : "";
+                  } catch (_rg) {}
+                  if (raw && raw.length > 2 && raw !== "[]") used = true;
+                }
+                if (used) {
+                  /* 用过的就是真联系人：摘掉标记，避免以后被误删 */
+                  if (marked) {
+                    c.__autoPlaceholder = false;
+                    changed = true;
+                  }
+                  return true;
+                }
+                changed = true;
+                return false;
+              });
+              if (changed && keep.length > 0) w(keep);
+            } catch (_e) {}
+          }
+          setTimeout(_akiniCleanLegacyPlaceholder, 6000);
           function g() {
             if (u) return u;
             var t = r(e, []);
