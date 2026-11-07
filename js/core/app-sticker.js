@@ -377,11 +377,13 @@
     if (sb) {
       sb.style.background = on && _stkSelMode ? "#1a1a1a" : "";
       sb.style.color = on && _stkSelMode ? "#fff" : "";
+      sb.classList.toggle("active", !!(on && _stkSelMode));
     }
     var bb = document.getElementById("wbBlockBtn");
     if (bb) {
       bb.style.background = on && _stkBlockMode ? "#1a1a1a" : "";
       bb.style.color = on && _stkBlockMode ? "#fff" : "";
+      bb.classList.toggle("active", !!(on && _stkBlockMode));
     }
   }
 

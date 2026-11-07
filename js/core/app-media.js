@@ -895,7 +895,7 @@ window._akiniAllowRemove = false;
             function doImport() {
               try {
                 if (window.__akiniCenterModal) {
-                  window.__akiniCenterModal("正在导入", "正在写入数据，完成后页面将自动刷新…");
+                  window.__akiniCenterModal("正在导入", "正在写入数据，完成后可直接使用…");
                 } else {
                   notify("正在导入", "正在写入数据，请稍候…", "info");
                 }
@@ -903,11 +903,18 @@ window._akiniAllowRemove = false;
               applyBackupToStorage(
                 data,
                 function (count) {
-                  notify("导入成功", "成功导入 " + count + " 项数据，页面即将刷新", "success");
-                  // done 已在 IDB 事务全部提交后触发，这里留出渲染/落盘缓冲再刷新
-                  setTimeout(function () {
-                    location.reload();
-                  }, 800);
+                  // 不再整页刷新：IDB 事务已提交，清掉内存快照后原地重建界面即可。
+                  window._restoringData = false;
+                  notify("导入成功", "成功导入 " + count + " 项数据", "success");
+                  try {
+                    if (window.__akiniChatLog && window.__akiniChatLog.reset) window.__akiniChatLog.reset();
+                  } catch (e) {}
+                  try {
+                    if (window.__akiniOnCriticalRestored) window.__akiniOnCriticalRestored();
+                  } catch (e) {}
+                  try {
+                    window.dispatchEvent(new Event("akini-data-imported"));
+                  } catch (e) {}
                 },
                 function (err) {
                   notify("导入失败", err, "error");

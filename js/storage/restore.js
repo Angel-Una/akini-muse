@@ -1139,8 +1139,13 @@ window.__akiniRestoredDone = true;
             } catch (e) {}
           }
         }
-        alert("导入成功 " + count + " 项，即将刷新");
-        location.reload();
+        alert("导入成功 " + count + " 项");
+        try {
+          if (window.__akiniChatLog && window.__akiniChatLog.reset) window.__akiniChatLog.reset();
+        } catch (e) {}
+        try {
+          if (window.__akiniOnCriticalRestored) window.__akiniOnCriticalRestored();
+        } catch (e) {}
       } catch (e) {
         alert("导入失败：" + e.message);
       }

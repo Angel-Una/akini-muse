@@ -13032,6 +13032,7 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                 i && o && R(),
                 (T.style.background = i ? "#1a1a1a" : ""),
                 (T.style.color = i ? "#fff" : ""),
+                T.classList.toggle("active", !!i),
                 f());
             });
           const M = document.getElementById("wbSelectAllBtn");
@@ -13121,7 +13122,7 @@ ki = document.getElementById("changeChatWallpaperBtn"),
           function R() {
             ((o = !1), l.clear());
             const t = document.getElementById("wbBlockBtn");
-            t && ((t.style.background = ""), (t.style.color = ""));
+            t && ((t.style.background = ""), (t.style.color = ""), t.classList.remove("active"));
           }
           O &&
             c(O, function () {
@@ -13129,9 +13130,12 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                 if (((o = !o), l.clear(), o && i)) {
                   ((i = !1), a.clear());
                   const t = document.getElementById("selectBtn");
-                  t && ((t.style.background = ""), (t.style.color = ""));
+                  t && ((t.style.background = ""), (t.style.color = ""), t.classList.remove("active"));
                 }
-                ((O.style.background = o ? "#1a1a1a" : ""), (O.style.color = o ? "#fff" : ""), f());
+                ((O.style.background = o ? "#1a1a1a" : ""),
+                  (O.style.color = o ? "#fff" : ""),
+                  O.classList.toggle("active", !!o),
+                  f());
               }
             });
           const H = document.getElementById("wbBlockDoBtn");

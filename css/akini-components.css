@@ -403,9 +403,15 @@ html body #app-chat .chat-input-bar-area .chat-input-bar #sendBtn{
   border-radius:50%!important;
   box-shadow:0 2px 8px rgba(0,0,0,.06)!important;
 }
-/* 系统消息模糊底图：设计要求保留的单层磨砂，所有机型统一 18px。
-   双写 #app-chat 提高优先级，压过主样式表里的 12px 基础值。 */
+/* 系统消息模糊底图：与聊天页四个按键同一套毛玻璃——30% 白底、22px 模糊、胶囊圆角。 */
 html body #app-chat#app-chat .chat-body .msg-row.system .bubble {
-  -webkit-backdrop-filter:blur(18px) saturate(160%)!important;
-  backdrop-filter:blur(18px) saturate(160%)!important;
+  background:rgba(255,255,255,.3)!important;
+  background-color:rgba(255,255,255,.3)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(180%)!important;
+  backdrop-filter:blur(22px) saturate(180%)!important;
+  border-radius:999px!important;
+  padding:5px 14px!important;
+  font-size:13px!important;
+  color:#1a1a1a!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.06)!important;
 }

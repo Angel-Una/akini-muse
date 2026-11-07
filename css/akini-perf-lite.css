@@ -240,20 +240,6 @@ html body.bubble-css-on #bubbleCssPreview .bubble-wrap > .quote-bubble {
   margin-top: 2px !important;
 }
 
-html body #app-chat .chat-body .msg-row.system.msg-row.system .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.img-bubble):not(.video-bubble):not(.voice-bubble):not(.music-invite-bubble):not(.music-end-bubble) {
-  background: rgba(200,200,200,.35) !important;
-  background-color: rgba(200,200,200,.35) !important;
-  backdrop-filter: blur(12px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(150%) !important;
-  color: #1a1a1a !important;
-  border: none !important;
-  box-shadow: none !important;
-  border-radius: 8px !important;
-  padding: 1px 7px !important;
-  text-align: center !important;
-  text-shadow: none !important;
-}
-
 /* 16) 长聊天列表：单行渲染隔离。滚动时每行的样式/布局互不影响，避免整表 reflow。
    只做 layout+style containment，不做 paint containment，免得小气泡/引用凸出部分被裁掉。 */
 html body #app-chat #chatBody > .msg-row,
