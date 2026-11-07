@@ -1,0 +1,451 @@
+/* ============================================================
+   akini-pages.css  —  设置 / 字卡库 / iCity / 朋友圈 / 美化 / 概率 黑白统一
+   ============================================================ */
+
+:root {
+  --pg-ink: #0c0c0c;
+  --pg-paper: #ffffff;
+  --pg-bg: #f5f5f5;
+  --pg-line: #e5e5e5;
+  --pg-soft: #f7f7f7;
+  --pg-muted: #8a8a8a;
+}
+body.dark-mode {
+  --pg-ink: #ededed;
+  --pg-paper: #1c1c1e;
+  --pg-bg: #111112;
+  --pg-line: #2c2c30;
+  --pg-soft: #222226;
+  --pg-muted: #8a8a8a;
+}
+
+/* ---------- 首页角标：保持白底黑字（与原始设计一致） ---------- */
+html body .app-item .icon-wrap .home-badge {
+  background: #ffffff;
+  color: #111111;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+html body.dark-mode .app-item .icon-wrap .home-badge {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border-color: rgba(0, 0, 0, 0.25) !important;
+}
+
+/* ---------- 朋友圈 / iCity 右上角消息角标：白底黑字 ---------- */
+#friendsNotifBadge,
+#icityNotifBadge {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18) !important;
+  font-weight: 700 !important;
+}
+
+/* ---------- 全局页面底色：统一纸张灰，避免各页仍是大白底 ---------- */
+html,
+body {
+  background: var(--pg-bg) !important;
+}
+
+/* ---------- 全局页面底色：把过于刺眼的纯白换成纸灰 ---------- */
+#settingsArea,
+#wordbankOverlay,
+#icityArea,
+#app-friends,
+#beautifyArea,
+#bgArea,
+#probSettingsOverlay,
+#settingsArea .settings-body,
+#icityArea .icity-body,
+#app-friends #friendsBody,
+#beautifyArea .beautify-body {
+  background: var(--pg-bg) !important;
+}
+
+/* iCity 全部页面统一中性灰底（--pg-bg 偏暖黄，iCity 原本是中性的 #f5f5f5） */
+#icityArea,
+#icityArea .icity-body,
+#icityDetailModal,
+#icityTaProfileModal,
+#icityArea [style*="background:#f5f5f5"] {
+  background: #f5f5f5 !important;
+}
+
+/* 字卡库返回键：只要小于号线条，不要白底圆钮 */
+#wordbankOverlay .wb-head-close {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--pg-ink);
+}
+
+/* ===================== 设置 ===================== */
+#settingsArea {
+  color: var(--pg-ink);
+}
+#settingsArea .settings-header,
+#settingsArea > .settings-header {
+  background: var(--pg-paper);
+  border-bottom: 1px solid var(--pg-line);
+}
+#settingsArea .settings-row,
+#settingsArea .settings-group {
+  background: var(--pg-paper);
+  border: 0;
+  border-radius: 14px;
+  box-shadow: none;
+}
+/* 去掉模块内部嵌套小卡片的圆角描边线 */
+#settingsArea [style*="border:1px solid #e"],
+#settingsArea [style*="border: 1px solid rgb(224"],
+#settingsArea [style*="border:1px solid #d"],
+#settingsArea .settings-subcard {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+#settingsArea .settings-row .label {
+  color: var(--pg-ink);
+  font-family: "Songti SC", "STSong", serif;
+  letter-spacing: 1px;
+}
+#settingsArea .settings-row .desc {
+  color: var(--pg-muted);
+}
+#settingsArea .settings-group-title {
+  color: var(--pg-muted) !important;
+  letter-spacing: 3px;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+/* 开关 */
+#settingsArea .toggle-switch {
+  background: var(--pg-soft);
+  border: 1px solid var(--pg-line);
+}
+#settingsArea .toggle-switch.active,
+#settingsArea .toggle-switch.on {
+  background: var(--pg-ink);
+}
+
+/* ===================== 字卡库 ===================== */
+#wordbankOverlay {
+  color: var(--pg-ink);
+}
+#wordbankOverlay .wb-header {
+  background: var(--pg-paper);
+  border-bottom: 1px solid var(--pg-line);
+}
+#wordbankOverlay .wb-tabs {
+  background: var(--pg-paper);
+  border-bottom: 1px solid var(--pg-line);
+  margin: 0;
+  padding: 0 18px;
+  gap: 12px;
+  border-radius: 0;
+}
+/* tab 切换：平面文字 + 底部指示线，不要立体胶囊 */
+#wordbankOverlay .wb-tabs .tab {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 10px 0 8px;
+  color: var(--pg-muted);
+  font-weight: 400;
+  letter-spacing: 1px;
+}
+#wordbankOverlay .wb-tabs .tab.active {
+  background: transparent;
+  color: var(--pg-ink);
+  font-weight: 800;
+  border-bottom: 2px solid var(--pg-ink);
+  box-shadow: none;
+}
+/* 工具条：恢复最初的两行排列（每行 4 个，自动换行），每个功能按钮白底 */
+#wordbankOverlay .wb-toolbar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  background: transparent;
+  border-bottom: none;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  overflow: visible;
+}
+/* 分组过滤条（点击「分组」后弹出的那行胶囊）：整体白底圆角胶囊 */
+#wordbankOverlay #wbGroupFilter {
+  background: #ffffff !important;
+  border: 1px solid var(--pg-line) !important;
+  border-radius: 14px !important;
+}
+#wordbankOverlay #wbGroupFilter .wb-gf-btn {
+  background: transparent;
+}
+/* 选中态：白底胶囊条上用黑底白字区分；旧主题把文字刷成白色，
+   叠加透明底后变成「纯白胶囊看不见字」 */
+#wordbankOverlay #wbGroupFilter .wb-gf-btn.active {
+  background: var(--pg-ink, #1a1a1a);
+  color: var(--pg-paper, #fff);
+  border-color: var(--pg-ink, #1a1a1a);
+}
+body.dark-mode #wordbankOverlay #wbGroupFilter {
+  background: #1c1c1e !important;
+  border-color: #3a3a3e !important;
+}
+body.dark-mode #wordbankOverlay #wbGroupFilter .wb-gf-btn.active {
+  background: #f0f0f0 !important;
+  color: #1a1a1a !important;
+  border-color: #f0f0f0 !important;
+}
+#wordbankOverlay .wb-toolbar .left-group,
+#wordbankOverlay .wb-toolbar .right-group {
+  display: contents;
+}
+#wordbankOverlay .wb-toolbar .tool-btn {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  flex: none;
+  height: 44px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  color: var(--pg-ink);
+  overflow: hidden;
+  white-space: nowrap;
+}
+#wordbankOverlay .wb-toolbar .tool-btn svg {
+  width: 19px;
+  height: 19px;
+  color: var(--pg-ink);
+  stroke: var(--pg-ink);
+  stroke-width: 1.8;
+  opacity: 1;
+  visibility: visible;
+}
+/* 不再显示文字标签，恢复原始纯图标样式 */
+#wordbankOverlay .wb-toolbar .tool-btn::after {
+  content: none !important;
+  display: none !important;
+}
+body.dark-mode #wordbankOverlay .wb-toolbar .tool-btn {
+  background: #1c1c1e !important;
+  border-color: #3a3a3e !important;
+}
+body.dark-mode #wordbankOverlay .wb-toolbar .tool-btn svg {
+  color: #ececea !important;
+  stroke: #ececea !important;
+}
+#wordbankOverlay .wb-toolbar .tool-btn.active {
+  background: var(--pg-ink) !important;
+  border-color: var(--pg-ink) !important;
+}
+#wordbankOverlay .wb-toolbar .tool-btn.active svg {
+  color: var(--pg-paper) !important;
+  stroke: var(--pg-paper) !important;
+}
+#wordbankOverlay .wb-sticker-item,
+#wordbankOverlay [class*="sticker-item"] {
+  background: var(--pg-paper) !important;
+  border: 1px solid var(--pg-line) !important;
+  border-radius: 14px !important;
+}
+#wordbankOverlay .wb-group-chip,
+#wordbankOverlay [class*="group-chip"] {
+  background: var(--pg-soft) !important;
+  border: 1px solid var(--pg-line) !important;
+  color: var(--pg-ink) !important;
+  border-radius: 999px !important;
+}
+#wordbankOverlay .wb-group-chip.active,
+#wordbankOverlay [class*="group-chip"][class*="active"] {
+  background: var(--pg-ink) !important;
+  color: var(--pg-paper) !important;
+}
+
+/* ===================== iCity ===================== */
+#icityArea {
+  color: var(--pg-ink);
+}
+#icityArea .icity-header,
+#icityArea > div[style*="background:#fff"]:first-child {
+  background: var(--pg-paper) !important;
+  border-bottom: 1px solid var(--pg-line) !important;
+}
+#icityArea .icity-tab,
+#icityArea [class*="icity-tab"] {
+  background: var(--pg-paper) !important;
+  border-bottom: 1px solid var(--pg-line) !important;
+}
+#icityArea .icity-diary-card,
+#icityArea [class*="diary-card"],
+#icityArea [style*="background:#fff"][style*="border-radius"] {
+  background: var(--pg-paper) !important;
+  border: 1px solid var(--pg-line) !important;
+  border-radius: 16px !important;
+}
+#icityArea [style*="color:#1a1a1a"] {
+  color: var(--pg-ink) !important;
+}
+#icityArea [style*="color:#999"],
+#icityArea [style*="color:#bbb"] {
+  color: var(--pg-muted) !important;
+}
+
+/* ===================== 朋友圈（恢复原本微信风格：白底、灰线、彩字色不被强制黑白覆盖） ===================== */
+#app-friends {
+  background: #fff !important;
+}
+#app-friends .friends-container {
+  background: #fff;
+}
+#app-friends #friendsBody {
+  background: #fff !important;
+}
+#app-friends #friendsBody #postList .post-item {
+  background: #fff !important;
+  border-radius: 0 !important;
+  padding: 14px 16px !important;
+  border: none !important;
+  border-bottom: 1px solid #e5e5e5 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+#app-friends #friendsBody #postList .post-item:last-child {
+  border-bottom: none !important;
+}
+#app-friends .post-avatar {
+  border-radius: 6px !important;
+}
+
+/* ===================== 美化 / 背景 / 概率设置 ===================== */
+#beautifyArea {
+  color: var(--pg-ink);
+}
+#beautifyArea .beautify-header {
+  background: var(--pg-paper);
+  border-bottom: 1px solid var(--pg-line);
+}
+#beautifyArea .beautify-card,
+#beautifyArea [class*="beautify"] > [style*="background:#fff"] {
+  background: var(--pg-paper) !important;
+  border: 1px solid var(--pg-line) !important;
+  border-radius: 16px !important;
+}
+#probSettingsOverlay > div[style*="background:#fff"] {
+  background: var(--pg-paper);
+  border: 1px solid var(--pg-line);
+}
+#probSettingsOverlay button[style*="background:#1a1a1a"],
+#probSettingsOverlay button[style*="background: #1a1a1a"] {
+  background: var(--pg-ink) !important;
+  border-radius: 999px !important;
+  letter-spacing: 2px;
+}
+#probSettingsOverlay button[style*="background:#f5f5f5"],
+#probSettingsOverlay button[style*="background: #f5f5f5"] {
+  background: var(--pg-soft) !important;
+  border: 1px solid var(--pg-line) !important;
+  border-radius: 999px !important;
+}
+
+/* ---------- 网易云唱片 mini 悬浮球（黑白） ---------- */
+.akini-music-mini {
+  position: fixed;
+  right: 14px;
+  bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  z-index: 6200;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.akini-music-mini .amm-disc {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #0c0c0c;
+  background: #0c0c0c;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+  position: relative;
+}
+.akini-music-mini .amm-disc img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 50%;
+}
+.akini-music-mini .amm-disc .amm-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 5px rgba(0, 0, 0, 0.62),
+    inset 0 0 0 6px rgba(255, 255, 255, 0.35);
+}
+.akini-music-mini.playing .amm-disc img {
+  animation: akiniMusicSpin 5s linear infinite;
+}
+@keyframes akiniMusicSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.akini-music-mini .amm-ctrl {
+  display: none;
+  align-items: center;
+  gap: 1px;
+  background: #ffffff;
+  border: 1.5px solid #0c0c0c;
+  border-radius: 999px;
+  padding: 2px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.22);
+}
+.akini-music-mini .amm-btn {
+  width: 27px;
+  height: 27px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: #0c0c0c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.akini-music-mini .amm-btn svg,
+.akini-music-mini .amm-btn span svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+.akini-music-mini .amm-btn:active {
+  background: #0c0c0c;
+  color: #ffffff;
+}
+/* 点击唱片后展开控制条 */
+.akini-music-mini.open .amm-ctrl {
+  display: flex;
+}

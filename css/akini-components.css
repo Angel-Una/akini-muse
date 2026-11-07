@@ -1,0 +1,406 @@
+/* Akini 组件样式：从 index.html 内联样式归并而来，保持原顺序 */
+
+/* akini-layout-icons */
+@media (max-width: 480px) {
+  #phoneFrame, .phone-frame, .content-wrapper, .home-slider, .home-screen,
+  #homeScreens, #homeSlider, #pageContainer, .fit-inner, .fit-mod {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    align-items: stretch !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    box-sizing: border-box !important;
+  }
+}
+.app-item .icon-wrap.custom-icon span {
+  font-size: 28px !important;
+}
+.app-item .label, .app-item .app-label {
+  font-size: 12px;
+  display: block;
+}
+/* 兼容：首页图标容器已由 div 改为 span（button 内只允许 phrasing content，
+   否则部分安卓内核/华为 ArkWeb 会重排 DOM 导致按钮失效点不动） */
+.app-item > span.icon-wrap, .app-item > span.label, .app-item > span.app-label {
+  display: block;
+}
+.app-item > span.icon-wrap {
+  display: flex;
+}
+/* 底栏设置/美化/词库按钮同样由 div 改为 span，保持块级视觉 */
+.bottom-btn > span.icon-wrap {
+  display: flex;
+}
+.bottom-btn > span.label, .bottom-btn > span.app-label {
+  display: block;
+}
+/* 图标尺寸区分：默认图标(SVG描边)小尺寸 36px，自定义图标保持 56px */
+.bottom-bar .bottom-btn .icon-wrap,
+.bottom-btn-container .bottom-btn .icon-wrap,
+#bottomBar .bottom-btn .icon-wrap,
+.app-item .icon-wrap {
+  width: 36px;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 自定义图标保持大尺寸 56px */
+.bottom-bar .bottom-btn .icon-wrap.custom-icon,
+.bottom-btn-container .bottom-btn .icon-wrap.custom-icon,
+#bottomBar .bottom-btn .icon-wrap.custom-icon,
+.app-item .icon-wrap.custom-icon {
+  width: 56px !important;
+  height: 56px !important;
+  font-size: 44px !important;
+}
+/* 自定义图片图标：去掉默认 cover 的边距差异，确保与描边图标同大 */
+.bottom-bar .bottom-btn .icon-wrap img,
+.bottom-btn-container .bottom-btn .icon-wrap img,
+#bottomBar .bottom-btn .icon-wrap img,
+.app-item .icon-wrap img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+/* 自定义图标图片保持大尺寸 */
+.bottom-bar .bottom-btn .icon-wrap.custom-icon img,
+.bottom-btn-container .bottom-btn .icon-wrap.custom-icon img,
+#bottomBar .bottom-btn .icon-wrap.custom-icon img,
+.app-item .icon-wrap.custom-icon img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+/* 自定义图标的圆角在内区生效（padding 区域内） */
+.app-item .icon-wrap.custom-icon img,
+.bottom-bar .bottom-btn .icon-wrap.custom-icon img,
+.bottom-btn-container .bottom-btn .icon-wrap.custom-icon img,
+#bottomBar .bottom-btn .icon-wrap.custom-icon img {
+  border-radius: 8px !important;
+}
+/* emoji/字体类图标：默认小尺寸 28px */
+.app-item .icon-wrap > span,
+.bottom-bar .bottom-btn .icon-wrap > span,
+.bottom-btn-container .bottom-btn .icon-wrap > span,
+#bottomBar .bottom-btn .icon-wrap > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 28px;
+}
+/* 自定义图标 emoji 保持大尺寸 */
+.app-item .icon-wrap.custom-icon > span,
+.bottom-bar .bottom-btn .icon-wrap.custom-icon > span,
+.bottom-btn-container .bottom-btn .icon-wrap.custom-icon > span,
+#bottomBar .bottom-btn .icon-wrap.custom-icon > span {
+  font-size: 44px !important;
+}
+.bottom-bar .bottom-btn, .bottom-btn {
+  gap: 2px;
+}
+
+/* akini-btn-material */
+#app-chat .chat-top-bar #chatBackBtn,#app-chat .chat-top-bar #chatCallBtn,#app-chat .chat-input-bar #plusMenuBtn,#app-chat .chat-input-bar #sendBtn,html body #app-chat #chatBackBtn,html body #app-chat #chatCallBtn,html body #app-chat #plusMenuBtn,html body #app-chat #sendBtn{background:rgba(255,255,255,0.25)!important;background-color:rgba(255,255,255,0.25)!important;backdrop-filter:saturate(180%) blur(12px)!important;-webkit-backdrop-filter:saturate(180%) blur(12px)!important;border:none!important;border-radius:50%!important;box-shadow:none!important}
+html body .app-item .icon-wrap .home-badge{position:absolute!important;top:-4px!important;right:-6px!important;width:18px!important;min-width:18px!important;max-width:18px!important;height:18px!important;padding:0!important;border-radius:50%!important;line-height:18px!important;text-align:center!important;overflow:hidden!important;white-space:nowrap!important;box-sizing:border-box!important}
+html body .app-item .icon-wrap .home-badge[data-count]:not([data-count="0"]):not(:empty){display:inline-flex!important;align-items:center!important;justify-content:center!important}
+
+/* 全站角标统一：白底黑字小圆点；JS已做99+截断，这里保证圆内放得下 */
+html body .app-item .icon-wrap .home-badge{font-size:9px!important;letter-spacing:-0.5px!important}
+html body .cli-unread-badge,html body #chatBackUnreadBadge{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:18px!important;width:18px!important;height:18px!important;padding:0!important;border-radius:50%!important;background:#ffffff!important;color:#1a1a1a!important;font-size:9px!important;line-height:18px!important;font-weight:600!important;text-align:center!important;overflow:hidden!important;white-space:nowrap!important;letter-spacing:-0.5px!important;box-sizing:border-box!important}
+
+/* akini-ios-lite */
+/* iOS 降级：全局关闭 backdrop-filter/filter 等 GPU 重滤镜规则（iOS 内存杀手，闪退主要诱因） */
+/* 删除"全站 backdrop-filter 置零"的通用规则。
+   它会把聊天页返回键/加号/通话/发送/昵称条/输入栏/系统消息/顶部渐变的毛玻璃
+   一并抹掉（用户看到的就是"变透明"）。现在只由 akini-perf-lite.css
+   精确关闭消息气泡这一种高频重复层，其余毛玻璃保持原样。 */
+/* iOS 降级：关闭会无限重绘的装饰动画，减少后台/前台 GPU 压力 */
+html.ios-lite .akini-shimmer, html.ios-lite .akini-pulse, html.ios-lite .akini-float, html.ios-lite .akini-spin {
+  animation: none !important;
+}
+/* 白名单：恢复用户自定义的"模糊按键底图"（返回键/通话键/名字牌）——
+   只放开这三个按键，聊天页其余毛玻璃继续禁用，闪退防线不动 */
+html.ios-lite #app-chat .chat-top-bar .ta-name-pill {
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+}
+/* /磨砂白名单精确到元素本身——backdrop-filter 必须加在"持有半透明背景"的元素上。
+   s1-frosted-content = 第一屏头像下方的磨砂文字卡（原生 blur 14px）；
+   top-card = 第二屏顶部大卡（加错过地方，一并保留无害） */
+html.ios-lite .s1-frosted-content {
+  /* 用户钦定：80% 纯白底、不要模糊、最底部融入壁纸。
+     实现 = 背景渐变（80% 白 → 底部透明）——不碰 mask / backdrop-filter（两个 iOS 渲染雷区），
+     渐隐由背景自身完成，头像等子元素零风险 */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,1) 42%, rgba(255,255,255,0.75) 58%, rgba(255,255,255,0.75) 66%, rgba(255,255,255,0.3) 86%, rgba(255,255,255,0) 100%);
+  box-shadow: none;
+}
+html.ios-lite .top-card {
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+}
+/* Bug2：聊天页系统消息底图恢复磨砂（轻量单层 blur，内存代价极小，纳入白名单） */
+html.ios-lite #app-chat .chat-body .msg-row.system .bubble {
+  backdrop-filter: blur(12px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(150%) !important;
+}
+
+/* 组件样式 */
+/* 系统消息强制单行显示：不管多长都不换行。
+   用双写 .msg-row.system 提特异性，压过 akini-perf-lite.css 里的 max-width:70%，
+   否则 nowrap 文字会溢出 70% 宽的灰底气泡。 */
+html body #app-chat .chat-body .msg-row.system.msg-row.system .bubble-wrap { max-width:none !important; width:fit-content !important; }
+html body #app-chat .chat-body .msg-row.system.msg-row.system .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.img-bubble):not(.video-bubble):not(.voice-bubble):not(.music-invite-bubble):not(.music-end-bubble) {
+  white-space:nowrap !important;
+  max-width:none !important;
+  width:auto !important;
+  display:inline-block !important;
+}
+
+/* 组件样式 */
+/* 直接更换输入框立即可点 */
+.s1-direct-input{position:absolute!important;top:0!important;left:0!important;width:100%!important;height:100%!important;opacity:0!important;cursor:pointer!important;z-index:20!important;font-size:999px!important;}
+.akini-hidden-input{position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none}
+/* 切换防闪烁 */
+.home-screen{background:transparent;}
+
+.back-unread-badge,
+.unread-badge,
+.badge {
+  background: #fff !important;
+  color: #000 !important;
+  border: 1.5px solid #000 !important;
+  border-radius: 50% !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 4px !important;
+  box-sizing: border-box !important;
+  line-height: 1 !important;
+}
+/* 99+ 显示 */
+.back-unread-badge.max::after,
+.unread-badge.max::after {
+  content: '+' !important;
+}
+
+/* akini-shop-style */
+.shop-card-bubble-footer span:first-child {
+  font-size: 11px !important;
+  color: #888 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 130px !important;
+  display: inline-block !important;
+  line-height: 1.2 !important;
+}
+
+/* akini-ticket-style */
+/* 飞机票精准还原图三样式：白底圆角卡片，虚线+小飞机水平居中朝右，下方飞行时长 */
+#ticketStrip, .ticket-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: calc(100% - 32px);
+  max-width: 100%;
+  margin: 12px auto;
+  padding: 16px 20px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  box-sizing: border-box;
+  position: relative;
+  z-index: 2;
+}
+#ticketStrip .tk-info, .ticket-strip .tk-info {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+#ticketStrip .tk-left, .ticket-strip .tk-left {
+  align-items: flex-start;
+  text-align: left;
+}
+#ticketStrip .tk-right, .ticket-strip .tk-right {
+  align-items: flex-end;
+  text-align: right;
+}
+#ticketStrip .tk-city, .ticket-strip .tk-city {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #1a1a1a;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+#ticketStrip .tk-time, .ticket-strip .tk-time {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #7a7a7a;
+  margin-top: 4px;
+  cursor: pointer;
+}
+#ticketStrip .tk-mid, .ticket-strip .tk-mid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  padding: 0 16px;
+}
+#ticketStrip .tk-route, .ticket-strip .tk-route {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 26px;
+  position: relative;
+}
+#ticketStrip .tk-line, .ticket-strip .tk-line {
+  flex: 1;
+  height: 0;
+  border-top: 1.5px dashed #b5b5b5;
+  margin: 0 6px;
+}
+#ticketStrip .tk-plane, .ticket-strip .tk-plane {
+  font-size: 17px;
+  color: #1a1a1a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: none;
+  line-height: 1;
+  flex-shrink: 0;
+  font-family: inherit; /* 源头保护：自定义字体不会影响 SVG 渲染 */
+}
+#ticketStrip .tk-plane svg, .ticket-strip .tk-plane svg {
+  transform: none; /* 飞机始终朝右，禁止任何镜像/旋转 */
+}
+#ticketStrip .tk-dur, .ticket-strip .tk-dur {
+  font-size: 12px;
+  color: #7a7a7a;
+  margin-top: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+  text-align: center;
+}
+/* 文字编辑弹窗去掉全屏高斯模糊：移动端在首页这种多层背景上叠加 blur 会卡住合成，
+   关闭弹窗后要等好几秒画面才恢复 */
+#__akiniPromptModal{
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: rgba(0,0,0,.35) !important;
+}
+
+/* 组件样式 */
+@keyframes __akSd{0%,60%,100%{transform:translateY(0);opacity:.35}30%{transform:translateY(-6px);opacity:1}}#akiniSplashDots i{display:inline-block;font-style:normal;animation:__akSd 1.2s infinite;}#akiniSplashDots i:nth-child(2){animation-delay:.18s}#akiniSplashDots i:nth-child(3){animation-delay:.36s}
+
+/* akiniBootShield */
+html.akini-boot-lock body>*:not(#akiniBootSplash){display:none!important}
+
+/* akiniBgClickable */
+/* 底图模块必须接收点击：父级#screen2/#topCard设了pointer-events:none，
+   导致#coverAreaMain/#dualAvatarWrap/#bgArea点击穿透，底图更换永远不触发。
+   此处强制auto，头像子元素由recovery-fixes的AV_SEL拦截不误触选图。 */
+#coverAreaMain,#bgArea,#dualAvatarWrap{pointer-events:auto!important}
+
+/* 组件样式 */
+@keyframes akiniNoticePop{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+
+/* akiniSplashCompatStyle */
+
+
+.phone-frame, #phoneFrame, #app-chat, .chat-wrapper {
+  top: 0; left: 0; right: 0; bottom: 0;
+}
+.content-wrapper {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* 组件样式 */
+@keyframes akiniSlideIn{to{opacity:1;transform:translateY(0)}}
+
+
+.akini-splash-logo svg{stroke:#111111 !important}
+.akini-splash-logo svg{width:26px;height:26px}
+
+
+.akini-splash-module-body p{margin:0 0 6px}
+.akini-splash-module-body p:last-child{margin-bottom:0}
+.akini-splash-module-body b{color:#000000;font-weight:700}
+.akini-splash-module-body hr{border:none;border-top:1px solid #eee;margin:10px 0}
+
+
+.akini-splash-enter:active{transform:translateY(-1px)}
+
+/* 白底胶囊搜索框：黑搜索线条+文字，可点击更换内容 */
+.search-pill {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  max-width: 320px !important;
+  padding: 10px 16px !important;
+  background: #ffffff !important;
+  border-radius: 999px !important;
+  border: 1px solid #e5e5e5 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+.search-pill svg { color: #1a1a1a !important; flex-shrink: 0 !important; }
+.search-pill span {
+  font-size: 14px !important;
+  color: #1a1a1a !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  display: block !important;
+}
+
+/* 组件样式 */
+/* 角标：白底黑字小圆点 */
+.back-unread-badge, .unread-badge, .badge,
+#chatBackUnreadBadge, .cli-unread-badge, .home-badge,
+.home-unread-badge, .friends-badge, .app-icon-badge,
+.back-badge, .msg-badge, .chat-badge, .s1-badge, .s2-badge,
+.tab-badge, .nav-badge, .mail-badge, .notice-badge,
+.preview-badge, .setting-badge, .tool-badge, .icon-badge,
+.notification-badge, .count-badge, .dot-badge {
+  background: #ffffff;
+  color: #000000;
+  border: 1.5px solid #000000;
+  border-radius: 50%;
+  min-width: 16px;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+  line-height: 1;
+  box-shadow: none;
+  text-shadow: none;
+}
+/* 低内存模式：关掉按钮毛玻璃 */
+html.low-mem body #app-chat #chatBackBtn,html.low-mem body #app-chat #chatCallBtn,html.low-mem body #app-chat #plusMenuBtn,html.low-mem body #app-chat #sendBtn{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}

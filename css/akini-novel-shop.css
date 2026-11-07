@@ -1,0 +1,393 @@
+/* ============================================================
+   小说 & 商店 · 黑白纸张风格
+   与 akini-mail.css 同一套「纸与墨」设计语言
+   ============================================================ */
+
+/* ---------- 共享变量（弹层挂在 body 上，必须在 :root 定义，否则 var() 失效变透明） ---------- */
+:root {
+  --ns-ink: #0c0c0c;
+  --ns-paper: #ffffff;
+  --ns-bg: #f5f5f5;
+  --ns-line: #e5e5e5;
+  --ns-muted: #8a8a8a;
+  --ns-soft: #f7f7f7;
+}
+body.dark-mode {
+  --ns-ink: #ececec;
+  --ns-paper: #171717;
+  --ns-bg: #0c0c0c;
+  --ns-line: #2c2c2c;
+  --ns-muted: #777777;
+  --ns-soft: #1e1e1e;
+}
+
+#app-novel,
+#app-novel-reader,
+#app-shop {
+  --ns-ink: #0c0c0c;
+  --ns-paper: #ffffff;
+  --ns-bg: #f5f5f5;
+  --ns-line: #e5e5e5;
+  --ns-muted: #8a8a8a;
+  --ns-soft: #f7f7f7;
+}
+body.dark-mode #app-novel,
+body.dark-mode #app-novel-reader,
+body.dark-mode #app-shop {
+  --ns-ink: #ececec;
+  --ns-paper: #171717;
+  --ns-bg: #0c0c0c;
+  --ns-line: #2c2c2c;
+  --ns-muted: #777777;
+  --ns-soft: #1e1e1e;
+}
+
+.nv-heading,
+.sp-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  line-height: 1.15;
+}
+.nv-title-serif,
+.sp-title-serif {
+  font-family: "Songti SC", "STSong", "SimSun", serif;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  text-indent: 6px;
+  color: var(--ns-ink);
+}
+.nv-title-en,
+.sp-title-en {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ns-muted);
+}
+
+/* ============================================================
+   小说 · 书架
+   ============================================================ */
+#app-novel {
+  background: var(--ns-bg) !important;
+  background-image: radial-gradient(var(--ns-line) 1px, transparent 1px) !important;
+  background-size: 22px 22px !important;
+}
+#app-novel .nv-header {
+  background: var(--ns-paper) !important;
+  border-bottom: 1px solid var(--ns-line) !important;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px)) !important;
+}
+#app-novel .nv-header button {
+  color: var(--ns-ink) !important;
+}
+
+/* 书架空状态 */
+#app-novel #novelEmptyTip {
+  color: var(--ns-muted) !important;
+  font-family: "Songti SC", "STSong", "SimSun", serif !important;
+  font-size: 15px !important;
+  letter-spacing: 2px;
+}
+
+/* 书卡 */
+#app-novel #novelShelfGrid .aknv-book > div:first-child {
+  border-radius: 4px 10px 10px 4px !important;
+  border: 1px solid var(--ns-line) !important;
+  box-shadow: 3px 4px 0 rgba(12, 12, 12, 0.08), 0 10px 22px rgba(12, 12, 12, 0.1) !important;
+  background: var(--ns-paper) !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+#app-novel #novelShelfGrid .aknv-book:active > div:first-child {
+  transform: translateY(2px);
+}
+#app-novel #novelShelfGrid .aknv-book > div:last-child {
+  color: var(--ns-ink) !important;
+  font-family: "Songti SC", "STSong", "SimSun", serif !important;
+  font-size: 12.5px !important;
+  letter-spacing: 0.5px;
+}
+#app-novel .aknv-cover > div:first-child {
+  font-family: "Songti SC", "STSong", "SimSun", serif !important;
+  letter-spacing: 2px !important;
+}
+
+/* ============================================================
+   小说 · 阅读页
+   ============================================================ */
+#app-novel-reader #novelReaderBackBtn {
+  display: none !important;
+}
+
+/* 阅读设置弹层（退出一起看） */
+#novelReaderMenu #novelReaderExitBtn {
+  background: var(--ns-ink) !important;
+  color: var(--ns-paper) !important;
+  border-color: var(--ns-ink) !important;
+  border-radius: 999px !important;
+  letter-spacing: 4px !important;
+}
+
+#app-novel-reader {
+  background: var(--ns-bg) !important;
+}
+
+#app-novel-reader .nv-reader-header {
+  background: var(--ns-paper) !important;
+  border-bottom: 1px solid var(--ns-line) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding-top: calc(8px + env(safe-area-inset-top, 0px)) !important;
+}
+#app-novel-reader .nv-reader-header button {
+  color: var(--ns-ink) !important;
+}
+#app-novel-reader #novelReaderTitle {
+  color: var(--ns-ink) !important;
+  font-family: "Songti SC", "STSong", "SimSun", serif !important;
+  letter-spacing: 1px;
+}
+#app-novel-reader #novelReaderContent {
+  color: #1c1c1a !important;
+  font-family: "Songti SC", "STSong", "SimSun", serif !important;
+  line-height: 1.9 !important;
+  letter-spacing: 0.6px;
+}
+#app-novel-reader #novelPageIndicator {
+  background: rgba(12, 12, 12, 0.72) !important;
+  font-family: ui-monospace, "SF Mono", monospace !important;
+  letter-spacing: 1px;
+}
+
+/* 章节目录抽屉 */
+#novelChapterDrawer #novelChapterDrawerPanel {
+  background: var(--ns-paper);
+}
+#novelChapterDrawer #novelChapterDrawerPanel > div:first-child {
+  border-bottom: 1px solid var(--ns-line) !important;
+}
+#novelChapterDrawer #novelChapterDrawerPanel > div:first-child > div {
+  font-family: "Songti SC", "STSong", "SimSun", serif !important;
+  letter-spacing: 3px !important;
+  color: var(--ns-ink) !important;
+}
+#novelChapterDrawer .novel-chapter-item {
+  background: var(--ns-paper) !important;
+  border-bottom: 1px dashed var(--ns-line) !important;
+  color: var(--ns-ink) !important;
+  font-family: "Songti SC", "STSong", "SimSun", serif !important;
+  letter-spacing: 0.5px;
+}
+#novelChapterDrawer .novel-chapter-item > span {
+  color: var(--ns-muted) !important;
+  font-family: ui-monospace, "SF Mono", monospace !important;
+}
+
+/* 共读选人 / 长按操作 / 改名 / 阅读设置 弹层 */
+#novelPickerOverlay > div,
+#novelReaderMenu > div,
+#novelRenameModal > div,
+#novelBookActions > div {
+  background: var(--ns-paper) !important;
+}
+#novelPickerOverlay span,
+#novelReaderMenu span,
+#novelRenameModal > div > div:first-child {
+  font-family: "Songti SC", "STSong", "SimSun", serif !important;
+  letter-spacing: 2px !important;
+  color: var(--ns-ink) !important;
+}
+#novelPickerOverlay #novelPickerList .aknv-item {
+  border-bottom: 1px dashed var(--ns-line) !important;
+}
+#novelPickerConfirm,
+#novelRenameOk,
+#novelReaderMenu #novelFlipScroll {
+  background: var(--ns-ink) !important;
+  color: var(--ns-paper) !important;
+  border-radius: 999px !important;
+  letter-spacing: 2px;
+}
+#novelRenameCancel,
+#novelReaderMenu #novelFlipPage,
+#novelReaderMenu #novelFontMinus,
+#novelReaderMenu #novelFontPlus {
+  border: 1px solid var(--ns-line) !important;
+  background: var(--ns-soft) !important;
+  color: var(--ns-ink) !important;
+  border-radius: 999px !important;
+}
+#novelBookActions button {
+  background: var(--ns-paper) !important;
+  color: var(--ns-ink) !important;
+  border-bottom-color: var(--ns-line) !important;
+  letter-spacing: 2px;
+}
+#novelBookActions #novelActDelete {
+  color: #8a1f1f !important;
+}
+
+/* ============================================================
+   商店
+   ============================================================ */
+#app-shop {
+  background: var(--ns-bg) !important;
+  background-image: radial-gradient(var(--ns-line) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+#app-shop .sp-header {
+  background: var(--ns-paper) !important;
+  border-bottom: 1px solid var(--ns-line) !important;
+  height: auto !important;
+  min-height: 64px;
+  padding-top: env(safe-area-inset-top, 0px) !important;
+}
+#app-shop .sp-header button {
+  color: var(--ns-ink) !important;
+}
+
+/* 购物 / 订单 胶囊切换 */
+#app-shop #shopTabBar {
+  background: transparent !important;
+  border-bottom: none !important;
+  padding: 12px 18px 4px !important;
+  gap: 10px;
+}
+#app-shop #shopTabBar button {
+  flex: 1 !important;
+  height: 38px !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--ns-line) !important;
+  background: var(--ns-paper) !important;
+  color: var(--ns-muted) !important;
+  font-size: 13px !important;
+  letter-spacing: 3px !important;
+  font-weight: 500 !important;
+}
+#app-shop #shopTabBar button.is-active {
+  background: var(--ns-ink) !important;
+  color: var(--ns-paper) !important;
+  border-color: var(--ns-ink) !important;
+  font-weight: 700 !important;
+}
+
+/* 详情 / 添加 弹层 */
+.shop-overlay {
+  background: rgba(12, 12, 12, 0.55) !important;
+}
+.shop-sheet-panel {
+  background-color: var(--ns-paper);
+  background-image: none;
+  border-radius: 20px 20px 0 0;
+}
+#app-shop .shop-card {
+  background: var(--ns-paper) !important;
+  border: 1px solid var(--ns-line) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 1px 0 var(--ns-line), 0 10px 24px rgba(12, 12, 12, 0.05) !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+#app-shop .shop-card:active {
+  transform: translateY(2px);
+}
+#app-shop .shop-card-icon {
+  background: var(--ns-soft) !important;
+  border-bottom: 1px dashed var(--ns-line) !important;
+  border-radius: 18px 18px 0 0 !important;
+}
+#app-shop .shop-card-name {
+  color: var(--ns-ink) !important;
+  font-family: "Songti SC", "STSong", "SimSun", serif !important;
+  font-weight: 700 !important;
+  letter-spacing: 1px;
+}
+#app-shop .shop-card-price {
+  color: var(--ns-ink) !important;
+  font-family: ui-monospace, "SF Mono", monospace !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px;
+}
+
+/* 订单行 */
+#app-shop .shop-order-row {
+  background: var(--ns-paper) !important;
+  border: 1px solid var(--ns-line) !important;
+  border-radius: 16px !important;
+}
+#app-shop .shop-order-name {
+  color: var(--ns-ink) !important;
+  font-family: "Songti SC", "STSong", "SimSun", serif !important;
+  font-weight: 700 !important;
+}
+#app-shop .shop-order-price {
+  color: var(--ns-ink) !important;
+  font-family: ui-monospace, "SF Mono", monospace !important;
+}
+#app-shop .shop-order-footer {
+  border-top: 1px dashed var(--ns-line) !important;
+  color: var(--ns-muted) !important;
+}
+#app-shop #shopOrdersEmpty {
+  color: var(--ns-muted) !important;
+  font-family: "Songti SC", "STSong", "SimSun", serif !important;
+  letter-spacing: 2px;
+}
+
+/* 添加商品 FAB */
+#app-shop #shopAddProductBtn {
+  background: var(--ns-ink) !important;
+  color: var(--ns-paper) !important;
+  box-shadow: 0 6px 0 rgba(12, 12, 12, 0.12), 0 14px 30px rgba(12, 12, 12, 0.2) !important;
+}
+
+/* 详情 / 添加 弹层 */
+#shopDetailOverlay > div,
+#shopAddOverlay > div {
+  background: var(--ns-paper);
+}
+#shopDetailOverlay > div > div:first-child span,
+#shopAddOverlay > div > div:first-child span {
+  font-family: "Songti SC", "STSong", "SimSun", serif !important;
+  letter-spacing: 4px !important;
+  color: var(--ns-ink) !important;
+}
+#shopDetailPrice {
+  color: var(--ns-ink) !important;
+  font-family: ui-monospace, "SF Mono", monospace !important;
+}
+#shopDetailOverlay button[onclick*="__shopBuy()"],
+#shopDetailOverlay button[onclick*="__shopAccept()"],
+#shopAddOverlay button[onclick*="__shopSaveProduct"] {
+  background: var(--ns-ink) !important;
+  color: var(--ns-paper) !important;
+  border: 1px solid var(--ns-ink) !important;
+  border-radius: 999px !important;
+  letter-spacing: 2px;
+}
+#shopDetailOverlay button[onclick*="__shopGift()"],
+#shopDetailOverlay button[onclick*="__shopReject()"],
+#shopDetailOverlay button[onclick*="__shopCloseDetail()"],
+#shopDetailOverlay button[onclick*="__shopEditFromDetail()"],
+#shopAddOverlay button[onclick*="__shopCloseAdd()"] {
+  border: 1px solid var(--ns-line) !important;
+  background: var(--ns-soft) !important;
+  color: var(--ns-ink) !important;
+  border-radius: 999px !important;
+  letter-spacing: 2px;
+}
+#shopDetailOverlay button[onclick*="__shopDeleteProduct()"] {
+  border: 1px solid var(--ns-line) !important;
+  background: transparent !important;
+  color: #8a1f1f !important;
+  border-radius: 999px !important;
+  letter-spacing: 2px;
+}
+#shopAddOverlay input,
+#shopAddOverlay textarea {
+  background: var(--ns-soft) !important;
+  border: 1px solid var(--ns-line) !important;
+  color: var(--ns-ink) !important;
+}

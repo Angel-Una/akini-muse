@@ -1,0 +1,258 @@
+/* ============================================================
+   akini-extra.css  —  黑白编辑部风格补充
+   覆盖：微信「记录」面板 / 网易云「开启一起听」首页 / 陪伴历史
+   与 akini-mail.css / akini-novel-shop.css 共用设计语言
+   ============================================================ */
+
+:root {
+  --ex-ink: #0c0c0c;
+  --ex-paper: #ffffff;
+  --ex-bg: #f5f5f5;
+  --ex-line: #e5e5e5;
+  --ex-soft: #f7f7f7;
+  --ex-muted: #8a8a8a;
+  /* 全局页面底色统一：中性灰，黑白风格 */
+  --page-bg: #f5f5f5;
+}
+body.dark-mode {
+  --ex-ink: #ededed;
+  --ex-paper: #1c1c1e;
+  --ex-bg: #111112;
+  --ex-line: #2c2c30;
+  --ex-soft: #222226;
+  --ex-muted: #8a8a8a;
+}
+
+/* ===================== 微信 · 记录面板 ===================== */
+#chatRecordOverlay {
+  background: var(--ex-bg) !important;
+  font-family: "PingFang SC", "Helvetica Neue", sans-serif;
+}
+/* 顶栏 */
+#chatRecordOverlay > div:first-child {
+  background: var(--ex-paper) !important;
+  border-bottom: 1px solid var(--ex-line) !important;
+  padding: 14px 14px 12px !important;
+}
+#chatRecordOverlay > div:first-child > div[style*="font-size:17px"] {
+  font-family: "Songti SC", "STSong", "SimSun", serif !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  letter-spacing: 4px !important;
+  color: var(--ex-ink) !important;
+}
+/* Tab 行 */
+#chatRecordOverlay > div:nth-child(2) {
+  background: var(--ex-paper) !important;
+  border-bottom: 1px solid var(--ex-line) !important;
+  padding: 0 12px !important;
+  gap: 6px;
+}
+#chatRecordOverlay .cr-tab {
+  font-family: "Songti SC", "STSong", serif !important;
+  color: var(--ex-muted) !important;
+  font-weight: 500 !important;
+  letter-spacing: 1px;
+  padding: 13px 0 !important;
+  border-bottom: 2px solid transparent !important;
+  transition: color .15s, border-color .15s, font-weight .15s;
+}
+#chatRecordOverlay .cr-tab.is-active {
+  color: var(--ex-ink) !important;
+  font-weight: 800 !important;
+  border-bottom: 3px solid var(--ex-ink) !important;
+}
+/* 搜索框 */
+#chatRecordOverlay #crSearchBox {
+  background: var(--ex-paper) !important;
+  border-bottom: 1px solid var(--ex-line) !important;
+  padding: 10px 14px !important;
+}
+#chatRecordOverlay #crSearchInput {
+  background: var(--ex-soft) !important;
+  border: 1px solid var(--ex-line) !important;
+  border-radius: 999px !important;
+  color: var(--ex-ink) !important;
+  font-family: inherit;
+}
+#chatRecordOverlay #crSearchInput::placeholder {
+  color: var(--ex-muted);
+}
+/* 内容区 */
+#chatRecordOverlay #crContent {
+  background: var(--ex-bg) !important;
+  padding: 14px 14px 30px !important;
+}
+/* 通用卡片（收藏 / 统计） */
+#crContent > div[style*="background: rgb(255"],
+#crContent > div[style*="background:#fff"] {
+  background: var(--ex-paper) !important;
+  border: 1px solid var(--ex-line) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .03) !important;
+}
+/* 搜索结果行 */
+#crContent .cr-search-row {
+  background: var(--ex-paper) !important;
+  border: 1px solid var(--ex-line) !important;
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+  margin-bottom: 10px !important;
+}
+#crContent .cr-search-row [style*="color:#f08a00"] {
+  color: var(--ex-ink) !important;
+  background: var(--ex-soft);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+/* 统计数字 */
+#crContent span[style*="color:#1a1a1a"][style*="font-size:20px"] {
+  color: var(--ex-ink) !important;
+  font-family: ui-monospace, "SF Mono", monospace !important;
+}
+/* 收藏卡片里的昵称栏、分隔线 */
+#crContent [style*="border-top:1px solid #f5f5f5"] {
+  border-top: 1px dashed var(--ex-line) !important;
+}
+/* 删除按钮 */
+#crContent .cr-fav-del {
+  color: var(--ex-muted) !important;
+  border: 1px solid var(--ex-line) !important;
+  border-radius: 999px !important;
+  padding: 3px 12px !important;
+  font-size: 11px !important;
+  letter-spacing: 1px;
+}
+/* 收藏气泡保持黑白 */
+#crContent .fav-bubble-inner {
+  background: var(--ex-ink) !important;
+  color: var(--ex-paper) !important;
+  border: 1px solid var(--ex-ink) !important;
+}
+/* 空状态文字 */
+#crContent [style*="color:#999"],
+#crContent [style*="color:#bbb"] {
+  color: var(--ex-muted) !important;
+}
+
+/* ===================== 网易云 · 开启一起听首页 ===================== */
+#musicHomeOverlay {
+  background: var(--ex-bg) !important;
+}
+#musicHomeOverlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--ex-line) 1px, transparent 1px);
+  background-size: 18px 18px;
+  opacity: .6;
+  pointer-events: none;
+}
+#musicHomeOverlay .mh-eyebrow {
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: var(--ex-muted);
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+#musicHomeOverlay .mh-title {
+  font-family: "Songti SC", "STSong", "SimSun", serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ex-ink);
+  letter-spacing: 6px;
+  margin-top: 8px;
+}
+#musicHomeOverlay #musicHomeMyAvatar,
+#musicHomeOverlay #musicHomeTaAvatar {
+  border: 1.5px solid var(--ex-ink);
+  border-radius: 50%;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .08);
+}
+/* 中间连接符 */
+#musicHomeOverlay [style*="font-size:22px"] {
+  color: var(--ex-muted) !important;
+}
+/* 暗色模式下一起听首页头像白底 */
+body.dark-mode #musicHomeOverlay #musicHomeMyAvatar,
+body.dark-mode #musicHomeOverlay #musicHomeTaAvatar {
+  border-color: var(--ex-paper) !important;
+}
+
+/* ===================== 陪伴历史 ===================== */
+#companionHistoryOverlay {
+  background: var(--ex-bg) !important;
+}
+#companionHistoryOverlay > div[style*="background:#fff"] {
+  background: var(--ex-paper) !important;
+}
+#companionHistoryOverlay [style*="border-bottom:1px solid #f0f0f0"] {
+  border-bottom: 1px dashed var(--ex-line) !important;
+}
+#companionHistoryOverlay [style*="color:#1a1a1a"] {
+  color: var(--ex-ink) !important;
+}
+#companionHistoryOverlay [style*="color:#999"],
+#companionHistoryOverlay [style*="color:#bbb"] {
+  color: var(--ex-muted) !important;
+}
+
+/* ===================== 全局：统一返回键（<）线条粗细与尺寸 ===================== */
+svg path[d^="M15 18l-6-6 6-6"] {
+  stroke-width: 2.6;
+}
+.back-btn,
+button[id$="BackBtn"],
+button[id$="Back"] {
+  padding: 0 !important;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  overflow: visible !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.back-btn svg,
+button[id$="BackBtn"] svg,
+button[id$="Back"] svg {
+  width: 24px !important;
+  height: 24px !important;
+  flex: 0 0 auto !important;
+  stroke-width: 2.6 !important;
+}
+.back-btn svg path,
+button[id$="BackBtn"] svg path,
+button[id$="Back"] svg path {
+  stroke-width: 2.6;
+}
+
+
+/* ===================== 陪伴首页 ===================== */
+#companionHomeOverlay {
+  background: var(--ex-bg) !important;
+}
+#companionHomeOverlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--ex-line) 1px, transparent 1px);
+  background-size: 18px 18px;
+  opacity: .5;
+  pointer-events: none;
+}
+/* 陪伴内容选项卡 */
+#companionHomeOverlay [style*="border:1px solid #e0e0e0"],
+#companionHomeOverlay [style*="border: 1px solid rgb(224"] {
+  border-color: var(--ex-line) !important;
+  background: var(--ex-paper) !important;
+  border-radius: 14px !important;
+}
+#companionHomeOverlay [style*="background:#1a1a1a"],
+#companionHomeOverlay [style*="background: #1a1a1a"] {
+  background: var(--ex-ink) !important;
+  border-color: var(--ex-ink) !important;
+  border-radius: 999px !important;
+  letter-spacing: 3px;
+}
+

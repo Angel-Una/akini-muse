@@ -1,0 +1,497 @@
+
+/* 1) 只关消息气泡的毛玻璃（系统消息除外） */
+html.ios-lite body #chatBody#chatBody .msg-row:not(.system) .bubble,
+html.ios-lite body #chatBody#chatBody .msg-row:not(.system) .bubble::before,
+html.ios-lite body #chatBody#chatBody .msg-row:not(.system) .bubble::after,
+html.ios-lite body #companionMsgs#companionMsgs .msg-row:not(.system) .bubble,
+html.ios-lite body #watchChatBody#watchChatBody .msg-row:not(.system) .bubble,
+html.low-mem body #chatBody#chatBody .msg-row:not(.system) .bubble,
+html.low-mem body #chatBody#chatBody .msg-row:not(.system) .bubble::before,
+html.low-mem body #chatBody#chatBody .msg-row:not(.system) .bubble::after,
+html.low-mem body #companionMsgs#companionMsgs .msg-row:not(.system) .bubble,
+html.low-mem body #watchChatBody#watchChatBody .msg-row:not(.system) .bubble,
+html.akini-low-mem body #chatBody#chatBody .msg-row:not(.system) .bubble,
+html.akini-low-mem body #chatBody#chatBody .msg-row:not(.system) .bubble::before,
+html.akini-low-mem body #chatBody#chatBody .msg-row:not(.system) .bubble::after,
+html.akini-low-mem body #companionMsgs#companionMsgs .msg-row:not(.system) .bubble,
+html.akini-low-mem body #watchChatBody#watchChatBody .msg-row:not(.system) .bubble {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* 2) 无限循环的装饰动画在低内存设备上只保留首帧，避免持续占用 GPU/主线程 */
+html.low-mem .bg-wave,
+html.low-mem [class*="cloud"],
+html.low-mem [class*="float"],
+html.low-mem [class*="shine"],
+html.low-mem [class*="sparkle"],
+html.ios-lite .bg-wave,
+html.ios-lite [class*="cloud"],
+html.ios-lite [class*="float"],
+html.ios-lite [class*="shine"],
+html.ios-lite [class*="sparkle"] {
+  animation: none;
+}
+
+/* ===== 全机型滚动性能优化（不依赖 ios-lite/low-mem 标记） =====
+   真机上"一滑一顿"的主因是滚动内容里大量 backdrop-filter 每帧重新采样。 */
+
+/* 1) 聊天消息气泡：列表里重复几十层，气泡本身有不透明底色，关掉毛玻璃视觉几乎无变化 */
+html body #chatBody .msg-row:not(.system) .bubble,
+html body #chatBody .msg-row:not(.system) .bubble::before,
+html body #chatBody .msg-row:not(.system) .bubble::after,
+html body #companionMsgs .msg-row:not(.system) .bubble,
+html body #watchChatBody .msg-row:not(.system) .bubble {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* 2) 第一屏磨砂文字卡：设计本就是"80% 白底渐隐融入壁纸"，不需要实时模糊 */
+html body .s1-frosted-content {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,1) 42%, rgba(255,255,255,0.75) 58%, rgba(255,255,255,0.75) 66%, rgba(255,255,255,0.3) 86%, rgba(255,255,255,0) 100%);
+  box-shadow: none;
+}
+
+/* 3) 固定输入栏/按钮：毛玻璃半径 20~28px → 14px，GPU 采样成本明显下降 */
+html body #app-chat .chat-input-bar .input-wrap,
+html body .chat-input-bar .input-wrap {
+  -webkit-backdrop-filter: blur(14px) saturate(160%) !important;
+  backdrop-filter: blur(14px) saturate(160%) !important;
+}
+html body #app-chat .chat-input-bar #plusMenuBtn,
+html body #app-chat .chat-input-bar #sendBtn,
+html body #app-chat .chat-top-bar #chatBackBtn,
+html body #app-chat .chat-top-bar #chatCallBtn,
+html body #app-chat .chat-top-bar .ta-name-pill {
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  backdrop-filter: blur(12px) saturate(160%);
+}
+html body #emojiPanel,
+html body .emoji-panel,
+html body .plus-menu#plusMenu,
+html body .plus-menu-sheet {
+  -webkit-backdrop-filter: blur(14px) saturate(160%) !important;
+  backdrop-filter: blur(14px) saturate(160%) !important;
+}
+
+/* 4) 聊天顶栏 5 层渐进模糊：每层都是一次独立 GPU blur，保留前 2 层即可 */
+html body .chat-top-bar-blur .chat-blur-l3,
+html body .chat-top-bar-blur .chat-blur-l4,
+html body .chat-top-bar-blur .chat-blur-l5 {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* 5) 滚动列表里"每条消息都一份"的其它毛玻璃：时间戳胶囊、系统消息气泡。
+   这两类在聊天记录里同样会重复几十次，是气泡之外最大的滚动开销。 */
+html body #chatBody .timestamp-row::before,
+html body #companionMsgs .timestamp-row::before,
+html body #watchChatBody .timestamp-row::before,
+html body #chatBody .msg-row.system .bubble,
+html body #companionMsgs .msg-row.system .bubble,
+html body #watchChatBody .msg-row.system .bubble {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* 6) 首页底部渐隐层：整块 200px 高的实时高斯模糊，滚动时每帧重采样；
+   它本身已有 95% 白色渐变，去掉模糊肉眼几乎无差别。 */
+html body .s1-overlay {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* 7) 滚动容器：命中测试与重绘隔离，避免整页重排；抑制滚动链回弹引发的整页抖动 */
+html body .home-screen,
+html body #chatBody,
+html body #chatListContent,
+html body #friendsBody,
+html body #companionMsgs,
+html body #watchChatBody {
+  touch-action: pan-y;
+}
+
+/* 8) 主样式表给聊天滚动容器加了 will-change:scroll-position。
+   长列表下浏览器会常驻一整块滚动缓冲层，滑动时不断重建，
+   是新版 Chrome/Safari 上"一滑一顿"的典型来源，这里改回自动。 */
+
+/* 9) 输入栏整条底座的 20px 实时模糊（滚动时每帧重采样）降到 12px */
+html body #app-chat .chat-input-bar-area,
+html body .chat-input-bar-area {
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  backdrop-filter: blur(12px) saturate(160%);
+}
+
+/* 10) 首页壁纸最终渲染层。
+   主样式表里 #phoneFrame 有 `background:0 0 !important` 简写、`.phone-frame` 有
+   `background-image:none !important`，会把运行时可写的内联 background-image 整体吃掉，
+   表现为"设置时能看到，刷新后壁纸消失"。这里用后加载 + 更高优先级 + CSS 变量统一渲染。 */
+html body #phoneFrame,
+html body .phone-frame#phoneFrame {
+  background-image: var(--akini-home-bg, none) !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+}
+
+/* 11) 聊天顶栏 / 底部输入栏：保持透明悬空（直接显示背景图）。
+   不补任何底色、边框或毛玻璃，按钮和输入框直接浮在壁纸上。 */
+html body #app-chat .chat-top-bar.chat-top-bar,
+html body .chat-top-bar.chat-top-bar.chat-top-bar {
+  background: transparent;
+  background-color: transparent;
+  border-bottom: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html body #app-chat .chat-input-bar-area.chat-input-bar-area,
+html body .chat-input-bar-area.chat-input-bar-area.chat-input-bar-area {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-top: none !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* 12) 消息小气泡（参考 iMessage tapback）：白底黑描边。
+   我发的消息 → 贴在气泡左上角；联系人发的消息 → 贴在气泡右上角。
+   用 ::after + attr(data-mb) 渲染，不往气泡文字里塞节点，复制/引用文本不受影响。
+   卡片类气泡（转账/表情/问卷/商店/音乐/图片/视频/语音）不显示小气泡（JS 端 apply 已过滤）。 */
+html body #chatBody#chatBody .msg-row.me .bubble[data-mb]::after,
+html body #companionMsgs#companionMsgs .msg-row.me .bubble[data-mb]::after,
+html body #watchChatBody#watchChatBody .msg-row.me .bubble[data-mb]::after {
+  content: attr(data-mb) !important;
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 10em !important;
+  position: absolute !important;
+  left: -5px !important;
+  right: auto !important;
+  top: -12px !important;
+  bottom: auto !important;
+  z-index: 3 !important;
+  padding: 1px 6px !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  background-color: #fff !important;
+  border: 1.5px solid #000 !important;
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  text-shadow: none !important;
+  font-size: 10px !important;
+  line-height: 15px !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  box-sizing: border-box !important;
+  pointer-events: none !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14) !important;
+}
+html body #chatBody#chatBody .msg-row.other .bubble[data-mb]::after,
+html body #companionMsgs#companionMsgs .msg-row.other .bubble[data-mb]::after,
+html body #watchChatBody#watchChatBody .msg-row.other .bubble[data-mb]::after,
+html body #chatBody#chatBody .msg-row.ta .bubble[data-mb]::after,
+html body #companionMsgs#companionMsgs .msg-row.ta .bubble[data-mb]::after,
+html body #watchChatBody#watchChatBody .msg-row.ta .bubble[data-mb]::after {
+  content: attr(data-mb) !important;
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 10em !important;
+  position: absolute !important;
+  left: auto !important;
+  right: -5px !important;
+  top: -12px !important;
+  bottom: auto !important;
+  z-index: 3 !important;
+  padding: 1px 6px !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  background-color: #fff !important;
+  border: 1.5px solid #000 !important;
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  text-shadow: none !important;
+  font-size: 10px !important;
+  line-height: 15px !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  box-sizing: border-box !important;
+  pointer-events: none !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14) !important;
+}
+/* 12a) 小气泡 ::after 是 position:absolute，必须以气泡自身为包含块。
+   表情包与图片消息都渲染成 .bubble.sticker-bubble，而基础气泡规则把 sticker-bubble
+   排除在 position:relative 之外，气泡是 position:static，::after 会退化到
+   .msg-row（整行宽）定位，胶囊被甩到整行最左/最右，而不是贴在气泡的左上/右上角。 */
+html body #chatBody#chatBody .msg-row .bubble[data-mb],
+html body #companionMsgs#companionMsgs .msg-row .bubble[data-mb],
+html body #watchChatBody#watchChatBody .msg-row .bubble[data-mb] {
+  position: relative !important;
+}
+html body #chatBody#chatBody .msg-row.has-mini-bubble {
+  margin-top: 18px !important;
+  margin-bottom: 0 !important;
+}
+
+/* 13) 观影界面底栏：去掉底图/边框，三个按钮（表情/输入框/发送）悬空浮在背景上 */
+html body #watchInputBar#watchInputBar {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-top: none !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  padding: 8px 12px !important;
+}
+
+/* 14) 气泡美化模式下，气泡行高/内边距与默认模式保持一致，避免切换美化后气泡整体下移。
+   默认模式 line-height:1.55 / 美化模式回落为 1.5，每行差 0.7px，多行累积后气泡位置对不上。
+   此处强制美化模式也用 1.55，引用消息 .quote-bubble 行高 1.3 两模式本来一致，无需改。 */
+html body.bubble-css-on #app-chat .chat-body .msg-row .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble),
+html body.bubble-css-on #companionMsgs .msg-row .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble),
+html body.bubble-css-on #watchChatBody .msg-row .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble) {
+  line-height: 1.55 !important;
+}
+
+/* 14b) 气泡美化模式下，用户自定义 CSS 可能给 .bubble 设置 margin-bottom，
+   导致同属 .bubble-wrap 的兄弟节点 .quote-bubble（引用消息）被额外推远、
+   与未美化模式的紧凑间距不一致。这里在美化模式下把 .bubble-wrap 内 .bubble
+   的下外边距归零，引用条的间距统一交给 .quote-bubble 的 margin-top 控制。 */
+html body.bubble-css-on #app-chat .chat-body .msg-row .bubble-wrap > .bubble,
+html body.bubble-css-on #companionMsgs .msg-row .bubble-wrap > .bubble,
+html body.bubble-css-on #watchChatBody .msg-row .bubble-wrap > .bubble,
+html body.bubble-css-on #bubbleCssPreview .bubble-wrap > .bubble {
+  margin-bottom: 0 !important;
+}
+html body.bubble-css-on #app-chat .chat-body .msg-row .bubble-wrap > .quote-bubble,
+html body.bubble-css-on #companionMsgs .msg-row .bubble-wrap > .quote-bubble,
+html body.bubble-css-on #watchChatBody .msg-row .bubble-wrap > .quote-bubble,
+html body.bubble-css-on #bubbleCssPreview .bubble-wrap > .quote-bubble {
+  margin-top: 2px !important;
+}
+
+html body #app-chat .chat-body .msg-row.system.msg-row.system .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.img-bubble):not(.video-bubble):not(.voice-bubble):not(.music-invite-bubble):not(.music-end-bubble) {
+  background: rgba(200,200,200,.35) !important;
+  background-color: rgba(200,200,200,.35) !important;
+  backdrop-filter: blur(12px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(150%) !important;
+  color: #1a1a1a !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+  padding: 1px 7px !important;
+  text-align: center !important;
+  text-shadow: none !important;
+}
+
+/* 16) 长聊天列表：单行渲染隔离。滚动时每行的样式/布局互不影响，避免整表 reflow。
+   只做 layout+style containment，不做 paint containment，免得小气泡/引用凸出部分被裁掉。 */
+html body #app-chat #chatBody > .msg-row,
+html body #companionMsgs > .msg-row,
+html body #watchChatBody > .msg-row {
+  contain: layout style !important;
+}
+
+/* 17) 所有滚动列表内部一律关闭实时毛玻璃。
+   滚动容器里同类元素会重复几十层，每层 backdrop-filter 都要单独 GPU 纹理并逐帧重采样，
+   这正是"一滑一顿"的主因；列表内容本身都有不透明底色，关掉后视觉基本无差别。 */
+html body #chatBody *,
+html body #chatListContent *,
+html body #friendsBody *,
+html body #companionMsgs *,
+html body #watchChatBody * {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* 18) 聊天列表内部不要有 will-change / transform:translateZ(0) 堆积。
+   主样式表给每条 .msg-row 都加了 transform:translateZ(0)，导致每条消息
+   单独提升为 GPU 合成层；长聊天下同时存在上百个合成层，移动端显存暴涨、
+   滑动时不断重建图层 → "一滑一顿"。这里统一打平，只让滚动容器本身合成。 */
+html body #chatBody > .msg-row,
+html body .chat-body .msg-row,
+html body #companionMsgs > .msg-row,
+html body #watchChatBody > .msg-row {
+  will-change: auto;
+  transform: none;
+  -webkit-transform: none;
+}
+
+/* 18b) 滚动容器本身保留合成层（translateZ 有助于合成滚动），但去掉 will-change:scroll-position
+   的常驻滚动缓冲层（长列表下反而引起一滑一顿）。 */
+html body #app-chat .chat-body,
+html body #chatBody,
+html body .chat-body {
+  will-change: auto !important;
+  transform: translateZ(0) !important;
+  -webkit-transform: translateZ(0) !important;
+}
+
+/* 19) 一起听两张卡片：主样式表有一条通用 .bubble 规则带 !important 的
+   padding:9px 12px / border:none，会把卡片的内联尺寸和描边吃掉。
+   这里用同等特异性 + 后加载把卡片样式恢复。 */
+html body #app-chat #chatBody .msg-row .bubble.music-end-bubble,
+html body #app-chat #chatBody .msg-row .bubble.music-invite-bubble {
+  border: 1px solid #e8e8e8 !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  color: #1a1a1a !important;
+  padding: 13px 14px !important;
+  width: 236px !important;
+  min-width: 236px !important;
+  max-width: 236px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07) !important;
+  text-shadow: none !important;
+}
+
+/* 20) 滚动性能优化：只对聊天列表项用 content-visibility（可能几十上百条）。
+   设置页/美化页卡片数量少（10~20 张），content-visibility 的 IntersectionObserver
+   开销反而大于收益，且滚动时卡片突然渲染会引起 paint storm → "一滑一顿"，故移除。
+   首页主容器更不能加（固定布局必须完整渲染）。 */
+html body #chatListContent > .chat-list-item {
+  content-visibility: auto !important;
+  contain-intrinsic-size: auto 80px !important;
+}
+
+/* 21) 首页底部固定栏/指示器去掉 will-change:transform，避免常驻合成层占显存。
+   这些元素不做动画，不需要提前提升图层。 */
+html body .s1-bottom-fig3,
+html body .fit-scale-box {
+  will-change: auto;
+}
+
+
+/* 23) 所有可滚动容器统一开启 GPU 合成滚动 + 禁止滚动链，
+   同时去掉可能导致"一滑一顿"的 scroll-behavior:smooth（用户手势滚动不需要平滑）。 */
+html body .home-screen,
+html body #chatBody,
+html body .chat-body,
+html body #chatListContent,
+html body #friendsBody,
+html body #companionMsgs,
+html body #watchChatBody,
+html body .settings-body,
+html body .beautify-body {
+  -webkit-overflow-scrolling: touch !important;
+  scroll-behavior: auto !important;
+  overscroll-behavior-y: contain !important;
+}
+
+/* 24) 聊天消息行：保持 rule 16 的 contain:layout style（不裁小气泡）。
+   注意：不能加 content-visibility:auto —— 它隐含 contain:paint，
+   会把小气泡 .bubble::after（bottom:-12px 凸出行外）直接裁掉。
+   聊天滚动卡顿的主因是毛玻璃逐帧重采样（已在 rule 1/5/17 关闭），
+   不需要再用 content-visibility 跳过渲染。 */
+
+/* 25) 储存管理 - 内存空间分类展示样式 */
+.ak-stor-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+}
+.ak-stor-cat {
+  flex: 0 0 88px;
+  font-size: 13px;
+  color: #333;
+  white-space: nowrap;
+}
+.ak-stor-bar {
+  flex: 1;
+  height: 8px;
+  background: #f0f0f5;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.ak-stor-bar-fill {
+  height: 100%;
+  background: #5b8def;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+/* 储存总量胶囊长条 */
+.ak-stor-total-wrap {
+  margin: 10px 0 4px;
+}
+.ak-stor-total-bar {
+  width: 100%;
+  height: 14px;
+  background: #f0f0f5;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.ak-stor-total-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #5b8def, #7aa7ff);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+  min-width: 2px;
+}
+.ak-stor-total-text {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
+}
+.ak-stor-size {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #888;
+  min-width: 60px;
+  text-align: right;
+}
+.ak-stor-divider {
+  font-size: 12px;
+  color: #999;
+  margin: 12px 0 6px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f0f5;
+}
+
+/* 26) 概率页 / 设置页数字输入：去掉原生 spinner 上下箭头。
+   移动端每个 <input type=number> 的 spinner 都是独立合成层，
+   20 个输入同时存在时滚动要合成几十层 → 卡顿。去掉后视觉无差别。 */
+html body .num-input::-webkit-inner-spin-button,
+html body .num-input::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  margin: 0 !important;
+}
+html body .num-input {
+  -moz-appearance: textfield;
+  appearance: textfield;
+  touch-action: manipulation;
+}
+
+/* 27) 设置行渲染隔离：滚动时每行 layout/style 互不影响，避免整表 reflow。
+   只做 layout+style（不做 paint），不会裁掉行内凸出内容。 */
+html body .settings-row {
+  contain: layout style;
+  touch-action: manipulation;
+}
+html body .toggle-switch {
+  touch-action: manipulation;
+}
+/* 27b) 设置页/概率页卡片和按钮：消除移动端 300ms 点击延迟，提升点击灵敏度 */
+html body .settings-card,
+html body .settings-area button,
+html body .settings-area [role="button"] {
+  touch-action: manipulation;
+}
+
+@supports (height: 100dvh) {
+  #app-chat.show { height: 100dvh; }
+}
+#chatBody {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
