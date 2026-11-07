@@ -114,15 +114,54 @@
   var _companionTimer = null;
   var _companionBg = ""; /* 内存缓存，进入时从 IDB 读 */
 
+  /* 陪伴状态解析缓存：一条含图消息可达上百 KB，若每次渲染都 JSON.parse
+     整段历史，内存会周期性翻倍（低端机闪退主因之一）。raw 字符串不变时复用结果。 */
+  var _cStateRaw = null,
+    _cStateCache = null;
+  var COMPANION_RENDER_MAX = 80; /* 只渲染最近 80 条，旧消息仍在存储里 */
+  var COMPANION_KEEP_MAX = 200; /* 存储最多保留 200 条，防止无限增长吃满配额 */
   function companionState() {
     try {
-      return JSON.parse(lsGet(COMPANION_KEY, "null"));
+      var raw = lsGet(COMPANION_KEY, "null");
+      if (raw === _cStateRaw) return _cStateCache;
+      var v = JSON.parse(raw);
+      _cStateRaw = raw;
+      _cStateCache = v;
+      return v;
     } catch (e) {
       return null;
     }
   }
   function saveCompanionState(st) {
-    lsSet(COMPANION_KEY, JSON.stringify(st));
+    try {
+      if (st && st.msgs && st.msgs.length > COMPANION_KEEP_MAX) {
+        st.msgs = st.msgs.slice(-COMPANION_KEEP_MAX);
+      }
+    } catch (e) {}
+    _cStateRaw = null;
+    _cStateCache = st;
+    var str = "";
+    try {
+      str = JSON.stringify(st);
+    } catch (e) {
+      return;
+    }
+    /* localStorage 5MB 硬上限：陪伴历史里的图片 base64 一旦把配额写爆，
+       后续所有写入都会失败（表现为"闪退/数据丢失"）。超过 3MB 时从最旧的
+       图片开始丢弃，只保留文字，确保设置、联系人等关键数据永远写得进去。 */
+    var LIMIT = 3 * 1024 * 1024;
+    try {
+      var ms = (st && st.msgs) || [];
+      for (var i = 0; i < ms.length && str.length > LIMIT; i++) {
+        var m = ms[i];
+        if (m && m.img && String(m.img).length > 20000) {
+          delete m.img;
+          m.imgGone = true;
+          str = JSON.stringify(st);
+        }
+      }
+    } catch (eT) {}
+    lsSet(COMPANION_KEY, str);
   }
 
   function fmtDur(ms) {
@@ -170,9 +209,10 @@
         '<div style="text-align:center;color:#bbb;font-size:13px;padding:26px 0 0;line-height:1.8">陪伴开始啦<br>在下面发条消息给对方吧~</div>';
       return;
     }
-    /* 陪伴气泡不显示头像，仅消息内容居中 */
+    /* 陪伴气泡不显示头像，仅消息内容居中。窗口化：只渲染最近 80 条 */
     box.innerHTML = "";
-    msgs.forEach(function (m) {
+    var _start = msgs.length > COMPANION_RENDER_MAX ? msgs.length - COMPANION_RENDER_MAX : 0;
+    msgs.slice(_start).forEach(function (m) {
       var me = m.side === "me";
       var row = document.createElement("div");
       row.className = "msg-row " + (me ? "me" : "other");
@@ -182,8 +222,10 @@
       var bubbleHtml = m.img
         ? '<div class="bubble sticker-bubble" style="background:transparent;padding:0;box-shadow:none;border:none;"><img src="' +
           esc(m.img) +
-          '" style="max-width:120px;max-height:120px;border-radius:8px;display:block;" alt=""/></div>'
-        : '<div class="bubble">' + esc(m.text || "") + "</div>";
+          '" style="max-width:120px;max-height:120px;border-radius:8px;display:block;" loading="lazy" decoding="async" alt=""/></div>'
+        : m.imgGone
+          ? '<div class="bubble">[图片已清理]</div>'
+          : '<div class="bubble">' + esc(m.text || "") + "</div>";
       row.innerHTML = '<div class="msg-content-line">' + bubbleHtml + "</div>";
       box.appendChild(row);
       try {

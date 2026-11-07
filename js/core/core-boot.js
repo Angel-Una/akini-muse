@@ -530,3 +530,51 @@
       },
     };
   })()));
+
+/* 图片懒加载统一收口（对齐 milk/zy）：所有列表里新插入的 <img> 默认 loading=lazy +
+   decoding=async，屏幕外的图不参与解码/解码延后，避免一次渲染几千张图把内存顶爆。
+   聊天里的图片同样适用：视口内的图会立即加载，不受影响。 */
+(function () {
+  function mark(root) {
+    try {
+      var imgs = root && root.querySelectorAll ? root.querySelectorAll("img:not([loading])") : [];
+      for (var i = 0; i < imgs.length; i++) {
+        imgs[i].loading = "lazy";
+        imgs[i].decoding = "async";
+      }
+    } catch (e) {}
+  }
+  window.__akiniLazyImgs = mark;
+  var pend = null;
+  function schedule() {
+    if (pend) return;
+    pend = setTimeout(function () {
+      pend = null;
+      mark(document);
+    }, 300);
+  }
+  try {
+    new MutationObserver(function (list) {
+      for (var i = 0; i < list.length; i++) {
+        var added = list[i].addedNodes;
+        for (var j = 0; j < added.length; j++) {
+          var n = added[j];
+          if (!n || n.nodeType !== 1) continue;
+          if (n.tagName === "IMG") {
+            n.loading = "lazy";
+            n.decoding = "async";
+          } else if (n.querySelector && n.querySelector("img")) {
+            schedule();
+          }
+        }
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  } catch (e) {}
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () {
+      mark(document);
+    });
+  } else {
+    mark(document);
+  }
+})();

@@ -442,3 +442,25 @@ html body .settings-area [role="button"] {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* 18) 长列表窗口化：屏幕外的行跳过布局与绘制（对齐 milk/zy 的按需渲染）。
+   只对可能累积几百条的列表生效，聊天列表与聊天正文已有各自的行数上限，不在此列。 */
+#postList > *,
+#icityDiaryList > *,
+#icityMyProfileDiaries > *,
+#icityTaProfileDiaries > *,
+#friendsBody > *,
+#friendsNotifList > *,
+#icityNotifList > *,
+#mailBody > *,
+#shopGrid > *,
+#shopOrderList > *,
+#companionHistoryList > *,
+#musicPlaylistContainer > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 96px;
+}
+#postList > *,
+#icityDiaryList > * {
+  contain-intrinsic-size: auto 260px;
+}
