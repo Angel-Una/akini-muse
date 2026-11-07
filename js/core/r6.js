@@ -429,7 +429,30 @@
       var ta = getDefaultContact();
       var taName = ta ? ta.name || "TA" : "TA";
       try {
-        window.__akiniToast && window.__akiniToast(taName + " 邀请你一起听歌");
+        /* 局内通知：有好友邀请你来网易云一起听歌了 */
+        if (typeof window.showInAppNotif === "function") {
+          window.showInAppNotif({
+            app: "网易云",
+            avatar: ta ? ta.avatar || "" : "",
+            name: taName,
+            msg: "有好友邀请你来网易云一起听歌了",
+            fullContent: true,
+            onTap: function () {
+              try {
+                window.__akiniOpenMusicInvitePopup && window.__akiniOpenMusicInvitePopup();
+              } catch (e) {}
+            },
+          });
+        }
+      } catch (e) {}
+      try {
+        /* 后台通知：页面不可见时走系统推送 */
+        if (document.hidden && typeof window.__akiniSystemNotify === "function") {
+          window.__akiniSystemNotify("网易云", {
+            body: "有好友邀请你来网易云一起听歌了",
+            tag: "akini-music-invite",
+          });
+        }
       } catch (e) {}
       window.__akiniOpenMusicInvitePopup && window.__akiniOpenMusicInvitePopup();
       return true;

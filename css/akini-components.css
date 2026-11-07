@@ -413,5 +413,6 @@ html body #app-chat#app-chat .chat-body .msg-row.system .bubble {
   padding:5px 14px!important;
   font-size:13px!important;
   color:#1a1a1a!important;
-  box-shadow:0 2px 8px rgba(0,0,0,.06)!important;
+  border:none!important;
+  box-shadow:none!important;
 }

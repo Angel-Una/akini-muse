@@ -14163,11 +14163,11 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                         ' alt="" style="max-height:200px;"></div>'
                       : "") +
                     (t.mention
-                      ? '<div style="font-size:12px;color:#999;margin-top:6px;">提到了：' +
+                      ? '<div style="font-size:12px;color:#999;margin-top:2px;">提到了：' +
                         t.mention +
                         "</div>"
                       : "") +
-                    '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;"><div style="display:inline-flex;align-items:center;"><div class="post-time" style="font-size:12px;color:#999;line-height:16px;">' +
+                    '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;"><div style="display:inline-flex;align-items:center;"><div class="post-time" style="font-size:12px;color:#999;line-height:16px;">' +
                     (function (t) {
                       if (!t) return "";
                       if (window.__akiniNaturalTime) {
@@ -14180,7 +14180,7 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                     e +
                     '" data-post-id="' +
                     (t.id || "") +
-                    '" style="background:none;border:none;padding:0;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent;display:inline-flex;align-items:center;justify-content:center;margin-left:4px;position:relative;top:3px;vertical-align:middle;" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:block;pointer-events:none;"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/></svg></button></div><div style="position:relative;display:flex;align-items:center;"><div class="post-action-popup" data-pidx="' +
+                    '" style="background:none;border:none;padding:0;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent;display:inline-flex;align-items:center;justify-content:center;margin-left:4px;vertical-align:middle;" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:block;pointer-events:none;"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/></svg></button></div><div style="position:relative;display:flex;align-items:center;"><div class="post-action-popup" data-pidx="' +
                     e +
                     '" data-post-id="' +
                     (t.id || "") +
@@ -14190,7 +14190,7 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                     e +
                     '" style="background:none;border:none;padding:0;cursor:pointer;font-size:14px;color:#ffffff;outline:none;display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" fill=none stroke="#333333" stroke-width=2 stroke-linecap=round stroke-linejoin=round style="width:14px;height:14px;color:#333333;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> <span style="color:#333333;">评论</span></button></div><button type="button" class="post-dots-trigger" data-pidx="' +
                     e +
-                    '" style="background:#f7f7f7;border:none;border-radius:6px;padding:9px 14px;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;align-self:center;" title="评论与赞"><svg width="18" height="6" viewBox="0 0 18 6"><circle cx="3" cy="3" r="3" fill="#576b95"/><circle cx="15" cy="3" r="3" fill="#576b95"/></svg></button></div></div>' +
+                    '" style="background:#f7f7f7;border:none;border-radius:6px;padding:9px 14px;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;align-self:center;" title="评论与赞"><svg width="14" height="5" viewBox="0 0 14 5"><circle cx="2.5" cy="2.5" r="2" fill="#576b95"/><circle cx="11.5" cy="2.5" r="2" fill="#576b95"/></svg></button></div></div>' +
                     s,
                 ),
                 o.appendChild(l),
