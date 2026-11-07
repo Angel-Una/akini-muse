@@ -449,3 +449,34 @@ body.dark-mode #wordbankOverlay .wb-toolbar .tool-btn svg {
 .akini-music-mini.open .amm-ctrl {
   display: flex;
 }
+
+/* ===== zy 对齐：模糊半径收敛（只收非聊天/首页/陪伴区域） =====
+   zy 的 backdrop-filter 半径集中在 4-10px，Akini 这里是 20-24px（通话小窗 40px）。
+   GPU 采样成本随半径近似线性增长，这里把固定栏/弹窗/浮窗统一收到 12-14px，
+   观感仍是磨砂，但每帧开销明显下降。
+   聊天界面（返回/通话/昵称条/顶部模糊/输入栏/加号/发送/消息）、首页模块、陪伴界面不动。 */
+#mailComposeModal.mail-sheet-mask,
+#mailDetailModal.mail-detail-mask,
+#mailRecipientPickerModal.mail-picker-mask,
+#mailReplyModal.mail-detail-mask,
+#app-novel-reader .nv-reader-header,
+.wb-header,
+.wb-bottom,
+.wb-modal-header .back-btn,
+.wordbank-header .back-btn,
+.sticker-manager-overlay .manage-bg,
+.chat-menu-overlay .menu-bg,
+.chat-list-add-menu-overlay .chat-list-add-menu-panel,
+#msgContextMenu,
+#emojiPanel,
+.emoji-panel,
+.plus-menu#plusMenu,
+.plus-menu-sheet {
+  -webkit-backdrop-filter: blur(12px) saturate(160%) !important;
+  backdrop-filter: blur(12px) saturate(160%) !important;
+}
+.call-mini-window,
+.call-mini-shrunk {
+  -webkit-backdrop-filter: blur(14px) saturate(160%) !important;
+  backdrop-filter: blur(14px) saturate(160%) !important;
+}
