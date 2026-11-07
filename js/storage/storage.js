@@ -1245,6 +1245,13 @@
         targets.forEach(function (k) {
           /* 按条数组副本只用于重建聊天 HTML，不单独占内存 */
           if (String(k).indexOf(MSGS_PRE) === 0) return;
+          /* 外置媒体/聊天图片：只登记为按需水合，绝不进内存镜像。
+             它们只在渲染对应内容时由 idbGet 单独读取，常驻等于把全部图片永久压进堆里。 */
+          var _ksR = String(k);
+          if (_ksR.indexOf("akini_mref_") === 0 || _ksR.indexOf("akini_media_") === 0) {
+            window.__akiniDeferredKeys[k] = 1;
+            return;
+          }
           var cur = memGet(k);
           if (cur == null || cur === "") {
             /* 页面级数据且 LS 有可直读的真实值：不占内存，按需水合 */
@@ -1354,6 +1361,12 @@
            非关键图（表情包/媒体/收藏等）仍延后空闲水合，避免抢占首屏主线程。 */
         targets.forEach(function (k) {
           var _ksf = String(k);
+          /* 外置媒体 akini_mref_* 只在 _expandMedia 渲染朋友圈/iCity 时按需读取，
+             启动期不读、不驻留，避免几百张图的 dataURL 在首屏前逐个反序列化。 */
+          if (_ksf.indexOf("akini_mref_") === 0) {
+            window.__akiniDeferredKeys[k] = 1;
+            return;
+          }
           if (_ksf.indexOf(MSGS_PRE) === 0) {
             textTargets.push(k);
             return;
@@ -1370,6 +1383,12 @@
             var ibatch = imgTargets.slice(j, j + 2);
             j += 2;
             ibatch.forEach(function (k) {
+              /* 预算用尽后不再逐张读值：聊天图片/表情包/收藏会无限增长，
+                 全量读出来会把启动拖到几十秒，移动端还会被系统直接杀进程。 */
+              if (_bigMemUsed >= BIG_MEM_BUDGET) {
+                window.__akiniDeferredKeys[k] = 1;
+                return;
+              }
               idbGet(k, function (v) {
                 try {
                   if (v == null || v === "" || v === "null") return;
@@ -1553,7 +1572,7 @@ window.__akiniRestoreSettled = true;
                 var _refLen = _ref.length;
                 /* 聊天媒体只在打开对应页面/聊天时按需从 IDB 水合，
                    不在冷启动时把整份媒体库塞进内存镜像（与 __akiniMedia 缓存重复）。 */
-                var _isMediaKey = _ks2.indexOf("akini_media_") === 0;
+                var _isMediaKey = _ks2.indexOf("akini_media_") === 0 || _ks2.indexOf("akini_mref_") === 0;
                 if (_isMediaKey || (!_isCritKey && big && (_refLen > 4194304 || _bigMemUsed + _refLen > BIG_MEM_BUDGET))) {
                   window.__akiniDeferredKeys[k] = 1; // 超预算：不驻留，按需水合
                 } else {

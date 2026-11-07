@@ -7464,28 +7464,63 @@ function An(t) {
                 "function" == typeof t && t();
               };
               o(function (t) {
-                t
-                  ? t
-                      .iterate(function (t, e) {
-                        if (
-                          (!e || 0 !== e.indexOf("akini_chat_history_")) &&
-                          e &&
-                          0 !== e.indexOf("akini_app_icon_") &&
-                          !s(e) &&
-                          !c(t)
-                        ) {
-                          window.akiniStore && window.akiniStore.memorySet && window.akiniStore.memorySet(e, t);
-                          var n = null;
-                          try {
-                            n = localStorage.getItem(e);
-                          } catch (t) {}
-                          if (c(n) && String(t).length <= l)
-                            try {
-                              localStorage.setItem(e, t);
-                            } catch (t) {}
+                if (!t) return void e();
+                /* 对齐 milk/zy：启动只回填「小体积文字配置」，不再把所有
+                   IndexedDB 值无上限塞进内存镜像。
+                   旧逻辑会把这个库里的聊天历史、外置媒体 akini_mref_*、
+                   聊天图片 akini_media_* 全部读出来并 memorySet —— 用户越用图越多，
+                   重进时几百 MB dataURL 直接顶爆渲染进程（白屏/闪退/进不去）。
+                   这些键不读值、只标记 deferred，用到时再按需水合。 */
+                var _skipRe = /^akini_(mref_|media_|chat_history_|chat_msgs_)/;
+                var _budget = 6 * 1024 * 1024,
+                  _used = 0,
+                  _perKey = 512 * 1024;
+                function _defer(k) {
+                  try {
+                    if (window.__akiniDeferredKeys) window.__akiniDeferredKeys[k] = 1;
+                  } catch (x) {}
+                }
+                function _proc(k, v) {
+                  if (!k || 0 === k.indexOf("akini_app_icon_") || s(k) || c(v)) return;
+                  if (_skipRe.test(k)) return void _defer(k);
+                  var _sv = String(v);
+                  if (_sv.length > _perKey || _used + _sv.length > _budget) return void _defer(k);
+                  _used += _sv.length;
+                  window.akiniStore && window.akiniStore.memorySet && window.akiniStore.memorySet(k, v);
+                  var n = null;
+                  try {
+                    n = localStorage.getItem(k);
+                  } catch (x) {}
+                  if (c(n) && _sv.length <= l)
+                    try {
+                      localStorage.setItem(k, v);
+                    } catch (x) {}
+                }
+                Promise.resolve(t.keys ? t.keys() : [])
+                  .then(function (keys) {
+                    var list = (keys || []).filter(function (k) {
+                      return k && 0 !== String(k).indexOf("akini_app_icon_") && !s(k);
+                    });
+                    var i = 0;
+                    /* 跳过媒体类键时不 read，避免启动期把几百 MB 图片逐张拉进内存 */
+                    return (function next() {
+                      var k;
+                      while (i < list.length) {
+                        k = list[i++];
+                        if (_skipRe.test(k)) {
+                          _defer(k);
+                          continue;
                         }
-                      })
-                      .then(function () {
+                        return t.get(k).then(
+                          function (v) {
+                            _proc(k, v);
+                          },
+                          function () {},
+                        ).then(next);
+                      }
+                    })();
+                  })
+                  .then(function () {
                         document.documentElement.classList.contains("akini-deep-safe")
                           ? e()
                           : t.getItem("akini_idb_full_snapshot").then(function (t) {
@@ -7530,8 +7565,7 @@ function An(t) {
                               } catch (t) {}
                               e();
                             }, e);
-                      }, e)
-                  : e();
+                      }, e);
               });
             },
             keys: function (t) {
