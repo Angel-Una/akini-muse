@@ -640,19 +640,6 @@
      恢复回填时用它保证 LS 图片总量不超过 1.4MB，剩余配额留给文字/名字/设置，
      否则图片一多就把配额占满，所有文字类写入失败 → 刷新后"文字、昵称、设置全消失"。 */
   var _lsImgUsed = -1;
-  function _recalcLsImgUsed() {
-    var tot = 0;
-    try {
-      for (var i = 0; i < rawLS.length; i++) {
-        var k = origKey ? origKey.call(rawLS, i) : rawLS.key(i);
-        if (!k || !isImgKey(k)) continue;
-        var v = origGet ? origGet.call(rawLS, k) : rawLS.getItem(k);
-        if (v && typeof v === "string") tot += v.length;
-      }
-    } catch (e) {}
-    _lsImgUsed = tot;
-    return tot;
-  }
   /* LS 总字节数：旧代码对「每个需要回填的键」都全量遍历 localStorage 并逐个读值求和，
      N 个键 × 整个 LS = 启动期 O(N²) 同步读盘，安卓切后台重进时直接把主线程卡死。
      这里进程内只算一次。 */

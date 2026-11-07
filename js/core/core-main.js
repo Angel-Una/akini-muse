@@ -32,11 +32,7 @@
         }, "wd-snapshot"),
         window.__akiniSafeCall(function () {
           window.__akiniRestoreSettled = !0;
-        }, "wd-settle"),
-        window.__akiniSafeCall(function () {
-          var t = document.getElementById("akiniSettingsVersionText");
-          t && (t.innerText = "当前版本 " + (window.AKINI_VERSION || "") + " (最新版)");
-        }, "wd-ver"));
+        }, "wd-settle"));
     } catch (t) {}
   }, 12e3),
   (function () {

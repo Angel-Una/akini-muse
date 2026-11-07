@@ -281,7 +281,7 @@
   }),
   (function () {
     try {
-      (window.__akiniLifeLog("boot:" + (window.AKINI_VERSION || "?")),
+      (window.__akiniLifeLog("boot"),
         window.__akiniOnVisible(function () {
           window.__akiniLifeLog("visible");
         }),

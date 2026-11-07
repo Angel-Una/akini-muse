@@ -205,20 +205,6 @@ if (window.__navBack) {
     return el;
   };
 
-  window.showArea = function showArea(id) {
-    var el = document.getElementById(id);
-    if (!el) return;
-    el.style.zIndex = "4000";
-    el.style.display = "flex";
-    el.classList.add("show");
-    /* 浮层打开时隐藏首页底栏：主屏幕 PWA 是全屏视口，设置页/美化页高度不够时
-       首页的 设置/美化/字卡库 底栏会从下方露出来（用户看到的"穿透"）。 */
-    try {
-      document.body.classList.add("akini-overlay-open");
-    } catch (e0) {}
-    if (window.__akiniBubbleTagObserve) window.__akiniBubbleTagObserve(el);
-  };
-
   function navTo(app) {
     try {
       try {

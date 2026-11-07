@@ -378,15 +378,6 @@
     return min + Math.floor(Math.random() * (max - min + 1));
   }
 
-  // ========== 联系人自己发朋友圈/iCity 时，10% 概率带表情包 ==========
-
-  function maybeAttachSticker(contactId) {
-    var stickers = getContactStickers(contactId);
-    if (!stickers.length) return null;
-    if (Math.random() >= 0.1) return null;
-    return pickRandom(stickers);
-  }
-
   // ========== 暴露接口 ==========
 
   window.akiniTriggerMomentAutoReply = function (momentId, app) {

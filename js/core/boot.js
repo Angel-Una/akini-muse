@@ -479,29 +479,6 @@ try {
         document.documentElement.classList.remove("akini-safe-mode");
       } catch (e6) {}
     }
-    /* 旧版页面可能被浏览器/CDN 缓存（GitHub Pages 默认 10 分钟）：
-       无论是否 PWA，都比对 version.json；发现新版本就用带版本参数的 URL 重载一次，
-       避免用户一直看到旧界面。sessionStorage 防重载循环。 */
-    setTimeout(function () {
-      try {
-        fetch("version.json?_=" + Date.now(), { cache: "no-store" })
-          .then(function (r) {
-            return r.json();
-          })
-          .then(function (j) {
-            var b = j && j.build;
-            if (!b || b === window.__AKINI_BUILD) return;
-            try {
-              if (sessionStorage.getItem("akini_build_reload") === b) return;
-              sessionStorage.setItem("akini_build_reload", b);
-            } catch (eSG) {}
-            try {
-              location.replace(location.pathname + "?v=" + encodeURIComponent(b));
-            } catch (eRL) {}
-          })
-          .catch(function () {});
-      } catch (eVC) {}
-    }, 800);
     /* 解析完成并稳定渲染约 3 秒 = 这次启动是健康的 */
     function _markOk() {
       try {

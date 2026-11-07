@@ -231,37 +231,6 @@ function setHtmlKeepInput(t, e) {
     ((t.innerHTML = e), n && (t.appendChild(n), i && t.setAttribute("for", i)));
   }
 }
-function __akiniShowBanner(t, e) {
-  var n = document.getElementById("akiniBootBanner");
-  if (!n) {
-    ((n = document.createElement("div")),
-      (n.id = "akiniBootBanner"),
-      (n.style.cssText =
-        "position:fixed;top:0;left:0;right:0;z-index:6400;background:" +
-        (e || "#ff4444") +
-        ";color:#fff;font:bold 14px/1.4 sans-serif;padding:10px 30px 10px 12px;max-height:160px;overflow:auto;white-space:normal;word-break:break-all;pointer-events:none;"),
-      document.body
-        ? document.body.appendChild(n)
-        : document.addEventListener("DOMContentLoaded", function () {
-            document.body.appendChild(n);
-          }));
-  }
-  n.textContent = t;
-  var b = document.getElementById("akiniBootBannerClose");
-  if (!b) {
-    ((b = document.createElement("button")),
-      (b.id = "akiniBootBannerClose"),
-      (b.type = "button"),
-      b.setAttribute("aria-label", "关闭"),
-      (b.textContent = "\u00d7"),
-      (b.style.cssText =
-        "position:absolute;top:2px;right:6px;width:22px;height:22px;pointer-events:auto;background:transparent;border:0;color:#fff;font:bold 18px/1 sans-serif;padding:0;cursor:pointer;"),
-      b.addEventListener("click", function () {
-        n.style.display = "none";
-      }),
-      n.appendChild(b));
-  }
-}
 function requestPersistentStorage() {
   if (window.__akiniFileProtocol) console.warn("[Akini] 本地文件模式：跳过持久化存储请求");
   else if ("undefined" != typeof navigator && navigator.storage && navigator.storage.persist)

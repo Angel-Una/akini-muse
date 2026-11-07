@@ -3,7 +3,6 @@
 (function () {
   /* safe=1 安全模式——正常启动反复崩溃时，地址栏加 ?safe=1 进自救页 */
   if (/[?&]safe=1/.test(location.search)) window.__AKINI_SAFE_MODE = true;
-  window.AKINI_VERSION = "c43";
   /* 统一自然时间：刚刚→N分钟前→N小时前→N天前→N个月前→YYYY年M月
      朋友圈/iCity/双方主页/通知中心全站共用，只有这一份实现 */
   window.__akiniNaturalTime = function (ts) {
@@ -27,24 +26,4 @@
       return "";
     }
   };
-  try {
-    try {
-      localStorage.removeItem("akini_boot_ver");
-    } catch (e) {}
-  } catch (e) {}
-
-  // 保证设置页无论何时打开，最底部版本号始终实时更新为最新版
-  function _syncVersionUI() {
-    try {
-      var el = document.getElementById("akiniSettingsVersionText");
-      if (el) el.innerText = "当前版本 " + (window.AKINI_VERSION || "") + " (最新版)";
-      /* 启动页也显示版本号，一眼可辨是否拿到最新包（防旧缓存/旧站点） */
-    } catch (e) {}
-  }
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", _syncVersionUI);
-  } else {
-    _syncVersionUI();
-  }
-  window.addEventListener("load", _syncVersionUI);
 })();
