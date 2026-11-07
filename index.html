@@ -64,8 +64,11 @@
 
 
 <style>
-#akiniBootSplash>div:first-child{animation:akSplashPop .62s cubic-bezier(.2,.8,.3,1) both}
-#akiniBootSplash>div:not(:first-child){animation:akSplashFade .55s ease .12s both}
+#akiniBootSplash>div:first-child{animation:akSplashPop .5s cubic-bezier(.2,.8,.3,1) both}
+#akiniBootSplash>div:nth-child(2){animation:akSplashFade .45s ease .18s both}
+#akiniBootSplash>div:nth-child(3){animation:akSplashFade .45s ease .36s both}
+#akiniBootSplash>div:nth-child(4){animation:akSplashFade .45s ease .54s both}
+#akiniBootSplash>div:nth-child(5){animation:akSplashFade .45s ease .72s both}
 @keyframes akSplashPop{0%{opacity:0;transform:scale(.72) translateY(10px)}60%{opacity:1;transform:scale(1.04) translateY(0)}100%{opacity:1;transform:scale(1)}}
 @keyframes akSplashFade{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:none}}
 </style>
