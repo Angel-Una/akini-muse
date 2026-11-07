@@ -667,60 +667,7 @@ window.__akiniDefer2(function () {
   })();
 });
 
-(function () {
-  /* 用户明确要求：任何情况下都不自动降载（不关动画、不去模糊）。 */
-  return;
-  var HEAP_LIMIT = 0.85;
-  var IDLE_TIMEOUT = 25000;
-  var lastInteraction = Date.now();
-  ["touchstart", "touchmove", "mousedown", "keydown", "scroll"].forEach(function (ev) {
-    document.addEventListener(
-      ev,
-      function () {
-        lastInteraction = Date.now();
-      },
-      { passive: true, capture: true },
-    );
-  });
-  function heapRatio() {
-    try {
-      if (performance && performance.memory && performance.memory.jsHeapSizeLimit) {
-        return performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit;
-      }
-    } catch (e) {}
-    return 0;
-  }
-  var degraded = false;
-  function degrade(reason) {
-    if (degraded) return;
-    degraded = true;
-    try {
-      console.warn("[Akini] iOS 内存压力降载:", reason);
-    } catch (e) {}
-    try {
-      document.documentElement.classList.add("akini-low-mem");
-    } catch (e) {}
-    try {
-      document.querySelectorAll("video").forEach(function (v) {
-        try {
-          v.pause();
-        } catch (e) {}
-      });
-    } catch (e) {}
-  }
-  var _memIv = setInterval(function () {
-    if (document.hidden) return;
-    var r = heapRatio();
-    if (r > HEAP_LIMIT) {
-      degrade("heap " + Math.round(r * 100) + "%");
-      return;
-    }
-    if (r > 0.65 && Date.now() - lastInteraction > IDLE_TIMEOUT) {
-      degrade("idle heap " + Math.round(r * 100) + "%");
-    }
-  }, 15000);
-  window.__akiniOnVisible(function () { if (!degraded) lastInteraction = Date.now(); });
-})();
+/* 自动降载已按用户要求整体移除（不关动画、不去模糊） */
 
 (function () {
   function install() {

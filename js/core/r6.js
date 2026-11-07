@@ -10,8 +10,6 @@
        若 core 已提供 window.isSwapped（同一读取规则），直接复用，避免各处规则漂移 */
     try {
       return !!window.isSwapped();
-      var v = localStorage.getItem("akini_swap_avatar_pos");
-      return "1" === v || "true" === v;
     } catch (e) {
       return false;
     }

@@ -58,10 +58,7 @@
 
   function _updateUI() {
     var toggle = document.getElementById("keepAliveToggle");
-    var desc = document.getElementById("keepalive-audio-desc");
-    var enabled = _isEnabled();
-    if (toggle) toggle.classList.toggle("on", enabled);
-    if (desc) desc.textContent = enabled ? "运行中 · 页面已保活" : "静音循环音频，防止页面被系统挂起";
+    if (toggle) toggle.classList.toggle("on", _isEnabled());
   }
 
   /* 统一落地：两套键 + class + 音频 + 唤醒锁 + 保活岛，一次写齐 */

@@ -366,8 +366,6 @@
   function companionSwapped() {
     try {
       return !!window.isSwapped();
-      var v = lsGet("akini_swap_avatar_pos", "0");
-      return "1" === v || "true" === v;
     } catch (e) {
       return false;
     }

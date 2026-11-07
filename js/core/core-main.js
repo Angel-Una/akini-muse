@@ -19313,13 +19313,11 @@ window.__akiniPatchAvatarCell = function (t, e) {
             try {
               if (((o = !1), !a)) {
                 a = new Audio(window.__akiniSilentUrl ? window.__akiniSilentUrl() : "");
-                console.warn("[Akini Audio New]", "静音保活 a @ core.js p()");
                 try {
                   window.__akiniSilentOsc && window.__akiniSilentOsc();
                 } catch (t) {}
                 ((a.loop = !0),
                   (a.volume = 0.01),
-                  console.warn("[Akini Vol]", a.volume, "静音保活 a @ core.js p()"),
                   (a.preload = "auto"),
                   a.addEventListener("pause", function () {
                     try {

@@ -48,9 +48,6 @@
     var r = new FileReader();
     r.onload = function (ev) {
       var d = ev.target.result;
-      try {
-        console.log("[] " + entry + " type=" + (f.type || "?") + " size=" + f.size + " head=" + String(d).slice(0, 40));
-      } catch (e0) {}
       var fin = function (url) {
         try {
           if (window[cfg.apply]) window[cfg.apply](url);
@@ -62,9 +59,6 @@
             localStorage.setItem(cfg.keys[i], url);
           } catch (ex) {}
         }
-        try {
-          console.log("[] " + cfg.name + " 更换完成 okCss=" + okCss);
-        } catch (e9) {}
         /* 用户要求隐藏更换通话界面和mini界面成功的弹窗，静默更新 */
       };
       var img = new Image();
