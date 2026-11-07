@@ -10967,11 +10967,23 @@ Gn = document.getElementById("chatQuoteBar"),
             (Oe(), D());
           }),
         qn &&
-          (qn.addEventListener("keydown", function (t) {
-            "Enter" === t.key && (t.preventDefault(), Oe(), D());
+          (window._akMsgGrow = function () {
+            try {
+              qn.style.height = "auto";
+              qn.style.height = Math.min(qn.scrollHeight, 104) + "px";
+            } catch (t) {}
+          },
+          qn.addEventListener("keydown", function (t) {
+            /* 多行输入：回车发送（对齐 milk/zy），Shift+回车换行；
+               中文输入法组词时的回车只是上屏，不能触发发送 */
+            "Enter" === t.key &&
+              !t.shiftKey &&
+              !t.isComposing &&
+              (t.preventDefault(), Oe(), D(), setTimeout(_akMsgGrow, 0));
           }),
           qn.addEventListener("input", function () {
             try {
+              _akMsgGrow();
               ((window.__akiniMsgDraft = qn.value || ""),
                 (window.__akiniMsgDraftChatId =
                   window.akiniContacts && window.akiniContacts.getActiveChatId
