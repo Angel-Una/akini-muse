@@ -402,5 +402,22 @@ html.akini-boot-lock body>*:not(#akiniBootSplash){display:none!important}
   box-shadow: none;
   text-shadow: none;
 }
-/* 低内存模式：关掉按钮毛玻璃 */
-html.low-mem body #app-chat #chatBackBtn,html.low-mem body #app-chat #chatCallBtn,html.low-mem body #app-chat #plusMenuBtn,html.low-mem body #app-chat #sendBtn{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+/* 聊天区按钮统一毛玻璃：返回键 / 通话键 / 加号键 / 发送键 与输入栏、昵称条保持一致的
+   85% 白底 + 20px 模糊。旧的低内存规则只关掉了后三个的 backdrop-filter（返回键因优先级
+   更高没被关），导致通话/发送/加号在低内存设备上变成完全透明，这里统一恢复。 */
+html body #app-chat .chat-wrapper .chat-top-bar #chatBackBtn,
+html body #app-chat .chat-wrapper .chat-top-bar #chatCallBtn,
+html body #app-chat .chat-wrapper .chat-input-bar #plusMenuBtn,
+html body #app-chat .chat-wrapper .chat-input-bar #sendBtn,
+html.low-mem body #app-chat #chatBackBtn,
+html.low-mem body #app-chat #chatCallBtn,
+html.low-mem body #app-chat #plusMenuBtn,
+html.low-mem body #app-chat #sendBtn{
+  background:rgba(255,255,255,.85)!important;
+  background-color:rgba(255,255,255,.85)!important;
+  -webkit-backdrop-filter:blur(20px) saturate(180%)!important;
+  backdrop-filter:blur(20px) saturate(180%)!important;
+  border:none!important;
+  border-radius:50%!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.06)!important;
+}
