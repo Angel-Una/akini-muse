@@ -3742,44 +3742,9 @@ function Lt(t) {
             Rt(),
             En());
           try {
-            if (window.akiniContacts && window.akiniContacts.getSessions) {
-              var i = window.akiniContacts.getSessions(),
-                a = [];
-              for (var o in i)
-                if (i.hasOwnProperty(o)) {
-                  var r = i[o];
-                  r && r.messagesHTML && a.push(o);
-                }
-              if (a.length) {
-                var c = 0;
-                function s() {
-                  if (!(c >= a.length)) {
-                    var t = a[c++];
-                    try {
-                      var e = window.akiniContacts.getSessions()[t];
-                      if (e && e.messagesHTML) {
-                        var n = Ot(e.messagesHTML);
-                        n !== e.messagesHTML &&
-                          (window.akiniContacts.updateSession(t, {
-                            messagesHTML: n,
-                          }),
-                          et(t, n));
-                      }
-                    } catch (t) {}
-                    window.requestIdleCallback
-                      ? window.requestIdleCallback(s, {
-                          timeout: 4e3,
-                        })
-                      : setTimeout(s, 60);
-                  }
-                }
-                window.requestIdleCallback
-                  ? window.requestIdleCallback(s, {
-                      timeout: 4e3,
-                    })
-                  : setTimeout(s, 200);
-              }
-            }
+            /* 原来这里会在启动后遍历所有会话、把每个 messagesHTML 整段 join 出来
+               再交给恒等函数 Ot() 处理（什么也没改），纯属把全部历史读进内存，
+               是"用一段时间后重进就闪退"的直接原因之一。已删除这段空转。 */
           } catch (t) {}
           try {
             var l = localStorage.getItem("akini_wordbank") || "[]";
@@ -4092,7 +4057,7 @@ function Xt() {
                     (e.forEach(function (t) {
                       var e = i[t.id] || {},
                         n =
-                          l(e) ||
+                          l(e, t.id) ||
                           (function (t) {
                             try {
                               var _lr = window.__akiniChatLog && window.__akiniChatLog.last(t);
@@ -4153,7 +4118,7 @@ function Xt() {
                           name: t.name,
                           avatar: t.avatar,
                           lastMsg: n || o[t.id] || "",
-                          lastSenderName: d(e),
+                          lastSenderName: d(e, t.id),
                           lastTime: e.lastTime || 0,
                           unread: e.unread || 0,
                         }));
@@ -4167,8 +4132,8 @@ function Xt() {
                           name: t.name,
                           avatar: t.avatar,
                           displayAvatar: n,
-                          lastMsg: l(e),
-                          lastSenderName: d(e),
+                          lastMsg: l(e, t.id),
+                          lastSenderName: d(e, t.id),
                           lastTime: e.lastTime || 0,
                           unread: e.unread || 0,
                         });
@@ -4387,9 +4352,16 @@ function Xt() {
                       }));
                   } else t.innerHTML = '<div class="chat-list-empty">暂无联系人，去通讯录添加吧</div>';
                 }
-                function l(t) {
-                  var e = t.messagesHTML || "",
-                    n = t.lastMsg || "";
+                function l(t, id) {
+                  var e = "";
+                  /* 聊天列表只需要最后一条：优先拿 chat-log 的最后一行，
+                     避免为了显示预览把每个会话的整段历史都 join 一遍。 */
+                  try {
+                    var _lr = id && window.__akiniChatLog ? window.__akiniChatLog.last(id) : null;
+                    if (_lr && _lr.html) e = _lr.html;
+                  } catch (_le) {}
+                  if (!e) e = t.messagesHTML || "";
+                  var n = t.lastMsg || "";
                   if (n && !1 === /(未接来电|拒接来电|取消来电|通话时长)/.test(n)) return n;
                   if (!e) return /(未接来电|拒接来电|取消来电|通话时长)/.test(n) ? "" : n;
                   var i = document.createElement("div");
@@ -4413,9 +4385,14 @@ function Xt() {
                   }
                   return "";
                 }
-                function d(t) {
+                function d(t, id) {
                   if (t.lastSenderName) return t.lastSenderName;
-                  var e = t.messagesHTML || "";
+                  var e = "";
+                  try {
+                    var _lr = id && window.__akiniChatLog ? window.__akiniChatLog.last(id) : null;
+                    if (_lr && _lr.html) e = _lr.html;
+                  } catch (_de) {}
+                  if (!e) e = t.messagesHTML || "";
                   if (!e) return "";
                   var n = document.createElement("div");
                   n.innerHTML = e;

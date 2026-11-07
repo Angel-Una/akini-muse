@@ -16,6 +16,11 @@
   var _timers = {};
   var _stale = {}; /* 启动对账完成前读到的空数据，对账后必须重新水合 */
   var ROW_RE = /<div\b[^>]*class="[^"]*\bmsg-row\b[^"]*"[^>]*>/g;
+  /* 单会话历史上限：数组模型是内存里的权威副本，不设上限会随使用时间无限增长，
+     最终启动时整段 HTML 注入 DOM / 反复 join 导致手机 OOM 闪退。
+     只裁掉最旧的消息，最近 400 条 / 512KB 足够覆盖正常使用与滚动回看。 */
+  var MAX_ROWS = 400;
+  var MAX_CHARS = 512 * 1024;
 
   function key(id) {
     return PREFIX + id;
@@ -104,11 +109,36 @@
       } catch (e) {}
     }
     _rows[id] = a;
+    if (enforce(id)) persistSoon(id);
     return a;
   }
 
   function invalidate(id) {
     delete _html[id];
+  }
+
+  /* 把单会话历史裁剪到条数 / 字符上限之内（从最旧的开始丢） */
+  function enforce(id) {
+    var a = _rows[id];
+    if (!a || !a.length) return 0;
+    var cut = a.length > MAX_ROWS ? a.length - MAX_ROWS : 0;
+    var total = 0;
+    for (var i = cut; i < a.length; i++) total += a[i].html.length;
+    while (cut < a.length - 1 && total > MAX_CHARS) {
+      total -= a[cut].html.length;
+      cut++;
+    }
+    if (cut > 0) {
+      a.splice(0, cut);
+      invalidate(id);
+    }
+    return cut;
+  }
+
+  function has(id) {
+    if (_rows[id] && _rows[id].length) return true;
+    var raw = readRaw(id);
+    return !!raw && raw !== "[]" && raw !== "null" && raw !== "undefined";
   }
 
   /* 合并两份数组：以完整历史 base 为准，把启动对账前新增的消息补到末尾。
@@ -178,6 +208,7 @@
       return;
     }
     delete _timers[id];
+    enforce(id);
     var a = _rows[id] || [];
     var json = "[]";
     try {
@@ -211,6 +242,7 @@
       } catch (e) {}
       a.push({ ts: seg.ts || tsOf(h), html: h });
     }
+    enforce(id);
     invalidate(id);
     persistSoon(id);
   }
@@ -230,6 +262,7 @@
       if (joined === old) return;
     }
     _rows[id] = a;
+    enforce(id);
     invalidate(id);
     persistSoon(id);
   }
@@ -314,6 +347,8 @@
     key: key,
     rows: ensure,
     html: full,
+    has: has,
+    raw: readRaw,
     tail: tail,
     count: count,
     last: last,

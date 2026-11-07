@@ -823,7 +823,19 @@ window.__akiniRestoredDone = true;
           window.__akiniSurveyDupFixed = true;
           var sessAll = C.getSessions() || {};
           Object.keys(sessAll).forEach(function (sid) {
-            var h = sessAll[sid] && sessAll[sid].messagesHTML;
+            /* 先用未解析的原始值判断有没有问卷卡，避免为了去重把每个会话的
+               整段历史都水合/拼接一遍（启动卡崩的另一条路径）。 */
+            var rawH = "";
+            try {
+              rawH = window.__akiniChatLog
+                ? window.__akiniChatLog.raw(sid)
+                : (sessAll[sid] && sessAll[sid].messagesHTML) || "";
+            } catch (eR) {}
+            if (!rawH || rawH.indexOf("survey-bubble") < 0) return;
+            var h = "";
+            try {
+              h = window.__akiniChatLog ? window.__akiniChatLog.html(sid) : rawH;
+            } catch (eH) {}
             var fixed = dedupeSurveyRows(h);
             if (fixed) {
               try {
@@ -902,20 +914,25 @@ window.__akiniRestoredDone = true;
         if (!sessions.hasOwnProperty(sid)) continue;
         var sess = sessions[sid];
         if (!sess) continue;
-        if (sess.messagesHTML && sess.messagesHTML.trim().length > 0) continue;
+        /* 不要读 sess.messagesHTML：它绑定到 chat-log 后会为每个会话 join
+           整段历史，会话一多启动瞬间就是几十 MB 字符串，是"重进即闪退"的主因。
+           这里只做存在性判断，有历史就跳过。 */
+        var hasLog = false;
+        try {
+          hasLog = window.__akiniChatLog ? window.__akiniChatLog.has(sid) : false;
+        } catch (e) {}
+        if (hasLog) continue;
+        if (!window.__akiniChatLog && sess.messagesHTML && sess.messagesHTML.trim().length > 0) continue;
         var html = "";
         try {
-          html = window.__akiniChatLog ? window.__akiniChatLog.html(sid) : "";
-        } catch (e) {}
-        if (!html)
           html =
             localStorage.getItem("akini_chat_history_" + sid) ||
-            localStorage.getItem("akini_chat_history_backup_" + sid);
+            localStorage.getItem("akini_chat_history_backup_" + sid) ||
+            "";
+        } catch (e) {}
         if (html && html.trim() !== "" && html.trim() !== "null" && html.trim() !== "undefined") {
+          /* 有 chat-log 时走 setter 增量写入，避免再额外 replace 一遍 */
           sess.messagesHTML = html;
-          try {
-            if (window.__akiniChatLog) window.__akiniChatLog.replace(sid, html);
-          } catch (e) {}
           changed = true;
         }
       }
@@ -946,20 +963,27 @@ window.__akiniRestoredDone = true;
       if (html.trim() !== "" && html.trim() !== "null" && html.trim() !== "undefined") return;
       var activeId = window.akiniContacts ? window.akiniContacts.getActiveChatId() : null;
       if (!activeId) return;
-      var sess = null;
-      if (window.akiniContacts && window.akiniContacts.getSession) {
-        sess = window.akiniContacts.getSession(activeId);
-      }
       var best = "";
-      if (sess && sess.messagesHTML && sess.messagesHTML.trim().length > 0) {
-        best = sess.messagesHTML;
+      /* 冷启动只注入最近一批消息：整段历史（可能是几 MB）直接 innerHTML
+         会让手机端内存瞬间翻倍，表现为"进去就闪退"。 */
+      if (window.__akiniChatLog) {
+        try {
+          best = window.__akiniChatLog.tail(activeId, 150);
+        } catch (e) {}
       }
       if (!best) {
-        best =
-          localStorage.getItem("akini_chat_history_" + activeId) ||
-          localStorage.getItem("akini_chat_history_backup_" + activeId) ||
-          localStorage.getItem("akini_full_backup_" + activeId) ||
-          "";
+        try {
+          best =
+            localStorage.getItem("akini_chat_history_" + activeId) ||
+            localStorage.getItem("akini_chat_history_backup_" + activeId) ||
+            localStorage.getItem("akini_full_backup_" + activeId) ||
+            "";
+        } catch (e) {}
+        if (best && window.__akiniCapHistory) {
+          try {
+            best = window.__akiniCapHistory(best, activeId, 150);
+          } catch (e) {}
+        }
       }
       if (best && best.trim() !== "" && best.trim() !== "null" && best.trim() !== "undefined") {
         // 已渲染过同一聊天且 DOM 非空：跳过周期重建，避免每 30 秒把正在翻阅记录的用户拽回底部
@@ -979,9 +1003,8 @@ window.__akiniRestoredDone = true;
             window.__akiniSetupChatMetaObserver();
           } catch (e) {}
         }
-        if (window.akiniContacts && window.akiniContacts.updateSession) {
-          window.akiniContacts.updateSession(activeId, { messagesHTML: best });
-        }
+        /* 不再把渲染用的最近 150 条写回 messagesHTML：
+           那是历史数组的视图，写回会把更早的记录真正截掉。 */
         console.log("[Akini] restored chat body directly");
       }
     } catch (e) {
