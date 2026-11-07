@@ -9030,11 +9030,23 @@ window.__akiniResetHomeScroll = function () {
                     },
                   ),
                   l++,
-                  _idbStore.getAll(function (t) {
-                    try {
-                      Object.keys(t || {}).forEach(function (e) {
-                        if (0 === e.indexOf("akini_contact_avatar_")) {
-                          var n = t[e];
+                  _idbStore.keys(function (keys) {
+                    /* 这里原本是 _idbStore.getAll()：会把 IndexedDB 里每一个键（包括
+                       全部聊天图片/表情/外置媒体 dataURL）一次性读进一个对象。
+                       用户用久了图片越攒越多，这个对象就是几百 MB，首屏前直接
+                       把渲染进程顶爆（重进白屏/闪退，根本进不去）。
+                       实际只需要 akini_contact_avatar_*，先列键再逐个取。 */
+                    var _avKeys = (keys || []).filter(function (e) {
+                      return 0 === String(e).indexOf("akini_contact_avatar_");
+                    });
+                    var _finish = function () {
+                      (l--, u());
+                    };
+                    if (!_avKeys.length) return void _finish();
+                    var _left = _avKeys.length;
+                    _avKeys.forEach(function (e) {
+                      _idbStore.get(e, function (n) {
+                        try {
                           if (n && "string" == typeof n && n.trim() && "null" !== n && "undefined" !== n) {
                             var i = localStorage.getItem(e) || "";
                             (i && "null" !== i && "undefined" !== i && i === n) ||
@@ -9042,10 +9054,10 @@ window.__akiniResetHomeScroll = function () {
                               window.akiniStore && window.akiniStore.memorySet && window.akiniStore.memorySet(e, n),
                               (c = !0));
                           }
-                        }
+                        } catch (x) {}
+                        if (0 === --_left) _finish();
                       });
-                    } catch (t) {}
-                    (l--, u());
+                    });
                   }),
                   0 === l && d());
               },
