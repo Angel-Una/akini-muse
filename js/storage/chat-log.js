@@ -264,6 +264,17 @@
     for (var i = a.length - n; i < a.length; i++) s += a[i].html;
     return s;
   }
+  /* 窗口化渲染：取 [start, end) 区间的行拼成 HTML，供上滑/下滑加载使用。
+     不缓存（调用方按需取），避免和 full() 的整段缓存冲突。 */
+  function range(id, start, end) {
+    var a = ensure(id);
+    if (start < 0) start = 0;
+    if (end > a.length) end = a.length;
+    if (start >= end) return "";
+    var s = "";
+    for (var i = start; i < end; i++) s += a[i].html;
+    return s;
+  }
 
   function count(id) {
     return ensure(id).length;
@@ -503,6 +514,7 @@
     has: has,
     raw: readRaw,
     tail: tail,
+    range: range,
     count: count,
     last: last,
     append: append,

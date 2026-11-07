@@ -1,4 +1,7 @@
 var AKINI_CHAT_BATCH_SIZE = 25;
+/* 对齐 milk/zy 的窗口化渲染：聊天 DOM 里最多保留这么多行，往上滑加载旧消息时
+   从底部裁掉等批量，避免长聊天把整段历史（含图片 data URL）全堆进 DOM 把渲染进程撑爆。 */
+var AKINI_MAX_DOM_ROWS = 200;
 function __akiniStripTypingRows(t) {
   if (!t || "string" != typeof t) return t || "";
   var e = -1 !== t.indexOf("typingBubbleRow_") || -1 !== t.indexOf("typing-bubble"),

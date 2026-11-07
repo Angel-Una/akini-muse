@@ -107,9 +107,40 @@
     return node;
   }
 
-  function processLocalStorageValueForExport(str, state) {
+  /* 聊天记录里的图片是内联在 html 字符串里的 <img src="data:...">，
+     extractMediaTree 看不到（它只处理顶级 data URL 值）。
+     直接 JSON.parse 整个聊天数组会把内存撑爆闪退（尤其消息多+带图）。
+     这里用正则在原始字符串上把 data URL 抽到 mediaStore，换成轻量占位符。 */
+  var _INLINE_MEDIA_RE = /data:(?:image|video|audio)\/[^"\\<>\s]+/gi;
+  function extractInlineMedia(str, state) {
+    if (typeof str !== "string" || str.length < MIN_MEDIA_CHARS) return str;
+    return str.replace(_INLINE_MEDIA_RE, function (url) {
+      if (url.length <= MIN_MEDIA_CHARS) return url;
+      var id = state.map.get(url);
+      if (!id) {
+        id = "m" + state.n++;
+        state.map.set(url, id);
+        state.store[id] = url;
+      }
+      return "__akRef__" + id;
+    });
+  }
+  function inlineMediaFromString(str, store) {
+    if (typeof str !== "string" || str.indexOf("__akRef__") < 0) return str;
+    return str.replace(/__akRef__m\d+/g, function (m) {
+      var id = m.slice("__akRef__".length);
+      return store[id] != null ? String(store[id]) : m;
+    });
+  }
+
+  function processLocalStorageValueForExport(str, state, key) {
     if (str == null) return str;
     if (typeof str !== "string") return str;
+    /* 聊天记录：不 JSON.parse 整段数组，直接在字符串层面提取内嵌媒体。
+       一万多条带图消息 parse 一次能吃掉几百 MB，低端机直接闪退。 */
+    if (key && key.indexOf("akini_chat_history_") === 0) {
+      return extractInlineMedia(str, state);
+    }
     if (isDataMediaUrl(str)) {
       var id = state.map.get(str);
       if (!id) {
@@ -129,9 +160,13 @@
     }
   }
 
-  function processLocalStorageValueForImport(str, store) {
+  function processLocalStorageValueForImport(str, store, key) {
     if (str == null) return str;
     if (typeof str !== "string") return str;
+    /* 聊天记录：导出时用正则抽走了内嵌 data URL，这里反向还原，不 JSON.parse。 */
+    if (key && key.indexOf("akini_chat_history_") === 0) {
+      return inlineMediaFromString(str, store);
+    }
     try {
       var parsed = JSON.parse(str);
       // 原本就是 data URL 字符串的值，直接还原为 data URL 字符串
@@ -267,35 +302,25 @@
       var lsOut = {};
       for (var k in lsData) {
         if (!Object.prototype.hasOwnProperty.call(lsData, k)) continue;
-        lsOut[k] = processLocalStorageValueForExport(lsData[k], state);
+        lsOut[k] = processLocalStorageValueForExport(lsData[k], state, k);
       }
       var idbOut = {};
       for (var k2 in idbData) {
         if (!Object.prototype.hasOwnProperty.call(idbData, k2)) continue;
-        /* 聊天记录：IDB 里可能是更完整的一份（防抖队列刚提交），
-           取“消息行数更多”的版本，避免导出把聊天导成截断版 */
-        if (k2.indexOf("akini_chat_history_") === 0 && lsData[k2] != null) {
-          var _la = lsData[k2],
-            _lb = idbData[k2];
-          if (typeof _la === "string" && typeof _lb === "string") {
-            var _cnt = function (x) {
-              if (x.charAt(0) === "[") {
-                try {
-                  var a = JSON.parse(x);
-                  if (Array.isArray(a)) return a.length;
-                } catch (e) {}
-              }
-              return (x.match(/<div[^>]*class="msg-row/g) || []).length;
-            };
-            var _ra = _cnt(_la),
-              _rb = _cnt(_lb);
-            if (_rb > _ra) lsData[k2] = _lb;
-          }
+        /* 聊天记录：现在只在 IDB 里（启动期不再水合到内存/LS）。
+           旧逻辑会把 IDB 版跳过、只导出 LS 里的空串 → 聊天记录在备份里直接没了。
+           这里直接取「消息行数更多」的版本并写进输出。行数用字符级计数，
+           不 JSON.parse（一万条 parse 一次几百 MB，低端机闪退）。 */
+        if (k2.indexOf("akini_chat_history_") === 0) {
+          var _la = lsData[k2] || "",
+            _lb = idbData[k2] || "";
+          var _best = typeof _lb === "string" && (!_la || _lb.length > _la.length) ? _lb : _la;
+          if (_best) lsOut[k2] = processLocalStorageValueForExport(_best, state, k2);
           continue;
         }
         // LS/内存为运行期权威：已覆盖的键跳过 IDB 版本；IDB 独有的键（含 _backup 完整副本）全部收录
         if (lsData[k2] != null) continue;
-        idbOut[k2] = processLocalStorageValueForExport(idbData[k2], state);
+        idbOut[k2] = processLocalStorageValueForExport(idbData[k2], state, k2);
       }
       done({
         type: "akini-backup-v5",
@@ -783,7 +808,7 @@ window._akiniAllowRemove = false;
         for (; _wi < end; _wi++) {
           var src = _wkeys[_wi][0],
             kk = _wkeys[_wi][1];
-          tryWrite(kk, processLocalStorageValueForImport(src[kk], mediaStore));
+          tryWrite(kk, processLocalStorageValueForImport(src[kk], mediaStore, kk));
         }
         if (_wi < _wkeys.length) {
           setTimeout(step, 0);

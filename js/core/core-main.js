@@ -2323,6 +2323,39 @@ function V(t) {
                     }, 1200);
                   }
                 } else jn.scrollTop > 40 && (jn.__akiniPullArmed = !1);
+                /* 下滑到底部时补回被窗口化裁掉的底部行（对齐 milk/zy 的向下加载） */
+                var _hidden = (window.__akiniBottomHidden && window.__akiniBottomHidden[t]) || 0;
+                if (_hidden > 0 && jn.scrollHeight - jn.scrollTop - jn.clientHeight < 80) {
+                  var _log2 = window.__akiniChatLog;
+                  var _total2 = _log2 ? _log2.count(t) : 0;
+                  if (!_total2) return;
+                  var _reveal = Math.min(_hidden, AKINI_CHAT_BATCH_SIZE);
+                  /* 被隐藏的是最底部的 _hidden 行：[total-hidden, total)。
+                     这次露出其中前 _reveal 行。 */
+                  var _startIdx = _total2 - _hidden;
+                  var _slice = _log2 && _log2.range ? _log2.range(t, _startIdx, _startIdx + _reveal) : "";
+                  if (_slice) {
+                    try {
+                      _slice = Gt(_slice, t);
+                    } catch (_gterr) {}
+                    jn.insertAdjacentHTML("beforeend", _slice);
+                    try {
+                      window.__akiniMedia && window.__akiniMedia.resolve(jn);
+                    } catch (_mre) {}
+                    window.__akiniBottomHidden[t] = _hidden - _reveal;
+                    /* 补了底部行后如果超过窗口上限，从顶部裁掉等量行 */
+                    var _rowsNow = jn.querySelectorAll(".msg-row").length;
+                    if (_rowsNow > AKINI_MAX_DOM_ROWS) {
+                      var _cutTop = _rowsNow - AKINI_MAX_DOM_ROWS;
+                      var _rowsArr = jn.querySelectorAll(".msg-row");
+                      for (var _ti = 0; _ti < _cutTop && _ti < _rowsArr.length; _ti++) {
+                        try {
+                          _rowsArr[_ti].remove();
+                        } catch (_eTop) {}
+                      }
+                    }
+                  }
+                }
               }),
               (jn.__akiniPullTsFn = function (t) {
                 try {
@@ -2377,6 +2410,22 @@ function V(t) {
                           var _h = jn.scrollHeight,
                             _st = jn.scrollTop;
                           jn.insertAdjacentHTML("afterbegin", _addHtml);
+                          /* 窗口化：顶部补了旧消息后，如果 DOM 行数超过上限，
+                             从底部裁掉等量行，避免长聊天把整段历史（含图片）堆进 DOM。
+                             裁掉的行数记到 __akiniBottomHidden，下滑到底部时再补回来。 */
+                          var _afterRows = jn.querySelectorAll(".msg-row").length;
+                          if (_afterRows > AKINI_MAX_DOM_ROWS) {
+                            var _cutBottom = _afterRows - AKINI_MAX_DOM_ROWS;
+                            var _allRows = jn.querySelectorAll(".msg-row");
+                            var _bottomStart = _allRows.length - _cutBottom;
+                            for (var _bi = _allRows.length - 1; _bi >= _bottomStart; _bi--) {
+                              try {
+                                _allRows[_bi].remove();
+                              } catch (_eRm) {}
+                            }
+                            window.__akiniBottomHidden = window.__akiniBottomHidden || {};
+                            window.__akiniBottomHidden[t] = (window.__akiniBottomHidden[t] || 0) + _cutBottom;
+                          }
                           try {
                             window.__akiniMedia && window.__akiniMedia.resolve(jn);
                           } catch (_mr) {}
@@ -2393,6 +2442,11 @@ function V(t) {
                             window.__akiniMedia && window.__akiniMedia.resolve(jn);
                           } catch (_mr2) {}
                           jn.scrollTop = w + (jn.scrollHeight - m);
+                          /* 整段重渲染：底部隐藏计数归零 */
+                          try {
+                            window.__akiniBottomHidden = window.__akiniBottomHidden || {};
+                            window.__akiniBottomHidden[t] = 0;
+                          } catch (_bh2) {}
                         }
                         I();
                         try {
@@ -2491,6 +2545,11 @@ function X(t, e) {
               (c = c.replace(/\s*akini-jump-flash/g, "")),
               (jn.innerHTML = c),
               r > _want && V(e));
+            /* 整段重渲染：底部隐藏计数归零 */
+            try {
+              window.__akiniBottomHidden = window.__akiniBottomHidden || {};
+              window.__akiniBottomHidden[e] = 0;
+            } catch (_bh) {}
             try {
               jn.setAttribute(
                 "data-rendered-chat-id",
@@ -2661,27 +2720,35 @@ function tt(t, e, n) {
               window.__akiniNotifyUnreadChanged && window.__akiniNotifyUnreadChanged();
             } catch (t) {}
             if ((et(t, d), jn && (u || String(jn.getAttribute("data-rendered-chat-id")) === String(t)))) {
-              try {
-                i && (i = Gt(i, t));
-              } catch (t) {}
-              var y = document.createElement("div");
-              y.innerHTML = i;
-              try {
-                window.__akiniTaPhoneCollectRows && window.__akiniTaPhoneCollectRows(t, y);
-              } catch (e) {}
-              try {
-                window.__akiniMedia && window.__akiniMedia.resolve(y);
-              } catch (t) {}
-              for (; y.firstChild;) jn.appendChild(y.firstChild);
-              var p = jn.querySelectorAll(".msg-row").length - AKINI_CHAT_BATCH_SIZE;
-              if (p > 0) {
-                for (var _ = 0; jn.firstChild && _ < p;) {
-                  var h = jn.firstChild;
-                  (jn.removeChild(h), 1 === h.nodeType && h.classList && h.classList.contains("msg-row") && _++);
+              /* 窗口化：用户上滑看旧消息时，新消息只进 chat-log，不插 DOM、不裁顶，
+                 避免把上滑展开的窗口打回 25 行。记到 __akiniBottomHidden，下滑到底部时补回。 */
+              var _atBottom = jn.scrollHeight - jn.scrollTop - jn.clientHeight < 150;
+              if (!_atBottom) {
+                window.__akiniBottomHidden = window.__akiniBottomHidden || {};
+                window.__akiniBottomHidden[t] = (window.__akiniBottomHidden[t] || 0) + 1;
+              } else {
+                try {
+                  i && (i = Gt(i, t));
+                } catch (t) {}
+                var y = document.createElement("div");
+                y.innerHTML = i;
+                try {
+                  window.__akiniTaPhoneCollectRows && window.__akiniTaPhoneCollectRows(t, y);
+                } catch (e) {}
+                try {
+                  window.__akiniMedia && window.__akiniMedia.resolve(y);
+                } catch (t) {}
+                for (; y.firstChild;) jn.appendChild(y.firstChild);
+                var p = jn.querySelectorAll(".msg-row").length - AKINI_MAX_DOM_ROWS;
+                if (p > 0) {
+                  for (var _ = 0; jn.firstChild && _ < p;) {
+                    var h = jn.firstChild;
+                    (jn.removeChild(h), 1 === h.nodeType && h.classList && h.classList.contains("msg-row") && _++);
+                  }
+                  V(t);
                 }
-                V(t);
+                jn.scrollTop = jn.scrollHeight;
               }
-              jn.scrollHeight - jn.scrollTop - jn.clientHeight < 150 && (jn.scrollTop = jn.scrollHeight);
             }
           }
         }
@@ -4593,6 +4660,9 @@ function Zt(t, e) {
                不再写独立的 akini_chat_rows_ 水位键。 */
             window.__akiniShownRows = window.__akiniShownRows || {};
             window.__akiniShownRows[t] = AKINI_CHAT_BATCH_SIZE;
+            /* 打开会话时重置窗口化的底部隐藏计数：此时 DOM 只渲染最近一批 */
+            window.__akiniBottomHidden = window.__akiniBottomHidden || {};
+            window.__akiniBottomHidden[t] = 0;
             window.__akiniChatTotal = window.__akiniChatTotal || {};
             window.__akiniChatTotal[t] = _totalRows || __akiniCountMsgRowsFast(d);
             f(d);
@@ -10658,6 +10728,8 @@ window.__akiniBindSettingsControls = function () {
         }),
         (window._restoringChatHistory = !0),
         jn && (jn.innerHTML = ""),
+        /* 恢复期清空聊天区：重置所有会话的窗口化底部隐藏计数 */
+        (window.__akiniBottomHidden = {}),
         setTimeout(function () {
           ((window._restoringChatHistory = !1), (window._restoringData = !1));
         }, 3e3),

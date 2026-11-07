@@ -1107,10 +1107,13 @@
 
     // Music invite popup
     var inviteOverlay = $("musicInvitePopup");
-    if (inviteOverlay)
+    /* 点空白处不关闭：邀请弹窗只有「接受/拒绝」两个按钮，
+       点空白就消失会让用户以为邀请没了/操作失败。 */
+    if (inviteOverlay) {
       inviteOverlay.addEventListener("click", function (e) {
-        if (e.target === inviteOverlay) closeMusicInvitePopup();
+        if (e.target === inviteOverlay) e.stopPropagation();
       });
+    }
 
     // Companion home
     var presets = $("companionHomePresets");
