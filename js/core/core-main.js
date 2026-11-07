@@ -1,3 +1,24 @@
+/* 朋友圈图片按需取：启动时只展开最近的一小部分，其余保留 akini-ref:，
+   渲染到当前动态时再从 IndexedDB 取图，避免所有照片常驻内存。 */
+window.__akiniResolvePostImgs = function (root) {
+  try {
+    var imgs = root && root.querySelectorAll ? root.querySelectorAll("img[data-mref]") : [];
+    Array.prototype.forEach.call(imgs, function (img) {
+      var id = img.getAttribute("data-mref");
+      if (!id || img.getAttribute("data-mref-loaded") === id) return;
+      img.setAttribute("data-mref-loaded", id);
+      var set = function (v) {
+        if (v && typeof v === "string" && v.length > 10) img.src = v;
+      };
+      try {
+        if (window.akiniStore && window.akiniStore.mediaGet) return void window.akiniStore.mediaGet(id, set);
+      } catch (e) {}
+      try {
+        if (window._idbStore && window._idbStore.get) return void window._idbStore.get("akini_mref_" + id, set);
+      } catch (e) {}
+    });
+  } catch (e) {}
+};
 ((window.__akiniBootStep = "start"),
   (window.__akiniSafeCall = function (t, e) {
     try {
@@ -13976,7 +13997,11 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                     (t.text || "") +
                     "</div>" +
                     (t.img
-                      ? '<div class="post-image"><img src="' + t.img + '" alt="" style="max-height:200px;"></div>'
+                      ? '<div class="post-image"><img ' +
+                        (String(t.img).indexOf("akini-ref:") === 0
+                          ? 'data-mref="' + String(t.img).slice(10) + '"'
+                          : 'src="' + t.img + '"') +
+                        ' alt="" style="max-height:200px;"></div>'
                       : "") +
                     '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;"><div style="display:inline-flex;align-items:center;"><div class="post-time" style="font-size:12px;color:#999;line-height:16px;">' +
                     (function (t) {
@@ -14005,6 +14030,7 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                     s,
                 ),
                 o.appendChild(l),
+                window.__akiniResolvePostImgs && window.__akiniResolvePostImgs(l),
                 (d = t),
                 (u = l.querySelector(".post-delete-btn")) &&
                   (u.onclick = function (t) {

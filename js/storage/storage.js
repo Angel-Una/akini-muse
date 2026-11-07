@@ -852,13 +852,29 @@
     });
     var running = 0,
       settled = 0,
-      total = q.length;
+      total = q.length,
+      done = 0;
+    /* 启动期展开预算：朋友圈/iCity 图片会无限增长，全量换回 dataURL 等于把所有
+       照片常驻内存（移动端首屏前就被杀进程）。只展开最近的一部分，剩余保留
+       akini-ref:，由渲染层用 akiniStore.mediaGet 按需取图。 */
+    var _EXPAND_CAP = 8 * 1024 * 1024,
+      _expanded = 0,
+      _skipped = {};
+    if (k === "akini_posts" || k === "akini_posts_backup") {
+      /* posts 数组按发布顺序追加，最近的图在末尾：倒序保证最新动态优先展开 */
+      q.reverse();
+    }
+    ids.forEach(function (id) {
+      if (map[id]) _expanded += String(map[id]).length;
+    });
     function finish() {
+      if (done) return;
+      done = 1;
       if (missing) console.warn("[媒体] " + missing + " 张引用图在 IndexedDB 中缺失，已跳过");
       var out = v;
       try {
         out = v.replace(/akini-ref:([0-9a-z-]+)/g, function (m, id) {
-          return map[id] || "";
+          return map[id] || (_skipped[id] ? m : "");
         });
       } catch (e) {}
       try {
@@ -873,17 +889,29 @@
     /* 并发上限 4：几百张图一次性并发读会把内存顶起来（低端机闪退） */
     function pump() {
       while (running < 4 && q.length) {
+        if (_expanded >= _EXPAND_CAP) {
+          while (q.length) {
+            _skipped[q.shift()] = 1;
+            settled++;
+          }
+          break;
+        }
         var id = q.shift();
         running++;
         (function (id2) {
           idbGet(MEDIA_KEY_PRE + id2, function (d) {
             if (d && d.length > 10) {
-              _mediaRemember(id2, d);
-              /* 记住指纹→id：本次会话再落盘时复用同一个 id，不会生成重复媒体键 */
-              try {
-                _mediaRev[_mediaFp(d)] = id2;
-              } catch (eF) {}
-              map[id2] = d;
+              if (_expanded + d.length > _EXPAND_CAP) {
+                _skipped[id2] = 1;
+              } else {
+                _expanded += d.length;
+                _mediaRemember(id2, d);
+                /* 记住指纹→id：本次会话再落盘时复用同一个 id，不会生成重复媒体键 */
+                try {
+                  _mediaRev[_mediaFp(d)] = id2;
+                } catch (eF) {}
+                map[id2] = d;
+              }
             } else {
               missing++;
             }
@@ -894,6 +922,7 @@
           });
         })(id);
       }
+      if (!running && !q.length && settled === total) finish();
     }
     pump();
   }
@@ -1660,6 +1689,20 @@ window.__akiniRestoreSettled = true;
     memoryKeys: function () {
       return Object.keys(memoryCache);
     },
+    /* 外置媒体按需读取：朋友圈等页面渲染到哪张图才取哪张，避免启动时全量展开 */
+    mediaGet: function (id, cb) {
+      if (!id || typeof cb !== "function") return;
+      var mem = _mediaMem[id];
+      if (mem) return void cb(mem);
+      idbGet(MEDIA_KEY_PRE + id, function (v) {
+        if (v && v.length > 10) {
+          try {
+            _mediaRemember(id, v);
+          } catch (eM) {}
+          cb(v);
+        } else cb("");
+      });
+    },
     // 直写通道：绕过拦截层的原始 LS 写（配额满返回 false），供聊天记录切后台热备使用
     rawLSSet: function (k, v) {
       try {
@@ -1752,10 +1795,16 @@ _reconciledKeys = {};
                 idbGet(k, function (_v) {
                   if (_v != null && _v !== "" && _v !== "[]" && _v !== "{}" && _v !== "null") {
                     memSet(k, _v);
-                    // 同步回 LS，让后续同步读取也能拿到（配额满会被拦截，已由 setItem 守卫处理）
-                    try {
-                      self.origSet && self.origSet.call(rawLS, k, _v);
-                    } catch (eHyd) {}
+                    /* 朋友圈/iCity 媒体键：_v 是展开后的完整 dataURL JSON（可到几十 MB），
+                       绝不能整段写回 localStorage —— 手机配额只有 5MB，每次启动都会抛配额异常、
+                       并在主线程上多复制几遍巨型字符串（重进卡死/闪退的主因之一）。
+                       这些键的正文只在内存 + IndexedDB，写入路径本来就 removeItem(k)。 */
+                    if (!_MEDIA_KEYS[k]) {
+                      // 同步回 LS，让后续同步读取也能拿到（配额满会被拦截，已由 setItem 守卫处理）
+                      try {
+                        self.origSet && self.origSet.call(rawLS, k, _v);
+                      } catch (eHyd) {}
+                    }
                   }
                 });
               }
