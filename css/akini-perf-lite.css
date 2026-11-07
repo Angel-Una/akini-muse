@@ -5,11 +5,6 @@ html.ios-lite body #chatBody#chatBody .msg-row:not(.system) .bubble::before,
 html.ios-lite body #chatBody#chatBody .msg-row:not(.system) .bubble::after,
 html.ios-lite body #companionMsgs#companionMsgs .msg-row:not(.system) .bubble,
 html.ios-lite body #watchChatBody#watchChatBody .msg-row:not(.system) .bubble,
-html.low-mem body #chatBody#chatBody .msg-row:not(.system) .bubble,
-html.low-mem body #chatBody#chatBody .msg-row:not(.system) .bubble::before,
-html.low-mem body #chatBody#chatBody .msg-row:not(.system) .bubble::after,
-html.low-mem body #companionMsgs#companionMsgs .msg-row:not(.system) .bubble,
-html.low-mem body #watchChatBody#watchChatBody .msg-row:not(.system) .bubble,
 html.akini-low-mem body #chatBody#chatBody .msg-row:not(.system) .bubble,
 html.akini-low-mem body #chatBody#chatBody .msg-row:not(.system) .bubble::before,
 html.akini-low-mem body #chatBody#chatBody .msg-row:not(.system) .bubble::after,
@@ -19,12 +14,7 @@ html.akini-low-mem body #watchChatBody#watchChatBody .msg-row:not(.system) .bubb
   backdrop-filter: none !important;
 }
 
-/* 2) 无限循环的装饰动画在低内存设备上只保留首帧，避免持续占用 GPU/主线程 */
-html.low-mem .bg-wave,
-html.low-mem [class*="cloud"],
-html.low-mem [class*="float"],
-html.low-mem [class*="shine"],
-html.low-mem [class*="sparkle"],
+/* 2) 无限循环的装饰动画只保留首帧，避免持续占用 GPU/主线程 */
 html.ios-lite .bg-wave,
 html.ios-lite [class*="cloud"],
 html.ios-lite [class*="float"],

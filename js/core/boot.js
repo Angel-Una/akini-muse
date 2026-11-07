@@ -379,23 +379,19 @@ window.__akiniPerfMark = function () {};
     } catch (e2) {}
   }
 })();
-/* 低内存检测：给全局做标记，后续 SW/保活/重合并均可读取 */
+/* 设备内存标记：仅用于内部省内存策略（存储预算/后台任务限流），不再参与任何样式分支。
+   milk/zy 没有"低内存模式"这种视觉模式，页面外观对所有机型保持一致。 */
 try {
   var _ua = navigator.userAgent || "";
-  var _isOldAndroid = /Android\s*([0-9]+)/i.test(_ua) && parseInt(RegExp.$1, 10) <= 10;
-  var _isLemur = /Lemur|Gecko|Firefox/i.test(_ua) && !/Chrome|Safari/i.test(_ua);
-  var _isVivo = /vivo|V1945A|V19|OPPO|P[A-Z]{2}[0-9]{2}/i.test(_ua);
   window.__akiniLowMem =
     (navigator.deviceMemory || 8) <= 4 ||
     (navigator.hardwareConcurrency || 8) <= 4 ||
-    (/iPad|iPhone|iPod/.test(_ua) && !window.MSStream) ||
-    _isOldAndroid ||
-    _isLemur ||
-    _isVivo;
-  if (window.__akiniLowMem) document.documentElement.classList.add("low-mem");
-  /* iOS 降级：iOS 及低内存设备一律进 ios-lite，全局关闭重 GPU 滤镜（backdrop-filter 是 iOS 内存/卡崩主要杀手） */
-  var _isIOSLite = (/iPad|iPhone|iPod/.test(_ua) && !window.MSStream) || window.__akiniLowMem;
-  if (_isIOSLite) document.documentElement.classList.add("ios-lite");
+    /iPad|iPhone|iPod/.test(_ua);
+} catch (e) {}
+/* iOS 降级：仅 iOS 设备进 ios-lite，关闭重 GPU 滤镜 */
+try {
+  var _isIOS = /iPad|iPhone|iPod/.test(_ua) && !window.MSStream;
+  if (_isIOS) document.documentElement.classList.add("ios-lite");
 } catch (e) {}
 
 /* ---- boot block 3 ---- */

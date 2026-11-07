@@ -354,13 +354,6 @@
       console.error("[Akini] 弹窗展示异常", t);
     }
   }),
-  (function () {
-    try {
-      var t = navigator.deviceMemory || 0,
-        e = navigator.hardwareConcurrency || 0;
-      ((t > 0 && t <= 4) || (e > 0 && e <= 4)) && document.documentElement.classList.add("low-mem");
-    } catch (t) {}
-  })(),
   "function" != typeof window.esc &&
     (window.esc = function (t) {
       return String(null == t ? "" : t)
