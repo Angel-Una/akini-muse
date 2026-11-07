@@ -6,7 +6,7 @@
     var row = document.getElementById("toggleChatTopBlurBtn");
     var blurEl = document.getElementById("chatTopBarBlur");
     var saved = localStorage.getItem("akini_chat_top_blur");
-    var isEnabled = saved !== "false"; // 默认开启
+    var isEnabled = saved === "true"; // 默认关闭：只有用户明确打开过才显示
     if (cb) cb.checked = isEnabled;
     if (blurEl) blurEl.style.display = isEnabled ? "" : "none";
 

@@ -609,3 +609,62 @@
     mark(document);
   }
 })();
+
+/* 评论输入框：随内容自动长高（上限 30vh，CSS 已卡），回车发送、Shift+回车换行 */
+(function () {
+  document.addEventListener(
+    "input",
+    function (e) {
+      var t = e.target;
+      if (!t || t.id !== "friendsCommentInput") return;
+      try {
+        t.style.height = "auto";
+        t.style.height = Math.min(t.scrollHeight, Math.round(window.innerHeight * 0.3)) + "px";
+      } catch (err) {}
+    },
+    true,
+  );
+  document.addEventListener(
+    "keydown",
+    function (e) {
+      var t = e.target;
+      if (!t || t.id !== "friendsCommentInput") return;
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        var b = document.getElementById("friendsCommentSubmit");
+        if (b) b.click();
+      }
+    },
+    true,
+  );
+})();
+
+/* 聊天背景自愈（对齐 milk/zy 的做法：系统回收大图解码后，回到前台时强制重绘）。
+   iOS/Android 在内存压力下会丢弃 dataURL 背景的已解码位图 —— CSS 还在、图没了，
+   重进聊天才恢复。回到前台时把 background-image 清掉再设回，强制浏览器重新解码。 */
+(function () {
+  function healChatBg() {
+    try {
+      var cb = document.getElementById("chatBody");
+      if (!cb) return;
+      var v = cb.getAttribute("data-current-bg");
+      if (!v) return;
+      var want = 'url("' + v + '")';
+      [cb, document.getElementById("app-chat")].forEach(function (el) {
+        if (!el || !el.style) return;
+        el.style.removeProperty("background-image");
+        void el.offsetHeight; /* 强制 reflow，让重设生效 */
+        el.style.setProperty("background-image", want, "important");
+        el.style.setProperty("background-size", "cover", "important");
+        el.style.setProperty("background-position", "center", "important");
+        el.style.setProperty("background-repeat", "no-repeat", "important");
+      });
+    } catch (e) {}
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) healChatBg();
+  });
+  window.addEventListener("pageshow", function (e) {
+    if (e && e.persisted) healChatBg();
+  });
+})();

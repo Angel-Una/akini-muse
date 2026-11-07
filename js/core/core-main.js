@@ -10970,7 +10970,7 @@ Gn = document.getElementById("chatQuoteBar"),
           (window._akMsgGrow = function () {
             try {
               qn.style.height = "auto";
-              qn.style.height = Math.min(qn.scrollHeight, 104) + "px";
+              qn.style.height = Math.min(qn.scrollHeight, Math.round(window.innerHeight * 0.8)) + "px";
             } catch (t) {}
           },
           qn.addEventListener("keydown", function (t) {
@@ -14167,6 +14167,11 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                           : 'src="' + t.img + '"') +
                         ' alt="" style="max-height:200px;"></div>'
                       : "") +
+                    (t.mention
+                      ? '<div style="font-size:12px;color:#999;margin-top:6px;">提到了：' +
+                        t.mention +
+                        "</div>"
+                      : "") +
                     '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;"><div style="display:inline-flex;align-items:center;"><div class="post-time" style="font-size:12px;color:#999;line-height:16px;">' +
                     (function (t) {
                       if (!t) return "";
@@ -14190,7 +14195,7 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                     e +
                     '" style="background:none;border:none;padding:0;cursor:pointer;font-size:14px;color:#ffffff;outline:none;display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" fill=none stroke="#333333" stroke-width=2 stroke-linecap=round stroke-linejoin=round style="width:14px;height:14px;color:#333333;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> <span style="color:#333333;">评论</span></button></div><button type="button" class="post-dots-trigger" data-pidx="' +
                     e +
-                    '" style="background:#f7f7f7;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;color:#576b95;font-weight:900;letter-spacing:1px;font-size:14px;line-height:1;" title="评论与赞">··</button></div></div>' +
+                    '" style="background:#f7f7f7;border:none;border-radius:6px;padding:8px 14px;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;color:#576b95;font-weight:900;letter-spacing:2px;font-size:18px;line-height:1;align-self:center;" title="评论与赞">··</button></div></div>' +
                     s,
                 ),
                 o.appendChild(l),
@@ -14402,6 +14407,22 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                   ? window.__akiniToast("还没有收藏表情包，请先在字卡库添加")
                   : alert("还没有收藏表情包，请先在字卡库添加");
             }),
+            (function () {
+              var ms = document.getElementById("mentionSwitch");
+              window.__postMentionOn = false;
+              window._akSetMention = function (on) {
+                window.__postMentionOn = !!on;
+                if (!ms) return;
+                ms.style.background = on ? "#07c160" : "#e5e5e5";
+                ms.setAttribute("aria-checked", on ? "true" : "false");
+                var knob = ms.firstElementChild;
+                if (knob) knob.style.left = on ? "20px" : "2px";
+              };
+              ms &&
+                c(ms, function () {
+                  window._akSetMention(!window.__postMentionOn);
+                });
+            })(),
             m.addEventListener("change", function () {
               const t = this.files[0];
               if (!t) return;
@@ -14421,7 +14442,8 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                 ((r.style.display = "flex"),
                 d && (d.value = ""),
                 (w = null),
-                u && setHtmlKeepInput(u, '<div style="font-size:14px;color:#666;">添加图片</div>'));
+                window._akSetMention && window._akSetMention(false),
+                u && setHtmlKeepInput(u, '<div style="font-size:15px;color:#333;">添加图片</div>'));
             }),
             c(s, function () {
               r && ((r.style.display = "none"), r.classList.remove("show"));
@@ -14438,6 +14460,9 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                   ts: Date.now(),
                   author: n,
                   id: Date.now() + Math.random().toString(36).slice(2, 9),
+                  mention: window.__postMentionOn
+                    ? localStorage.getItem("akini_ta_name") || "对方"
+                    : null,
                 };
               (e.push(i), gt(e), r && ((r.style.display = "none"), r.classList.remove("show")), a());
               try {
