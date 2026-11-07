@@ -210,23 +210,8 @@
       // 通知 UI（回信与其它互动一致：站内弹窗 / 后台系统通知都走 showInAppNotif）
       for (var d = 0; d < delivered.length; d++) {
         var s2 = delivered[d];
-        /* TA 的手机信箱：联系人有概率收藏 TA 给我的回信（与朋友圈同概率） */
-        try {
-          if (s2 && window.akiniTaPhoneCollectMail) {
-            window.akiniTaPhoneCollectMail(
-              s2.replyFromId || s2.toId,
-              {
-                content: s2.replyContent || s2.content,
-                title: "",
-                from: s2.replyFromName || s2.to || "对方",
-                date: s2.date,
-                ts: s2.replyTime || s2.ts,
-                subtype: "reply",
-              },
-              "received",
-            );
-          }
-        } catch (eMailCol) {}
+        /* TA 的手机信箱只收藏"我寄出的信 / 我回复 TA 的回信"，
+           联系人回给我的信属于我自己的信箱，这里不再收藏。 */
         if (window.showInAppNotif) {
           // 头像实时从联系人取：预约时存的 replyAvatar 可能是换头像前的旧值
           var _rc = null;

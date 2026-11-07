@@ -121,7 +121,12 @@
           icity: Array.isArray(parsed.icity) ? parsed.icity.filter(_keepFav) : [],
           music: Array.isArray(parsed.music) ? parsed.music : [],
           calls: Array.isArray(parsed.calls) ? parsed.calls : [],
-          mail: Array.isArray(parsed.mail) ? parsed.mail : [],
+          /* 旧版本把"TA 的回信"也收进了 TA 的手机：读入时清掉 */
+          mail: Array.isArray(parsed.mail)
+            ? parsed.mail.filter(function (m) {
+                return !m || m.direction !== "received";
+              })
+            : [],
         };
         return _colCache[contactId];
       }
@@ -294,10 +299,13 @@
     return true;
   }
 
-  /* 联系人收藏「我给 TA 写的信 / TA 的回信」：概率与朋友圈一致，可在设置里自定义。
-     信件对象形如 { from, fromId, content, date, ts, ... } */
+  /* 联系人收藏「我写给 TA 的信 / 我回复 TA 的回信」：概率与朋友圈一致，可在设置里自定义。
+     TA 手机的信箱只放"我"寄出的内容，联系人回给我的信属于我自己的信箱，不在这里。
+     信件对象形如 { from, fromId, content, date, ts, subtype, ... } */
   function addMailCollection(contactId, mail, scope) {
     if (!contactId || !mail) return false;
+    /* 收到的回信不收进 TA 的手机 */
+    if (scope === "received") return false;
     var body = String(mail.content || mail.body || "").trim();
     if (!body || isCardFavContent(body)) return false;
     var data = loadCollections(contactId);
@@ -306,11 +314,13 @@
       var it = data.mail[i];
       if (it && it.content === body && it.originalTime === orig) return false;
     }
+    var subtype = mail.subtype === "reply" ? "reply" : "";
     data.mail.unshift({
       id: Date.now() + Math.random(),
       content: body,
       title: String(mail.title || mail.subject || "").trim(),
-      direction: "sent" === scope ? "sent" : "received",
+      direction: "sent",
+      subtype: subtype,
       fromName: String(mail.from || "").trim(),
       originalTime: orig,
       collectedTime: Date.now(),
@@ -320,7 +330,8 @@
         from: String(mail.from || "").trim(),
         date: String(mail.date || ""),
         ts: orig,
-        direction: "sent" === scope ? "sent" : "received",
+        direction: "sent",
+        subtype: subtype,
       },
     });
     saveCollections(contactId, data);
@@ -466,23 +477,16 @@
         plist = plistRaw ? JSON.parse(plistRaw) : [];
       } catch (e) {}
       if (!Array.isArray(plist)) plist = [];
-      /* 读历史信件：我寄出的信（写信用）与收到的回信（TA 的回信） */
-      var mailSent = [],
-        mailRecv = [];
+      /* 读历史信件：只有我寄出/我回复的信会进 TA 手机的信箱 */
+      var mailSent = [];
       try {
         var _msRaw =
           window.akiniStore && window.akiniStore.getSync
             ? window.akiniStore.getSync("akini_mail_sent", null)
             : localStorage.getItem("akini_mail_sent");
         mailSent = _msRaw ? (typeof _msRaw === "string" ? JSON.parse(_msRaw) : _msRaw) : [];
-        var _mrRaw =
-          window.akiniStore && window.akiniStore.getSync
-            ? window.akiniStore.getSync("akini_mail_received", null)
-            : localStorage.getItem("akini_mail_received");
-        mailRecv = _mrRaw ? (typeof _mrRaw === "string" ? JSON.parse(_mrRaw) : _mrRaw) : [];
       } catch (eMailScan) {}
       Array.isArray(mailSent) || (mailSent = []);
-      Array.isArray(mailRecv) || (mailRecv = []);
       /* 朋友圈/iCity/网易云/信箱：每个联系人独立判定、各自收藏到自己的手机；
          每类每次扫描最多 1 条（从最新往旧扫，命中即停），不会一口气收藏一堆 */
       contacts.forEach(function (c) {
@@ -507,23 +511,13 @@
             break;
           }
         }
-        /* 信箱：我给 TA 写的信（每次最多 1 封） */
+        /* 信箱：只收我写给 TA 的信 / 我回复 TA 的回信（同一份 mailSent 里） */
         for (var li = mailSent.length - 1; li >= 0; li--) {
           var lm = mailSent[li];
           if (!lm || !lm.content) continue;
           if (!(lm.toId === c.id || lm.to === c.name)) continue;
           if (Math.random() < taProb("Mail", MAIL_CHANCE)) {
             addMailCollection(c.id, lm, "sent");
-            break;
-          }
-        }
-        /* 信箱：TA 给我的回信（每次最多 1 封） */
-        for (var ri2 = mailRecv.length - 1; ri2 >= 0; ri2--) {
-          var rm = mailRecv[ri2];
-          if (!rm || rm.subtype !== "reply" || !rm.content) continue;
-          if (!(rm.fromId === c.id || rm.from === c.name)) continue;
-          if (Math.random() < taProb("Mail", MAIL_CHANCE)) {
-            addMailCollection(c.id, rm, "received");
             break;
           }
         }
@@ -840,10 +834,13 @@
         el.innerHTML = '<div class="akini-ta-phone-empty">信件已不存在...</div>';
         return;
       }
-      var _dir = _letter.direction === "sent" ? "我写给 TA 的信" : "TA 写给我的回信";
+      var _isReply =
+        _letter.subtype === "reply" ||
+        (_letter.letter && _letter.letter.subtype === "reply");
+      var _dir = _isReply ? "我写给 TA 的回信" : "我写给 TA 的信";
       var _title =
         String(_letter.title || "").trim() ||
-        (_letter.direction === "sent" ? "写给 TA 的信" : "TA 的回信");
+        (_isReply ? "写给 TA 的回信" : "写给 TA 的信");
       var _body = String(_letter.content || "").trim();
       el.innerHTML =
         '<div class="akini-ta-mail-detail">' +
@@ -882,6 +879,9 @@
       el.innerHTML = sorted
         .map(function (item) {
           var isSent = item.direction === "sent";
+          var isReply =
+            item.subtype === "reply" ||
+            (item.letter && item.letter.subtype === "reply");
           var body = String(item.content || "").trim().replace(/\s+/g, " ");
           if (body.length > 76) body = body.slice(0, 76) + "…";
           return (
@@ -897,7 +897,7 @@
             '<span class="akini-ta-mail-item-dir ' +
             (isSent ? "is-sent" : "is-received") +
             '">' +
-            (isSent ? "我写的信" : "TA 的回信") +
+            (isReply ? "我的回信" : "我写的信") +
             "</span>" +
             '<span class="akini-ta-mail-item-time">' +
             escapeHtml(formatTime(item.originalTime)) +
@@ -905,7 +905,8 @@
             "</div>" +
             '<div class="akini-ta-mail-item-title">' +
             escapeHtml(
-              String(item.title || "").trim() || (isSent ? "写给 TA 的信" : "TA 的回信"),
+              String(item.title || "").trim() ||
+                (isReply ? "写给 TA 的回信" : "写给 TA 的信"),
             ) +
             "</div>" +
             '<div class="akini-ta-mail-item-body">' +

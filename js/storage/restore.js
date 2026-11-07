@@ -738,18 +738,21 @@ window.__akiniRestoredDone = true;
       var body = document.getElementById("chatBody");
       if (!body) return;
       if (body.querySelectorAll(".msg-row").length) return;
-      var C = window.akiniContacts;
-      var sess = (C && C.getSessions ? C.getSessions() : {}) || {};
-      var html = (sess[id] && sess[id].messagesHTML) || "";
-      if (!html) {
+      /* 只判断"有没有历史"，不 join 整段 HTML */
+      var exists = false;
+      try {
+        exists = window.__akiniChatLog ? window.__akiniChatLog.has(id) : false;
+      } catch (eHas) {}
+      if (!exists) {
         try {
-          html =
-            (window.akiniStore && window.akiniStore.memoryGet
+          exists =
+            ((window.akiniStore && window.akiniStore.memoryGet
               ? window.akiniStore.memoryGet("akini_chat_history_" + id)
-              : "") || "";
+              : "") || ""
+            ).indexOf("msg-row") >= 0;
         } catch (e0) {}
       }
-      if (!html || html.indexOf("msg-row") < 0) return;
+      if (!exists) return;
       if (window.openChat) window.openChat(id, true);
     } catch (e) {}
   }

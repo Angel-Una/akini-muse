@@ -2195,14 +2195,25 @@ function $() {
             var e = jn.getAttribute("data-rendered-chat-id");
             if (e && e !== t) {
               var n = window.akiniContacts.getSession(e);
-              /* 会话里的 messagesHTML 是落盘时才刷新的旧副本（更新滞后于内存工作集）。
-                 只有工作集为空时才回填，避免用旧副本覆盖刚追加的系统消息，
-                 导致"系统消息出现后立刻消失"。 */
-              n && n.messagesHTML && !W[e] && et(e, n.messagesHTML);
+              /* 工作集为空时只回填最近一批：会话里的 messagesHTML 是绑定视图，
+                 读一次就会 join 整段历史（一万条就是几 MB）。 */
+              var _logS = window.__akiniChatLog;
+              if (n && !W[e] && _logS) {
+                try {
+                  var _hS = _logS.tail(e, AKINI_CHAT_BATCH_SIZE);
+                  _hS && et(e, _hS);
+                } catch (_se) {}
+              } else n && !W[e] && n.messagesHTML && et(e, n.messagesHTML);
             }
             jn.setAttribute("data-rendered-chat-id", t);
             var i = window.akiniContacts.getSession(t);
-            i && i.messagesHTML && "" !== i.messagesHTML.trim() && !W[t] && et(t, i.messagesHTML);
+            var _logA = window.__akiniChatLog;
+            if (i && !W[t] && _logA) {
+              try {
+                var _hA = _logA.tail(t, AKINI_CHAT_BATCH_SIZE);
+                _hA && et(t, _hA);
+              } catch (_ae2) {}
+            } else i && !W[t] && i.messagesHTML && "" !== i.messagesHTML.trim() && et(t, i.messagesHTML);
           }
         }
       }
@@ -2281,30 +2292,27 @@ function V(t) {
                         window.akiniContacts && window.akiniContacts.getSession
                           ? window.akiniContacts.getSession(t)
                           : null,
-                      a = window.__akiniChatLog ? window.__akiniChatLog.html(t) : "";
-                    /* 会话内存副本是落盘时才刷新的，可能短一截；优先用内存完整历史 */
-                    if (!a) a = (i && i.messagesHTML) || "";
-                    if (!a) return;
+                      _log = window.__akiniChatLog,
+                      _total = _log ? _log.count(t) : 0;
+                    /* 只统计条数，不 join 整段历史 */
+                    if (!_total) _total = __akiniCountMsgRowsFast((i && i.messagesHTML) || "");
+                    if (!_total) return;
                     var _domRows = jn.querySelectorAll(".msg-row").length;
-                    _domRows < __akiniCountMsgRowsFast(a) &&
+                    _domRows < _total &&
                       (function (t) {
                         if (!jn) return;
-                        var n = window.__akiniChatLog ? window.__akiniChatLog.html(t) : "";
-                        if (!n) {
-                          var e = window.akiniContacts.getSession(t) || {};
-                          n = e.messagesHTML || "";
-                        }
                         /* 对齐 milk/zy：只把「这一批新露出的旧消息」插到顶部，
                            不再把已渲染的整段历史重新 innerHTML 一遍。
                            老历史越长，旧写法每次上拉都要重新解析整段 HTML，
                            是越滑越卡、最终把渲染进程拖崩的来源。 */
                         var _domN = jn.querySelectorAll(".msg-row").length;
-                        var _total = __akiniCountMsgRowsFast(n);
                         if (_domN >= _total) {
                           window.__akiniShownRows[t] = _total;
                           return;
                         }
                         var _next = Math.min(_total, _domN + AKINI_CHAT_BATCH_SIZE);
+                        var n = _log ? _log.tail(t, _next) : (i && i.messagesHTML) || "";
+                        if (!n) return;
                         var _newHtml = Y(n, _next);
                         var _oldHtml = _domN > 0 ? Y(n, _domN) : "";
                         var _add = "";
@@ -2368,7 +2376,9 @@ function X(t, e) {
             try {
               delete window.__akiniChatBackfillTs;
             } catch (t) {}
-            var r = __akiniCountMsgRowsFast(n),
+            var r =
+                (window.__akiniChatTotal && window.__akiniChatTotal[e]) ||
+                __akiniCountMsgRowsFast(n),
               _want = (window.__akiniShownRows && window.__akiniShownRows[e]) || AKINI_CHAT_BATCH_SIZE,
               c = r <= _want ? n : Y(n, _want);
             /* 增量追加（对齐 milk/zy）：同一会话下，只补「DOM 里还没有的消息」。
@@ -4492,10 +4502,14 @@ function Zt(t, e) {
             } catch (e) {}
           we();
           var _q0 = performance.now();
-          /* 单一数据源：历史只从 __akiniChatLog 的数组读，不再在 4 份字符串副本里择优合并 */
+          /* 对齐 milk/zy：内存里保留完整历史数组，但打开会话只取最近一批渲染。
+             以前这里 join 整段历史（一万条就是几 MB 字符串），再交给 DOM 解析，
+             是越用越卡、重进闪退的根因。 */
           var d = "";
+          var _totalRows = 0;
           try {
-            d = window.__akiniChatLog ? window.__akiniChatLog.html(t) : "";
+            _totalRows = window.__akiniChatLog ? window.__akiniChatLog.count(t) : 0;
+            d = window.__akiniChatLog ? window.__akiniChatLog.tail(t, AKINI_CHAT_BATCH_SIZE) : "";
           } catch (_eLog) {}
           if (!d)
             try {
@@ -4503,6 +4517,8 @@ function Zt(t, e) {
               if (_bk) {
                 d = _bk;
                 window.__akiniChatLog && window.__akiniChatLog.replace(t, _bk);
+                _totalRows = window.__akiniChatLog ? window.__akiniChatLog.count(t) : _totalRows;
+                d = window.__akiniChatLog ? window.__akiniChatLog.tail(t, AKINI_CHAT_BATCH_SIZE) : _bk;
               }
             } catch (eBk) {}
           /* 工作集只保留当前会话，其余靠数组/IDB 按需回读 */
@@ -4531,6 +4547,8 @@ function Zt(t, e) {
                不再写独立的 akini_chat_rows_ 水位键。 */
             window.__akiniShownRows = window.__akiniShownRows || {};
             window.__akiniShownRows[t] = AKINI_CHAT_BATCH_SIZE;
+            window.__akiniChatTotal = window.__akiniChatTotal || {};
+            window.__akiniChatTotal[t] = _totalRows || __akiniCountMsgRowsFast(d);
             f(d);
           };
           if (__mhKeys.length && window.__akiniMedia) {
@@ -4575,7 +4593,9 @@ function Zt(t, e) {
                   if (!e || typeof e !== "string") return;
                   try {
                     window.__akiniChatLog.replace(t, e);
-                    var _h = window.__akiniChatLog.html(t);
+                    window.__akiniChatTotal = window.__akiniChatTotal || {};
+                    window.__akiniChatTotal[t] = window.__akiniChatLog.count(t);
+                    var _h = window.__akiniChatLog.tail(t, AKINI_CHAT_BATCH_SIZE);
                     if (!_h) return;
                     W[t] = __akiniCapHistory(_h, t, 150);
                     f(_h);
@@ -8588,6 +8608,8 @@ window.__akiniResetHomeScroll = function () {
                   /* 数组模型的常驻内存副本与待落盘定时器也要一起丢弃，否则会被 pagehide 写回 */
                   try {
                     window.__akiniChatLog && window.__akiniChatLog.reset(t);
+                    window.__akiniChatTotal && delete window.__akiniChatTotal[t];
+                    window.__akiniShownRows && delete window.__akiniShownRows[t];
                   } catch (eLogR) {}
                   var a = v("akini_mail_sent", []),
                     o = v("akini_mail_received", []);
@@ -10220,7 +10242,14 @@ window.__akiniBindSettingsControls = function () {
               for (var r = Math.min(o + 5, a.length), c = o; c < r; c++) {
                 var s = a[c],
                   l = i[s],
-                  d = l && l.messagesHTML;
+                  d = "";
+                /* 先用原始值过滤，只有真的含内联 SVG 头像的会话才 join 历史 */
+                try {
+                  var _rawSvg = window.__akiniChatLog ? window.__akiniChatLog.raw(s) : "";
+                  if (_rawSvg && _rawSvg.indexOf("data:image/svg") >= 0)
+                    d = window.__akiniChatLog.html(s);
+                  else if (!window.__akiniChatLog) d = l && l.messagesHTML;
+                } catch (_svgE) {}
                 if (!(!d || d.length > 1048576 || d.indexOf("data:image/svg") < 0)) {
                   var u = !1,
                     m = "";
@@ -10350,10 +10379,16 @@ window.__akiniBindSettingsControls = function () {
             try {
               var e = window.akiniContacts.getActiveChatId();
               if (e) {
-                /* 单一数据源：回前台只从数组取历史重渲染，不再和 DOM/IDB 做行数择优 */
+                /* 回前台只取当前渲染窗口那一批，不 join 完整历史 */
                 window.__akiniChatLog && window.__akiniChatLog.flush();
-                var i = window.__akiniChatLog ? window.__akiniChatLog.html(e) : "";
-                i.trim() && X(Ot(i), e);
+                var _log = window.__akiniChatLog;
+                var _want = (window.__akiniShownRows && window.__akiniShownRows[e]) || AKINI_CHAT_BATCH_SIZE;
+                var i = _log ? _log.tail(e, _want) : "";
+                if (i.trim()) {
+                  window.__akiniChatTotal = window.__akiniChatTotal || {};
+                  window.__akiniChatTotal[e] = _log ? _log.count(e) : __akiniCountMsgRowsFast(i);
+                  X(Ot(i), e);
+                }
               }
             } catch (t) {} }),
         window.addEventListener("pageshow", function (t) {
@@ -10386,24 +10421,23 @@ window.__akiniBindSettingsControls = function () {
             if (!jn || !window.akiniContacts) return;
             var t = window.akiniContacts.getActiveChatId();
             if (!t) return;
-            /* chat id 没变 + messagesHTML 也没变 → 整个 DOM 对比直接跳过，避免 innerHTML 重刷闪烁 */
-            if (t === window.__akiniLastChatId) {
-              var _sess = window.akiniContacts.getSession(t);
-              var _sig = ((_sess && _sess.messagesHTML) || "").length > 0 ? (_sess && _sess.messagesHTML) : null;
-              if (_sig && _sig === window.__akiniLast120sSig) return;
-            }
+            /* chat id 没变 + 条数/最后一条没变 → 跳过，避免每 2 分钟 join 一次完整历史 */
+            var _log = window.__akiniChatLog;
+            var _lastRow = _log ? _log.last(t) : null;
+            var _sig = _log
+              ? _log.count(t) + "|" + (_lastRow ? (_lastRow.ts || 0) + "|" + _lastRow.html.length : "0")
+              : null;
+            if (t === window.__akiniLastChatId && _sig && _sig === window.__akiniLast120sSig) return;
             window.__akiniLastChatId = t;
-            var e = window.akiniContacts.getSession(t),
-              n = (e && e.messagesHTML) || "";
-            if (!n || n === window.__akiniLast120sSig) return;
-            if (((window.__akiniLast120sSig = n), n.trim())) {
-              var i = Ot(n);
+            if (!_sig) return;
+            window.__akiniLast120sSig = _sig;
+            window.__akiniChatTotal = window.__akiniChatTotal || {};
+            window.__akiniChatTotal[t] = _log.count(t);
+            var _want2 = (window.__akiniShownRows && window.__akiniShownRows[t]) || AKINI_CHAT_BATCH_SIZE;
+            var n = _log.tail(t, _want2);
+            if (!n) return;
+            if (n.trim()) {
               return (
-                i !== n &&
-                  ((n = i),
-                  window.akiniContacts.updateSession(t, {
-                    messagesHTML: n,
-                  })),
                 window._restoringChatHistory || et(t, n),
                 void ((jn.innerHTML && "" !== jn.innerHTML.trim()) || X(n, t))
               );
@@ -10419,7 +10453,12 @@ window.__akiniBindSettingsControls = function () {
                     try {
                       window.__akiniChatLog && window.__akiniChatLog.replace(t, e);
                     } catch (_e) {}
-                    var _h = window.__akiniChatLog ? window.__akiniChatLog.html(t) : String(e);
+                    var _log2 = window.__akiniChatLog;
+                    window.__akiniChatTotal = window.__akiniChatTotal || {};
+                    window.__akiniChatTotal[t] = _log2 ? _log2.count(t) : 0;
+                    var _h = _log2
+                      ? _log2.tail(t, AKINI_CHAT_BATCH_SIZE)
+                      : String(e);
                     X(Ot(_h), t);
                   })());
             });
@@ -22855,11 +22894,10 @@ window.__akiniPatchAvatarCell = function (t, e) {
                     var e = window.akiniContacts.getActiveChatId();
                     if (e) {
                       var n = window.akiniContacts.getSession(e);
-                      if (n && n.messagesHTML && n.messagesHTML.trim()) {
+                      /* 不再读 n.messagesHTML（会 join 整段历史）；chat-log 已经是权威落盘方 */
+                      if (n) {
                         var _wn = "string" == typeof W[e] ? W[e] : "";
-                        _wn.length > n.messagesHTML.length
-                          ? ((W[e] = _wn), et(e, _wn))
-                          : ((W[e] = n.messagesHTML), et(e, n.messagesHTML));
+                        _wn && ((W[e] = _wn), et(e, _wn));
                       }
                     }
                     var i = Object.keys(W).filter(function (t) {
@@ -22933,7 +22971,9 @@ window.__akiniPatchAvatarCell = function (t, e) {
                               try {
                                 window.__akiniChatLog && window.__akiniChatLog.replace(t, e);
                               } catch (_rE) {}
-                              var _h = window.__akiniChatLog ? window.__akiniChatLog.html(t) : e;
+                              var _h = window.__akiniChatLog
+                                ? window.__akiniChatLog.tail(t, AKINI_CHAT_BATCH_SIZE)
+                                : __akiniCapHistory(e, t, 150);
                               W[t] = __akiniCapHistory(_h, t, 150);
                               try {
                                 /* 立即把数组/行数水位一起落盘，供保存层防变短判断 */
@@ -22941,6 +22981,12 @@ window.__akiniPatchAvatarCell = function (t, e) {
                               } catch (_pE) {}
                               if (window.akiniContacts.getActiveChatId() === t) {
                                 var n = document.getElementById("chatBody");
+                                try {
+                                  if (window.__akiniChatLog) {
+                                    window.__akiniChatTotal = window.__akiniChatTotal || {};
+                                    window.__akiniChatTotal[t] = window.__akiniChatLog.count(t);
+                                  }
+                                } catch (_tc) {}
                                 !n || (n.innerHTML && n.innerHTML.trim()) || X(Ot(_h), t);
                               }
                             }
