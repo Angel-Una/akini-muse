@@ -14200,7 +14200,7 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                     e +
                     '" style="background:none;border:none;padding:0;cursor:pointer;font-size:14px;color:#ffffff;outline:none;display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" fill=none stroke="#333333" stroke-width=2 stroke-linecap=round stroke-linejoin=round style="width:14px;height:14px;color:#333333;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> <span style="color:#333333;">评论</span></button></div><button type="button" class="post-dots-trigger" data-pidx="' +
                     e +
-                    '" style="background:#f7f7f7;border:none;border-radius:6px;padding:9px 8px;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;align-self:center;" title="评论与赞"><svg width="14" height="5" viewBox="0 0 14 5"><circle cx="2.5" cy="2.5" r="2" fill="#576b95"/><circle cx="11.5" cy="2.5" r="2" fill="#576b95"/></svg></button></div></div>' +
+                    '" style="background:#f7f7f7;border:none;border-radius:4px;padding:8px 10px;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;align-self:center;" title="评论与赞"><svg width="12" height="4" viewBox="0 0 12 4"><circle cx="2" cy="2" r="2" fill="#576b95"/><circle cx="10" cy="2" r="2" fill="#576b95"/></svg></button></div></div>' +
                     s,
                 ),
                 o.appendChild(l),

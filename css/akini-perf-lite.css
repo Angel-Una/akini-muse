@@ -286,7 +286,6 @@ html body .chat-body {
 /* 19) 一起听两张卡片：主样式表有一条通用 .bubble 规则带 !important 的
    padding:9px 12px / border:none，会把卡片的内联尺寸和描边吃掉。
    这里用同等特异性 + 后加载把卡片样式恢复。 */
-html body #app-chat #chatBody .msg-row .bubble.music-end-bubble,
 html body #app-chat #chatBody .msg-row .bubble.music-invite-bubble {
   border: 1px solid #e8e8e8 !important;
   border-radius: 16px !important;
@@ -296,6 +295,18 @@ html body #app-chat #chatBody .msg-row .bubble.music-invite-bubble {
   width: 236px !important;
   min-width: 236px !important;
   max-width: 236px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07) !important;
+  text-shadow: none !important;
+}
+html body #app-chat #chatBody .msg-row .bubble.music-end-bubble {
+  border: 1px solid #e8e8e8 !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  color: #1a1a1a !important;
+  padding: 11px 13px !important;
+  width: 200px !important;
+  min-width: 200px !important;
+  max-width: 200px !important;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07) !important;
   text-shadow: none !important;
 }

@@ -647,7 +647,7 @@
       var bubble =
         '<div class="bubble music-end-bubble" ' +
         dataAttr +
-        ' onclick="event.stopPropagation();window.__akiniOpenMusicEndPopup &amp;&amp; window.__akiniOpenMusicEndPopup(this)" style="background:#fff !important;border:1px solid #e8e8e8 !important;border-radius:16px !important;padding:8px 14px !important;width:236px !important;min-width:236px !important;max-width:236px !important;cursor:pointer;color:#1a1a1a !important;box-shadow:0 4px 14px rgba(0,0,0,.07) !important;">' +
+        ' onclick="event.stopPropagation();window.__akiniOpenMusicEndPopup &amp;&amp; window.__akiniOpenMusicEndPopup(this)" style="background:#fff !important;border:1px solid #e8e8e8 !important;border-radius:16px !important;padding:11px 13px !important;width:200px !important;min-width:200px !important;max-width:200px !important;cursor:pointer;color:#1a1a1a !important;box-shadow:0 4px 14px rgba(0,0,0,.07) !important;">' +
         bubbleInner +
         "</div>";
       var html;
@@ -1462,10 +1462,12 @@
       var isEnd = card.classList.contains("music-end-bubble");
       var isInvite = card.classList.contains("music-invite-bubble");
       if (!isEnd && !isInvite) return;
-      card.style.setProperty("padding", "13px 14px", "important");
-      card.style.setProperty("width", "236px", "important");
-      card.style.setProperty("min-width", "236px", "important");
-      card.style.setProperty("max-width", "236px", "important");
+      /* 总结卡片比邀请卡片更矮更窄一些 */
+      card.style.setProperty("padding", isEnd ? "11px 13px" : "13px 14px", "important");
+      var _w = isEnd ? "200px" : "236px";
+      card.style.setProperty("width", _w, "important");
+      card.style.setProperty("min-width", _w, "important");
+      card.style.setProperty("max-width", _w, "important");
       card.style.setProperty("border", "1px solid #e8e8e8", "important");
       card.style.setProperty("border-radius", "16px", "important");
       card.style.setProperty("background", "#fff", "important");
