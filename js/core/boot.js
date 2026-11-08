@@ -630,7 +630,7 @@ document.addEventListener(
 })();
 
 /* ---- boot block 11 ---- */
-/* 网易云 API 代理（歌单导入/一起听使用） */
+/* 网易云 API 代理（扫码登录/歌词/直链/一起听使用） */
 window.AKINI_NETEASE_PROXY = "https://api.mc666.org.cn";
 
 /* ---- boot block 13 ---- */

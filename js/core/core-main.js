@@ -20314,75 +20314,6 @@ window.__akiniPatchAvatarCell = function (t, e) {
               }
             }
           }
-          function u(t, e, n) {
-            if (!t.__nePainting) {
-              ((t.__nePainting = 1),
-                setTimeout(function () {
-                  t.__nePainting = 0;
-                }, 0));
-              var i = l() || [],
-                a = {},
-                o = {};
-              i.forEach(function (t) {
-                (t && t.neId && (a[String(t.neId)] = t), t && (o[String(t.name)] = t));
-              });
-              var r =
-                '<div style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:#f8f8f8;border:1px solid #f0f0f0"><div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:13px;font-weight:600;color:#1a1a1a">我的歌单（' +
-                e.length +
-                '）</div><button id="nePlRefresh" type="button" style="border:1px solid #e0e0e0;border-radius:8px;background:#fff;font-size:12px;color:#555;padding:4px 10px;cursor:pointer">刷新</button></div>';
-              (e.length ||
-                (r += '<div style="font-size:12px;color:#999;text-align:center;padding:8px">账号里还没有歌单</div>'),
-                e.forEach(function (t, e) {
-                  var n = a[String(t.id)] || o[String(t.name)],
-                    i = !!n,
-                    c = i ? (n.tracks || []).length : t.trackCount || 0;
-                  r +=
-                    '<div style="display:flex;align-items:center;gap:10px;padding:8px;background:#fff;border-radius:10px;border:1px solid #eee"><img src="' +
-                    (t.coverImgUrl || "") +
-                    '" style="width:38px;height:38px;border-radius:8px;object-fit:cover;background:#eee;flex-shrink:0" onerror="this.style.visibility=\'hidden\'"/><div style="flex:1;min-width:0"><div style="font-size:13px;color:#1a1a1a;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
-                    String(t.name || "") +
-                    '</div><div style="font-size:11px;color:#999;margin-top:2px">' +
-                    (i ? "已导入 · 本地 " + c + " 首" : "未导入 · 共 " + c + " 首") +
-                    '</div></div><button type="button" data-nepl-import="' +
-                    e +
-                    '" style="flex-shrink:0;height:32px;padding:0 14px;border:none;border-radius:8px;background:#1a1a1a;color:#fff;font-size:12px;cursor:pointer">' +
-                    (i ? "更新" : "导入") +
-                    "</button></div>";
-                }),
-                (r +=
-                  '<div style="font-size:11px;color:#999;line-height:1.5">点「导入」抓取该歌单；改动后点「更新」同步；app 删除歌单后点「刷新」自动清理本地。</div></div>'),
-                (t.innerHTML = r));
-              var c = document.getElementById("nePlRefresh");
-              (c &&
-                c.addEventListener("click", function () {
-                  m(!0);
-                }),
-                t.querySelectorAll("[data-nepl-import]").forEach(function (t) {
-                  t.addEventListener("click", function () {
-                    var n = e[parseInt(t.getAttribute("data-nepl-import"), 10)];
-                    n &&
-                      ((t.textContent = "导入中…"),
-                      (t.disabled = !0),
-                      g(String(n.id), n.name, !1)
-                        .then(function () {
-                          ((t.textContent = "已更新"),
-                            setTimeout(function () {
-                              m();
-                            }, 600));
-                        })
-                        .catch(function () {
-                          ((t.textContent = "重试"), (t.disabled = !1));
-                        }));
-                  });
-                }));
-            }
-          }
-          function m() {
-            return Promise.resolve();
-          }
-          try {
-            window._renderNeMyPlaylists = m;
-          } catch (D) {}
           function w() {
             var t = document.getElementById("musicPlaylistContainer");
             if (t) {
@@ -20483,208 +20414,8 @@ window.__akiniPatchAvatarCell = function (t, e) {
               } else
                 t.innerHTML =
                   o +
-                  '<div style="text-align:center;color:#888;padding:20px;font-size:14px;">暂无歌曲，请导入歌单</div>';
+                  '<div style="text-align:center;color:#888;padding:20px;font-size:14px;">暂无歌曲</div>';
             }
-          }
-          function g(t, e, n) {
-            var i, a;
-            if (((e = e || ""), "netease" !== tt.platform))
-              return (
-                alert("当前仅支持网易云音乐歌单解析，请复制网易云歌单链接或歌单ID后粘贴到此处导入"),
-                Promise.reject(new Error("暂不支持该平台"))
-              );
-            if (
-              (t ||
-                ((i = D.playlistInput ? D.playlistInput.value : ""),
-                (t =
-                  (a = (i = String(i).trim()).match(/(?:playlist\?id=|\/playlist\/)(\d+)/i)) ||
-                  (a = i.match(/[?&]id=(\d{5,})/)) ||
-                  (a = i.match(/id=(\d{5,})/)) ||
-                  (a = i.match(/\/(\d{5,})(?:\?|#|\/|$)/)) ||
-                  (a = i.match(/(\d{5,})/))
-                    ? a[1]
-                    : "")),
-              !t)
-            )
-              return (alert("请输入网易云歌单链接或ID"), Promise.reject(new Error("缺少歌单 ID")));
-            var _pid = String(t);
-            n || (D.importBtn && (D.importBtn.textContent = "导入中…"));
-            var o = encodeURIComponent(e || "");
-            return fetch(L + "/playlist/track/all?id=" + encodeURIComponent(String(t)) + "&cookie=" + o)
-              .then(function (t) {
-                return t.json();
-              })
-              .then(function (t) {
-                if (
-                  (console.log("[Akini Netease] /playlist/track/all response", t), t && 200 !== t.code && 0 !== t.code)
-                )
-                  throw new Error(t.message || t.msg || "track/all 返回异常");
-                var e = t.songs || (t.data && t.data.songs) || [];
-                if (!e.length) throw new Error("track/all 无歌曲");
-                var _nm = (t.playlist && t.playlist.name) || "";
-                if (_nm)
-                  return {
-                    tracks: e,
-                    name: _nm,
-                  };
-                return fetch(L + "/playlist/detail?id=" + encodeURIComponent(_pid) + "&cookie=" + o)
-                  .then(function (r) {
-                    return r.json();
-                  })
-                  .then(function (d) {
-                    var _p = (d && d.playlist) || (d && d.data && d.data.playlist) || {};
-                    return {
-                      tracks: e,
-                      name: _p.name || "",
-                    };
-                  })
-                  .catch(function () {
-                    return {
-                      tracks: e,
-                      name: "",
-                    };
-                  });
-              })
-              .catch(function (e) {
-                return (
-                  console.warn("[Akini Netease] track/all failed, fallback to detail", e),
-                  fetch(L + "/playlist/detail?id=" + encodeURIComponent(String(t)) + "&cookie=" + o)
-                    .then(function (t) {
-                      return t.json();
-                    })
-                    .then(function (t) {
-                      if (
-                        (console.log("[Akini Netease] /playlist/detail response", t),
-                        t && 200 !== t.code && 0 !== t.code)
-                      )
-                        throw new Error(t.message || t.msg || "返回数据异常 (code:" + t.code + ")");
-                      var e = t && t.playlist;
-                      if ((!e && t && t.data && (e = t.data.playlist), !e))
-                        throw new Error("返回数据异常：缺少 playlist");
-                      return {
-                        tracks: e.tracks || t.songs || [],
-                        name: e.name || "",
-                      };
-                    })
-                );
-              })
-              .then(function (e) {
-                var i = e.tracks,
-                  a = e.name;
-                if (!i.length) throw new Error("歌单为空或需要登录");
-                var o = (function (t) {
-                  return t && t.length
-                    ? t.map(function (t) {
-                        var e =
-                            (t.ar || t.artists || [])
-                              .map(function (t) {
-                                return t.name;
-                              })
-                              .join("/") ||
-                            t.artist ||
-                            "未知歌手",
-                          n =
-                            (t.al && (t.al.picUrl || t.al.pic)) ||
-                            t.cover ||
-                            (t.album && (t.album.picUrl || t.album.pic)) ||
-                            t.picUrl ||
-                            "";
-                        return {
-                          id: t.id,
-                          title: t.name || t.title,
-                          artist: e,
-                          cover: n,
-                          duration: t.dt || t.duration || 0,
-                        };
-                      })
-                    : [];
-                })(i);
-                return (
-                  n ||
-                    ((function () {
-                      for (
-                        var n = l(), i = e.name || a || "导入歌单 " + (n.length + 1), r = "", c = 0;
-                        c < n.length;
-                        c++
-                      )
-                        if (n[c] && String(n[c].name) === String(i)) {
-                          ((r = n[c].key),
-                            (n[c].tracks = o),
-                            (n[c].neId = t),
-                            o[0] && o[0].cover && (n[c].cover = o[0].cover));
-                          break;
-                        }
-                      if (r) {
-                        try {
-                          localStorage.setItem("akini_music_playlists_v2", JSON.stringify(n));
-                        } catch (t) {}
-                        (d(r, !1), console.log("[歌单] 同步更新:", i, "歌曲数:", o.length));
-                      } else {
-                        var s = "pl_" + Date.now();
-                        n.push({
-                          key: s,
-                          name: String(i),
-                          cover: (o[0] && o[0].cover) || "",
-                          tracks: o,
-                          neId: t,
-                        });
-                        try {
-                          localStorage.setItem("akini_music_playlists_v2", JSON.stringify(n));
-                        } catch (t) {}
-                        (d(s, !1), console.log("[歌单] 新增歌单:", i, "歌曲数:", o.length));
-                      }
-                    })(),
-                    D.playlistInput && (D.playlistInput.value = ""),
-                    h(),
-                    se(N[O], !1),
-                    ae("已导入 " + N.length + " 首（注：VIP歌曲受版权限制仅能试听片段）"),
-                    w(),
-                    D.playlistOverlay && (D.playlistOverlay.style.display = "flex"),
-                    alert("已导入「" + (a || "未知歌单") + "」共 " + N.length + " 首（VIP / 付费歌曲仅能试听片段）")),
-                  o
-                );
-              })
-              .catch(function (t) {
-                var e = t.message || "";
-                return (
-                  (-1 === e.indexOf("歌单不存在") && -1 === e.indexOf("404")) ||
-                    (e =
-                      "歌单不存在或无法访问。请检查：\n1. 是否粘贴了 music.163.com 开头的完整链接；\n2. 歌单是否被删除或设为私密；\n3. 第三方短链接需要先在外部浏览器打开，再复制真实链接。"),
-                  n || alert("导入失败：" + e),
-                  Promise.reject(t)
-                );
-              })
-              .finally(function () {
-                n || (D.importBtn && (D.importBtn.textContent = "导入"));
-              });
-          }
-                    function f(t, e) {
-            e = e || "";
-            var n = [],
-              i = 0;
-            if (!t || !t.length) return n;
-            !(function a() {
-              if (i >= t.length)
-                return n.length
-                  ? (rt(n), w(), void alert("已合并导入全部歌单，共 " + n.length + " 首"))
-                  : void alert("没有导入任何歌曲");
-              var o = t[i];
-              i++;
-              var r = o.id || o;
-              r
-                ? g(r, e, !0)
-                    .then(function (t) {
-                      (t &&
-                        t.forEach(function (t) {
-                          n.push(t);
-                        }),
-                        setTimeout(a, 200));
-                    })
-                    .catch(function (t) {
-                      setTimeout(a, 200);
-                    })
-                : a();
-            })();
           }
           function y() {
             if (D.lyricsBody) {
@@ -21036,8 +20767,6 @@ window.__akiniPatchAvatarCell = function (t, e) {
             backBtn: document.getElementById("musicBackBtn"),
             menuBtn: document.getElementById("musicMenuBtn"),
             menuOverlay: document.getElementById("musicMenuOverlay"),
-            playlistInput: document.getElementById("musicPlaylistInput"),
-            importBtn: document.getElementById("musicImportBtn"),
             songName: document.getElementById("musicSongName"),
             artist: document.getElementById("musicArtist"),
             leftAvatar: document.getElementById("musicLeftAvatar"),
@@ -21109,14 +20838,6 @@ window.__akiniPatchAvatarCell = function (t, e) {
               X = 0,
               Q = null,
               Z = !1,
-              tt = {
-                key: "",
-                cookie: "",
-                timer: null,
-                checking: !1,
-                platform: "netease",
-                qrType: 1,
-              },
               et = {};
             try {
               var nt = localStorage.getItem("akini_music_listen_together");
@@ -21399,15 +21120,8 @@ window.__akiniPatchAvatarCell = function (t, e) {
                   try {
                     window._openMusicMenu && window._openMusicMenu();
                   } catch (t) {}
-                }),
-              D.importBtn &&
-                D.importBtn.addEventListener("click", function () {
-                  g("", tt.cookie).catch(function () {});
-                }),
-              D.playlistInput &&
-                D.playlistInput.addEventListener("keydown", function (t) {
-                  "Enter" === t.key && g("", tt.cookie).catch(function () {});
-                }));
+                })
+              );
             var wt = document.getElementById("musicSongUrlInput"),
               gt = document.getElementById("musicSongNameInput"),
               ft = document.getElementById("musicSongArtistInput"),
@@ -21786,7 +21500,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                   } catch (t) {}
                   (e(),
                     D.songName && (D.songName.textContent = "一起听"),
-                    D.artist && (D.artist.textContent = "点击右上角导入歌单"),
+                    D.artist && (D.artist.textContent = "点右上角扫码登录网易云"),
                     D.cover && __akiniGuardSrc(D.cover, __akDefaultCover),
                     w(),
                     v(),
@@ -21838,7 +21552,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                             } catch (t) {}
                             (e(),
                               D.songName && (D.songName.textContent = "一起听"),
-                              D.artist && (D.artist.textContent = "点击右上角导入歌单"),
+                              D.artist && (D.artist.textContent = "点右上角扫码登录网易云"),
                               D.cover && __akiniGuardSrc(D.cover, __akDefaultCover),
                               ae("歌单已清空"));
                           } else if (t === O) {
@@ -21968,8 +21682,8 @@ window.__akiniPatchAvatarCell = function (t, e) {
               (se(It, !1), ae("已预加载: " + (It.title || "未知")));
             } else
               ((D.songName.textContent = "一起听"),
-                (D.artist.textContent = "点击右上角导入歌单"),
-                ae("歌单为空，请先导入歌单"));
+                (D.artist.textContent = "点右上角扫码登录网易云"),
+                ae("歌单为空"));
           }
           function Ct() {
             try {
@@ -22668,7 +22382,12 @@ window.__akiniPatchAvatarCell = function (t, e) {
                             return void setTimeout(function () {
                               oe(c, "retry");
                             }, 200);
-                          var d = L + "/song/url?id=" + encodeURIComponent(r) + "&br=999000";
+                          var d =
+                            L +
+                            "/song/url?id=" +
+                            encodeURIComponent(r) +
+                            "&br=999000" +
+                            (window.__akiniNeCookieParam ? window.__akiniNeCookieParam() : "");
                           return (
                             (d += "&realIP=" + encodeURIComponent(window._neteaseRealIp || "223.5.5.5")),
                             void setTimeout(function () {
@@ -22678,7 +22397,14 @@ window.__akiniPatchAvatarCell = function (t, e) {
                         }
                         if ("fetch" === n || "fetch-retry" === n) {
                           if (
-                            ((d = r ? L + "/song/url?id=" + encodeURIComponent(r) + "&br=999000" : "") &&
+                            ((d =
+                              r
+                                ? L +
+                                  "/song/url?id=" +
+                                  encodeURIComponent(r) +
+                                  "&br=999000" +
+                                  (window.__akiniNeCookieParam ? window.__akiniNeCookieParam() : "")
+                                : "") &&
                               (d += "&realIP=" + encodeURIComponent(window._neteaseRealIp || "223.5.5.5")),
                             d)
                           )
@@ -22931,7 +22657,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
             if (!t)
               return (
                 D.songName && (D.songName.textContent = "一起听"),
-                D.artist && (D.artist.textContent = "点击右上角导入歌单"),
+                D.artist && (D.artist.textContent = "点右上角扫码登录网易云"),
                 D.cover && __akiniGuardSrc(D.cover, me),
                 void (D.vipHint && (D.vipHint.style.display = "none"))
               );
@@ -22963,7 +22689,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
             if (!t)
               return (
                 (D.songName.textContent = "一起听"),
-                (D.artist.textContent = "点击右上角导入歌单"),
+                (D.artist.textContent = "点右上角扫码登录网易云"),
                 void ae("歌单为空，请先导入")
               );
             (de(), Ft(), Ot(), ae("准备播放: " + (t.title || "未知")), (G = 0));
@@ -23124,8 +22850,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
               }),
               setTimeout(function () {
                 window._akiniMusicReloadPlaylist();
-              }, 100),
-              (window._renderNeMyPlaylists = m));
+              }, 100));
             try {
               var i = document.getElementById("musicMenuOverlay");
               i &&
@@ -23164,9 +22889,6 @@ window.__akiniPatchAvatarCell = function (t, e) {
                 } catch (t) {}
               }, 8e3),
               (window._openMusicMenu = function () {
-                try {
-                  window._renderNeMyPlaylists && window._renderNeMyPlaylists();
-                } catch (t) {}
                 try {
                   p();
                 } catch (t) {
