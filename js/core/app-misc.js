@@ -457,20 +457,18 @@
         resetLyricCard();
       });
     }
-    window.addEventListener("beforeunload", function () {
-      savePreviewBubbles();
-      saveLyricCard();
+    /* 不再在 pagehide/beforeunload/隐藏时保存：导入备份后页面不刷新，
+       此时 DOM 里还是导入前的旧气泡文案，隐藏时回写会把刚导入的预览覆盖掉。
+       气泡/歌词在 input、keyup、paste、compositionend、blur 时已实时保存。 */
+    window.addEventListener("akini-data-imported", function () {
+      try {
+        updatePreviewBubbles();
+        updateLyricCard();
+        updatePreview();
+      } catch (e) {}
     });
-    window.addEventListener("pagehide", function () {
-      savePreviewBubbles();
-      saveLyricCard();
-    });
-    window.__akiniOnHidden(function () { 
-        savePreviewBubbles();
-        saveLyricCard();
-       });
-    /* 气泡与歌词已有 input/blur/paste/compositionend 保存，visibilitychange/pagehide 也保存，
-       删除原 60s 定时写入（滚动时的同步 localStorage 写入是掉帧来源之一）。 */
+    /* 气泡与歌词在 input/keyup/paste/compositionend/blur 时实时保存，
+       取消原来 60s 定时写入（滚动时的同步 localStorage 写入是掉帧来源之一）。 */
   });
 })();
 

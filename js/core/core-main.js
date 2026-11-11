@@ -23070,6 +23070,14 @@ window.__akiniPatchAvatarCell = function (t, e) {
                   localStorage.setItem("akini_music_listen_together", JSON.stringify(et)));
               } catch (t) {}
             }),
+            window.addEventListener("akini-data-imported", function () {
+              try {
+                ($ = parseInt(localStorage.getItem("akini_music_listen_seconds") || "0", 10) || 0);
+                var _tg = localStorage.getItem("akini_music_listen_together");
+                et = _tg ? JSON.parse(_tg) || {} : {};
+                H && Y && (Y = Date.now());
+              } catch (e) {}
+            }),
             window.__akiniOnHidden(function () { 
                   if (H && Y) {
                     try {
