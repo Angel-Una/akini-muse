@@ -574,7 +574,6 @@
       }
     } catch (e) {}
   }
-  window.__akiniLazyImgs = mark;
   var pend = null;
   function schedule() {
     if (pend) return;

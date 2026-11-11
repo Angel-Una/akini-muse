@@ -476,7 +476,6 @@
 
 (function () {
   var MAP_KEY = "akini_msg_mb";
-  var LAST_KEY = "akini_msg_mb_last";
   var PROCESSED_KEY = "akini_msg_mb_processed"; /* 记录联系人已摇过的消息 ts，避免重复摇 */
 
   function rd(k, d) {

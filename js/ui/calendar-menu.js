@@ -199,17 +199,24 @@ document.addEventListener("click", function (e) {
 
 window.compressImageDataUrl = function (dataUrl, callback, opts) {
   try {
-    /* 对齐：小图（<300KB 二进制 ≈ dataURL <41万字符）直接返回原图，不压缩不重编码，
-       避免 JPEG 重编码导致的画质损失和透明底被填白。只有真正的大图才压缩。 */
-    if (dataUrl && typeof dataUrl === "string" && dataUrl.length < 410000) {
+    /* 对齐 milk/zy：大图一律压缩，且压缩标准激进（默认 maxSide 1280 / JPEG 0.82），
+       否则用户手机相册一张壁纸就是几 MB base64，启动解码位图几十 MB，
+       iPhone Safari 内存上限低，"用过一段时间"必反复崩溃——全新能进、有数据崩的根源。 */
+    /* opts.forceJpeg：壁纸/封面/拍立得等背景不需要透明通道，强制转 JPEG。
+       随机噪点/复杂照片压成 PNG 依旧好几 MB，必须 JPEG 才能把体积砍下来。 */
+    var forceJpeg = !!(opts && opts.forceJpeg);
+    var isPng = !forceJpeg && /^data:image\/png/i.test(dataUrl || "");
+    /* PNG 通常含透明通道（头像/表情包），保留 PNG 但限制尺寸；
+       非 PNG（照片/壁纸）统一转 JPEG 大幅降体积。小图(<120KB)才原样跳过。 */
+    if (dataUrl && typeof dataUrl === "string" && dataUrl.length < 160000) {
       if (typeof callback === "function") callback(dataUrl);
       return;
     }
     var img = new Image();
     img.onload = function () {
       try {
-        var maxSide = (opts && opts.maxSide) || 2000;
-        var q = (opts && opts.quality) || 0.92;
+        var maxSide = (opts && opts.maxSide) || (isPng ? 640 : 1280);
+        var q = (opts && opts.quality) || 0.82;
         var w = img.width,
           hh = img.height;
         if (w > 0 && hh > 0 && Math.max(w, hh) > maxSide) {
@@ -221,11 +228,24 @@ window.compressImageDataUrl = function (dataUrl, callback, opts) {
         cv.width = w;
         cv.height = hh;
         var ctx = cv.getContext("2d");
-        /* 不填充白底：保留 PNG 透明通道，头像/表情包透明底不被破坏 */
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        /* PNG 保留透明底；JPEG 填白底避免黑边 */
+        if (!isPng) {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, w, hh);
+        }
         ctx.drawImage(img, 0, 0, w, hh);
-        /* 检测原图是否为 PNG（可能含透明），是则输出 PNG 无损；否则 JPEG 高质 */
-        var isPng = /^data:image\/png/i.test(dataUrl);
         var out = isPng ? cv.toDataURL("image/png") : cv.toDataURL("image/jpeg", q);
+        /* 仍超阈值则继续降质量（JPEG），确保体积真正砍下来、且低于
+           背景应用处的 300KB 触发线，避免下次启动重复压缩。 */
+        if (!isPng && out && out.length > 280000) {
+          var q2 = q;
+          while (q2 > 0.3 && out.length > 280000) {
+            q2 -= 0.1;
+            out = cv.toDataURL("image/jpeg", Math.max(0.3, q2));
+          }
+        }
         if (out && out.length < String(dataUrl).length) {
           if (typeof callback === "function") callback(out);
           return;

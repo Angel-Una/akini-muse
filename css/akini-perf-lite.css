@@ -465,12 +465,46 @@ html body .settings-area [role="button"] {
 #mailBody > *,
 #shopGrid > *,
 #shopOrderList > *,
-#companionHistoryList > *,
-#musicPlaylistContainer > * {
+#companionHistoryList > * {
   content-visibility: auto;
   contain-intrinsic-size: auto 96px;
 }
 #postList > *,
 #icityDiaryList > * {
   contain-intrinsic-size: auto 260px;
+}
+
+/* 28) 播放列表弹窗滑动性能：
+   - 行数有限（几十首），content-visibility 的入场重绘风暴反而造成一滑一顿，故不用；
+   - 滚动容器提为独立合成层（覆盖在持续旋转的唱片动画上，避免每帧与底层动画一起重合成）；
+   - 禁止滚动链回弹，滑到底不带动整页。 */
+html body #musicPlaylistOverlay > div {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+html body #musicPlaylistContainer {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  will-change: auto;
+}
+
+/* ===== 陪伴 / 观影聊天：气泡本体跟随主聊天（网站微信）默认主题样式，不做额外覆盖；
+   仅修表情包气泡无底图（双 id 选择器压住 akini-style.css 里 1id+13class 的默认色规则） ===== */
+html body #companionMsgs#companionMsgs .msg-row .bubble.sticker-bubble,
+html body #watchChatBody#watchChatBody .msg-row .bubble.sticker-bubble {
+  background: none !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html body #companionMsgs#companionMsgs .msg-row .bubble.sticker-bubble::before,
+html body #companionMsgs#companionMsgs .msg-row .bubble.sticker-bubble::after,
+html body #watchChatBody#watchChatBody .msg-row .bubble.sticker-bubble::before,
+html body #watchChatBody#watchChatBody .msg-row .bubble.sticker-bubble::after {
+  display: none !important;
 }

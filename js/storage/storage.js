@@ -388,8 +388,6 @@
       return null;
     }
   }
-  // 图片/壁纸类大键：配额紧张时优先清理它们，为关键数据腾出空间
-  var BIG_IMG_RE = /^akini_(chat_history_|home_bg|bubble_css|icity_|my_avatar|ta_avatar|contact_avatar_)/;
   /* 图像键写入时间戳：LS 侧车键 akini_wts_<key>。
      恢复路径回填前对比时间，本地记录更新则拒绝旧值覆盖。 */
   var IMG_EXACT = {
@@ -665,8 +663,30 @@
   function memSet(k, v) {
     /* 大 base64（图片/音频/视频）不驻留内存：JS 堆里同时压着几十上百 MB 的
        base64 字符串，移动端会持续 GC，表现就是「不管点什么都卡」。
-       这类大值已有 IndexedDB 持久化 + store.js 的 objectURL 缓存兜底。 */
-    if (typeof v === "string" && v.length > 400 * 1024 && v.indexOf("data:") === 0) return;
+       这类大值已有 IndexedDB 持久化 + store.js 的 objectURL 缓存兜底。
+       例外：首页/纪念日/封面/头像等关键 UI 图片键必须驻留内存——否则设置后内存里
+       仍是旧图，启动快照带着旧值，刷新后新图就被旧图顶掉（表现为「底图总是消失」）。
+       这类键总共十几个，驻留代价可忽略。 */
+    if (
+      typeof v === "string" &&
+      v.length > 400 * 1024 &&
+      v.indexOf("data:") === 0 &&
+      !_isEssentialImgKey(k)
+    )
+      return;
+    /* 超长聊天记录（尤其导入的备份里图片是内联 base64，单条会话可到几十 MB）
+       绝不整段驻留内存：打开会话时 chat-log / openChat 会按需从 IndexedDB 取。 */
+    if (
+      typeof v === "string" &&
+      v.length > 2 * 1024 * 1024 &&
+      String(k).indexOf("akini_chat_history") === 0
+    ) {
+      try {
+        window.__akiniDeferredKeys = window.__akiniDeferredKeys || {};
+        window.__akiniDeferredKeys[k] = 1;
+      } catch (eDS) {}
+      return;
+    }
     memoryCache[k] = v;
   }
   function memRemove(k) {
@@ -1795,7 +1815,13 @@ _reconciledKeys = {};
             var m = self.memGet(k);
             if (m !== null && m !== "") return m;
             // 超预算大键未驻留内存：触发异步水合，本次先返回 LS 值，水合完成后下次读取即得
-            if (window.__akiniDeferredKeys && window.__akiniDeferredKeys[k]) {
+            // 聊天记录不在这里水合：打开会话时由 chat-log/openChat 直接按需读 IndexedDB，
+            // 否则每次读取都会把几十 MB 的历史重新拉进内存。
+            if (
+              window.__akiniDeferredKeys &&
+              window.__akiniDeferredKeys[k] &&
+              String(k).indexOf("akini_chat_history") !== 0
+            ) {
               delete window.__akiniDeferredKeys[k];
               idbGet(k, function (v) {
                 if (v != null && v !== "") memSet(k, v);
@@ -1808,7 +1834,10 @@ _reconciledKeys = {};
             try {
               var _nowHyd = Date.now();
               if (!window.__akiniIdbHydrateGaps) window.__akiniIdbHydrateGaps = {};
-              if (!window.__akiniIdbHydrateGaps[k] || _nowHyd - window.__akiniIdbHydrateGaps[k] > 30000) {
+              if (
+                String(k).indexOf("akini_chat_history") !== 0 &&
+                (!window.__akiniIdbHydrateGaps[k] || _nowHyd - window.__akiniIdbHydrateGaps[k] > 30000)
+              ) {
                 window.__akiniIdbHydrateGaps[k] = _nowHyd;
                 idbGet(k, function (_v) {
                   if (_v != null && _v !== "" && _v !== "[]" && _v !== "{}" && _v !== "null") {

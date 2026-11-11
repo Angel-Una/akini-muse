@@ -34,7 +34,6 @@
   var currentContactId = null;
   // 当前 tab：'chat' | 'moments' | 'icity'
   var currentTab = "chat";
-  var chatSortMode = "collected";
 
   /* ============ 工具 ============ */
   function escapeHtml(text) {
@@ -869,7 +868,33 @@
         '<div class="akini-ta-mail-detail-body">' +
         escapeHtml(_body) +
         "</div>" +
-        '<div class="akini-ta-mail-detail-sign">见字如面 · Akini</div>' +
+        /* 落款「见字如面 · XXX」：谁寄的显示谁的名字——
+           我寄的(direction=sent)显示我的名字，对方寄的显示联系人名 */
+        (function () {
+          var _signName = "";
+          try {
+            if (_letter.direction === "sent") {
+              _signName = localStorage.getItem("akini_my_name") || "我";
+            } else {
+              var _c =
+                window.akiniContacts && window.akiniContacts.getContactById
+                  ? window.akiniContacts.getContactById(currentContactId)
+                  : null;
+              _signName =
+                (_c && _c.name) ||
+                _letter.from ||
+                localStorage.getItem("akini_ta_name") ||
+                "对方";
+            }
+          } catch (e) {
+            _signName = "对方";
+          }
+          return (
+            '<div class="akini-ta-mail-detail-sign">见字如面 · ' +
+            escapeHtml(_signName) +
+            "</div>"
+          );
+        })() +
         "</div>" +
         '<button type="button" class="akini-ta-mail-detail-del" onclick="window.AkiniTaPhone.deleteCollection(\'' +
         currentContactId +

@@ -1226,20 +1226,6 @@ function D() {
                 l = window.akiniContacts.getChatTarget(s);
               const d = P();
               var u = null;
-              if (d && "none" !== d.type && s === window.akiniContacts.getActiveChatId())
-                try {
-                  var m = document.getElementById("typingIndicator");
-                  var _tcid =
-                    window.akiniContacts && window.akiniContacts.getActiveChatId
-                      ? window.akiniContacts.getActiveChatId()
-                      : null;
-                  if (_tcid === s && !document.hidden) {
-                    m && (m.style.display = "block");
-                  }
-                  O(s, u);
-                } catch (t) {
-                  console.warn("[TYPING] 发送瞬间显示失败:", t);
-                }
               const w = document.createElement("div");
               (w.setAttribute("data-ts", String(__akiniNextTs())),
                 (w.className = "msg-row me"),
@@ -1493,24 +1479,13 @@ function j(t, e, n, i) {
                   parseFloat(a.replyDelay) > 0 &&
                   ((c = parseFloat(a.replyDelay)), (s = Math.max(c, s)))));
             var l = Math.max(0, s - c),
-              d = c + Math.random() * l,
-              u = Math.max(500, Math.round(1e3 * d));
+              d = c + Math.random() * l;
+            // 对齐 milk 时序：发出 → 1.5~4s 后已读 → 出现输入动态 → 回复发出
+            var m = 1500 + 2500 * Math.random(),
+              u = Math.max(500, Math.round(m + 1e3 * d));
             "number" == typeof n && n > 0 && (u = n);
-            var m = Math.min(600 + 400 * Math.random(), Math.max(200, Math.round(0.35 * u)));
-            m >= u && (m = Math.max(100, u - 300));
+            u - 800 < m && (m = Math.max(300, u - 800));
             var g = o.memberId || null;
-            if ("none" !== r.type && t === window.akiniContacts.getActiveChatId())
-              try {
-                var y = document.getElementById("typingIndicator");
-                var _tcid2 =
-                  window.akiniContacts && window.akiniContacts.getActiveChatId
-                    ? window.akiniContacts.getActiveChatId()
-                    : null;
-                if (_tcid2 === t && !document.hidden) {
-                  y && (y.style.display = "block");
-                }
-                O(t, g);
-              } catch (t) {}
             if (
               ((o.readTimer = setTimeout(function () {
                 o.readTimer = null;
@@ -1533,6 +1508,13 @@ function j(t, e, n, i) {
                       } catch (t) {}
                     }
                   })();
+                } catch (t) {}
+                // 已读后联系人才开始出现输入动态
+                try {
+                  "none" !== r.type &&
+                    t === window.akiniContacts.getActiveChatId() &&
+                    !document.hidden &&
+                    O(t, g);
                 } catch (t) {}
                 if ("none" !== r.type);
                 else {
@@ -2222,7 +2204,16 @@ function G(t, e, n, i, a) {
                 },
                 1500 + 1e3 * Math.random(),
               ))
-            : (i ? z(t) : R(t), J());
+            : ((i ? z(t) : R(t),
+              /* 一轮回复结束后消费掉 pending 计数：count 只增不减会让 J() 再次触发，
+                 表现为「回复结束 typing 消失后又突然 typing 又继续回复」 */
+              (function () {
+                try {
+                  var _p = (window.__akiniPendingReplyMap || {})[t];
+                  _p && ((_p.count = 0), H());
+                } catch (t) {}
+              })(),
+              J()));
         }
         try {
           nn(0);
@@ -6569,7 +6560,8 @@ function pn(t, e) {
                       !c && o.indexOf(e) >= 0 && ((e.read = !0), (e.isRead = !0), (c = !0));
                     }
                     try {
-                      localStorage.setItem("akini_mail_latest_read_ts", String(Date.now()));
+                      /* 只把「点开的这封信」的时间记为已读游标，避免把更早的未读信一起标成已读 */
+                      localStorage.setItem("akini_mail_latest_read_ts", String(e && e.ts ? e.ts : Date.now()));
                     } catch (t) {}
                     hn(o);
                     updateMailUnreadBadge();
@@ -6840,6 +6832,11 @@ function updateMailUnreadBadge() {
         });
         el.textContent = unread > 99 ? "99+" : String(unread);
         el.style.display = unread > 0 ? "inline-flex" : "none";
+        /* 同步刷新首页信箱角标：之前只在 30s 轮询或别的入口才刷，表现为
+           「详情里已读了，首页信箱红点还要再点一下才消失」「信箱里 8 首页却 11」 */
+        try {
+          window.__updateHomeBadges && window.__updateHomeBadges();
+        } catch (t) {}
       }
 function vn(t) {
         da = t;
@@ -7220,7 +7217,7 @@ function An(t) {
           r.style.cssText =
             "background:#fff;border-radius:24px;width:100%;max-width:320px;padding:24px 20px 20px;box-shadow:0 24px 80px rgba(0,0,0,.28);display:flex;flex-direction:column;gap:12px;";
           var c = document.createElement("div");
-          ((c.style.cssText = "font-size:17px;font-weight:700;color:#1a1a1a;line-height:1.3;text-align:center;"),
+          ((c.style.cssText = "font-size:17px;font-weight:700;color:#000;line-height:1.3;text-align:center;"),
             (c.textContent = t || "请输入"));
           var s = document.createElement("input");
           ((s.type = "text"),
@@ -7228,14 +7225,14 @@ function An(t) {
             (s.maxLength = i.maxLength || 200),
             void 0 !== i.value && null !== i.value && (s.value = String(i.value)),
             (s.style.cssText =
-              "height:44px;border:1px solid #e0e0e0;border-radius:12px;padding:0 12px;font-size:16px;outline:none;background:#f7f7f7;color:#1a1a1a;box-sizing:border-box;width:100%;"));
+              "height:44px;border:none;border-radius:12px;padding:0 12px;font-size:16px;outline:none;background:#f5f5f5;color:#000;box-sizing:border-box;width:100%;"));
           var l = document.createElement("div");
           l.style.cssText = "display:flex;gap:10px;margin-top:8px;";
           var d = document.createElement("button");
           ((d.type = "button"),
             (d.textContent = "取消"),
             (d.style.cssText =
-              "flex:1;height:44px;border:1px solid #e0e0e0;border-radius:14px;background:#f7f7f7;color:#555;font-size:15px;font-weight:600;cursor:pointer;"));
+              "flex:1;height:44px;border:none;border-radius:14px;background:#f0f0f0;color:#1a1a1a;font-size:15px;font-weight:600;cursor:pointer;"));
           var u = document.createElement("button");
           ((u.type = "button"),
             (u.textContent = "确定"),
@@ -8307,11 +8304,9 @@ window.__akiniResetHomeScroll = function () {
               } catch (m) {}
             if (!Array.isArray(e) || 0 === e.length) {
               if (window._restoringData) return [];
-              /* 启动未完成时真实联系人可能还在从 IndexedDB 恢复，
-                 此时把空数组缓存进 d 会导致 addContact 误判"没有联系人"
-                 而补建一个"对方"，之后真实数据再 merge 进来就变成两个联系人。
-                 启动未落地前只临时返回 []，不缓存，等真实数据恢复后重读。 */
-              if (!window.__akiniStorageRestored && !window.__akiniRestoreSettled) return [];
+              /* 只有"恢复真正落地"后空数组才算数；3.5s 的 settled 只是让启动先走，
+                 IndexedDB 里的真实联系人此时可能还没进内存，绝不能据此缓存空值/补建占位。 */
+              if (!window.__akiniStorageRestored) return [];
               e = [];
             }
             if (Array.isArray(e) && e.length > 0) {
@@ -8423,61 +8418,137 @@ window.__akiniResetHomeScroll = function () {
              之后无论用户再加多少联系人都不会再把它当占位删掉。 */
           function _akiniCleanLegacyPlaceholder() {
             try {
-              if (window.__akiniLegacyPlaceholderCleaned) return;
-              if (!window.__akiniStorageRestored && !window.__akiniRestoreSettled) return;
-              window.__akiniLegacyPlaceholderCleaned = true;
+              if (!window.__akiniStorageRestored) return;
               var arr = m();
               if (!Array.isArray(arr) || arr.length < 2) return;
+              var placeholder = function (c) {
+                return !!c && (c.__autoPlaceholder === true || c.id === "ta_default");
+              };
+              var real = arr.filter(function (c) {
+                return c && !placeholder(c);
+              });
+              if (!real.length) return;
+              var target = real[0];
               var active = "";
               try {
                 active =
                   window.akiniContacts && window.akiniContacts.getActiveChatIdStrict
                     ? window.akiniContacts.getActiveChatIdStrict()
-                    : window.akiniContacts && window.akiniContacts.getActiveChatId
-                      ? window.akiniContacts.getActiveChatId()
-                      : "";
+                    : "";
               } catch (_ac) {}
               var sess = {};
               try {
-                sess = (window.akiniContacts && window.akiniContacts.getSessions
-                  ? window.akiniContacts.getSessions()
-                  : null) || {};
+                sess =
+                  (window.akiniContacts && window.akiniContacts.getSessions
+                    ? window.akiniContacts.getSessions()
+                    : null) || {};
               } catch (_se) {}
               var changed = false;
+              var removed = [];
               var keep = arr.filter(function (c) {
                 if (!c) return false;
-                var marked = !!c.__autoPlaceholder;
-                var sameName = String(c.name || "") === "对方";
-                if (!marked && !sameName) return true;
-                var used = false;
-                if (c.id === active) used = true;
-                var ms = sess[c.id];
-                if (!used && ms && (ms.lastMsg || ms.lastTime)) used = true;
-                if (!used) {
-                  var raw = "";
-                  try {
-                    raw =
-                      window.akiniStore && window.akiniStore.memoryGet
-                        ? window.akiniStore.memoryGet("akini_chat_history_" + c.id) || ""
-                        : "";
-                  } catch (_rg) {}
-                  if (raw && raw.length > 2 && raw !== "[]") used = true;
-                }
-                if (used) {
-                  /* 用过的就是真联系人：摘掉标记，避免以后被误删 */
-                  if (marked) {
-                    c.__autoPlaceholder = false;
-                    changed = true;
-                  }
-                  return true;
-                }
+                if (!placeholder(c)) return true;
                 changed = true;
+                removed.push(c.id);
                 return false;
               });
-              if (changed && keep.length > 0) w(keep);
+              if (!changed || !keep.length) return;
+              var readHist = function (id) {
+                var raw = "";
+                try {
+                  raw =
+                    (window.akiniStore && window.akiniStore.memoryGet
+                      ? window.akiniStore.memoryGet("akini_chat_history_" + id)
+                      : "") || "";
+                } catch (_r1) {}
+                if (!raw) {
+                  try {
+                    raw = localStorage.getItem("akini_chat_history_" + id) || "";
+                  } catch (_r2) {}
+                }
+                return raw && raw !== "[]" ? raw : "";
+              };
+              /* 占位窗口里可能已经有用户刚发的消息：先并进真实联系人，再删除占位。
+                 聊天记录现在是 JSON 数组，绝不能直接字符串相加（会拼出非法 JSON）。 */
+              removed.forEach(function (pid) {
+                var htmlA = "";
+                try {
+                  if (window.__akiniChatLog && window.__akiniChatLog.html)
+                    htmlA = window.__akiniChatLog.html(pid) || "";
+                } catch (_h1) {}
+                if (!htmlA) htmlA = readHist(pid);
+                if (htmlA) {
+                  var htmlB = "";
+                  try {
+                    if (window.__akiniChatLog && window.__akiniChatLog.html)
+                      htmlB = window.__akiniChatLog.html(target.id) || "";
+                  } catch (_h2) {}
+                  if (!htmlB) htmlB = readHist(target.id);
+                  try {
+                    if (window.__akiniChatLog && window.__akiniChatLog.replace) {
+                      window.__akiniChatLog.replace(target.id, (htmlB || "") + htmlA);
+                      window.__akiniChatLog.replace(pid, "");
+                    } else {
+                      var merged = "";
+                      try {
+                        var la = JSON.parse(htmlA),
+                          lb = JSON.parse(htmlB || "[]");
+                        merged =
+                          Array.isArray(la) && Array.isArray(lb)
+                            ? JSON.stringify(lb.concat(la))
+                            : (htmlB || "") + htmlA;
+                      } catch (_pj) {
+                        merged = (htmlB || "") + htmlA;
+                      }
+                      localStorage.setItem("akini_chat_history_" + target.id, merged);
+                      localStorage.setItem("akini_chat_history_" + pid, "");
+                    }
+                  } catch (_mg) {}
+                }
+                try {
+                  if (sess[pid]) delete sess[pid];
+                } catch (_ds) {}
+              });
+              try {
+                window.akiniContacts.saveSessions(sess);
+              } catch (_ss) {}
+              if (active && removed.indexOf(String(active)) >= 0) {
+                try {
+                  window.akiniContacts.setActiveChatId(target.id);
+                } catch (_sa) {}
+                try {
+                  var chatPage = document.getElementById("app-chat");
+                  if (
+                    chatPage &&
+                    chatPage.classList.contains("show") &&
+                    window.openChat
+                  ) {
+                    window.openChat(target.id, true);
+                  }
+                } catch (_oc) {}
+              }
+              w(keep);
+              try {
+                En();
+              } catch (_en) {}
+              try {
+                window.renderHomeAvatarContacts && window.renderHomeAvatarContacts();
+              } catch (_rh) {}
+              try {
+                window.__akiniDedupeContacts = _akiniCleanLegacyPlaceholder;
+              } catch (_ex) {}
             } catch (_e) {}
           }
-          setTimeout(_akiniCleanLegacyPlaceholder, 6000);
+          window.__akiniDedupeContacts = _akiniCleanLegacyPlaceholder;
+          [6000, 12000, 20000].forEach(function (ms) {
+            setTimeout(_akiniCleanLegacyPlaceholder, ms);
+          });
+          try {
+            window.addEventListener("akini-storage-restored", _akiniCleanLegacyPlaceholder);
+            window.addEventListener("akini-data-imported", function () {
+              setTimeout(_akiniCleanLegacyPlaceholder, 400);
+            });
+          } catch (_ev) {}
           function g() {
             if (u) return u;
             var t = r(e, []);
@@ -8815,6 +8886,10 @@ window.__akiniResetHomeScroll = function () {
               addContact: function (t, e, isFallback) {
                 var arr = m();
                 if (Array.isArray(arr) && arr.length) return arr[0];
+                /* 自动兜底占位联系人必须等真实数据恢复落地：
+                   恢复完成前 IndexedDB 里的默认联系人还没进内存，此时补建"对方"
+                   会和随后恢复的联系人并存，变成两个联系人。 */
+                if (isFallback && !window.__akiniStorageRestored) return null;
                 var taAvatar = localStorage.getItem("akini_ta_avatar") || "",
                   ct = {
                     id: l("ta"),
@@ -9393,7 +9468,23 @@ window.__akiniCleanGhostBubbles = function (root) {
               q = row.querySelector(".quote-bubble"),
               bt = b ? (b.textContent || "").replace(/\s+/g, "") : "",
               qt = q ? (q.textContent || "").replace(/\s+/g, "") : "";
-            if (!bt && !qt) row.remove();
+            /* 旧版本/外部备份的消息可能不是 .bubble 结构：只要气泡里还有任何文字就保留，
+               否则整段导入的历史会被当成“空气泡”清空。只对没有 .bubble 的旧结构做兜底，
+               正常消息行为不变，也不会把带时间戳的空气泡留下来。 */
+            var _legacyTxt = "";
+            if (!b) {
+              try {
+                _legacyTxt = row.textContent || "";
+                row.querySelectorAll(".msg-meta, .msg-ts, .timestamp-row, .read-status, .msg-avatar").forEach(function (x) {
+                  var s = x.textContent || "";
+                  if (s) _legacyTxt = _legacyTxt.split(s).join("");
+                });
+                _legacyTxt = _legacyTxt.replace(/\s+/g, "");
+              } catch (_lt) {
+                _legacyTxt = "";
+              }
+            }
+            if (!bt && !qt && !_legacyTxt) row.remove();
           });
         } catch (e) {}
       };
@@ -9567,20 +9658,8 @@ window.__akiniCleanGhostBubbles = function (root) {
                 r = parseFloat(localStorage.getItem("akini_num_typingDelayMax") || "5");
               (o > 0 || (o = 3), r >= o || (r = Math.max(o, 5)));
               var c = n + 1e3 * (i + Math.random() * (a - i)),
-                s = null;
-              try {
-                var l = document.getElementById("typingIndicator");
-                var _tcid3 =
-                  window.akiniContacts && window.akiniContacts.getActiveChatId
-                    ? window.akiniContacts.getActiveChatId()
-                    : null;
-                if (_tcid3 === t && !document.hidden) {
-                  l && (l.style.display = "block");
-                }
-                O(t, s);
-              } catch (t) {
-                console.warn("[TYPING] 继续说瞬间显示失败:", t);
-              }
+                s = null,
+                _frCid = t;
               return (
                 setTimeout(function () {
                   try {
@@ -9592,6 +9671,14 @@ window.__akiniCleanGhostBubbles = function (root) {
                             (t.setAttribute("data-read-pending", "1"), f(t));
                           } catch (t) {}
                       });
+                  } catch (t) {}
+                  // 已读后出现输入动态
+                  try {
+                    window.akiniContacts &&
+                      window.akiniContacts.getActiveChatId &&
+                      window.akiniContacts.getActiveChatId() === _frCid &&
+                      !document.hidden &&
+                      O(_frCid, s);
                   } catch (t) {}
                 }, n),
                 void setTimeout(function () {
@@ -9640,11 +9727,6 @@ window.__akiniCleanGhostBubbles = function (root) {
                 (s > 0 || (s = 3), l >= s || (l = Math.max(s, 5)));
                 var d = o + 1e3 * (r + Math.random() * (c - r)),
                   u = Math.max(o + 400, d - 1e3 * (s + Math.random() * (l - s)));
-                if (a)
-                  try {
-                    var m = document.getElementById("typingIndicator");
-                    (m && (m.style.display = "block"), O(t, null));
-                  } catch (t) {}
                 (setTimeout(function () {
                   var t = document.getElementById("chatBody");
                   t &&
@@ -11577,23 +11659,6 @@ ki = document.getElementById("changeChatWallpaperBtn"),
             var t = document.getElementById("chatBackUnreadBadge");
             if (!t) return;
             return void t.style.setProperty("display", "none", "important");
-            if (!window.akiniContacts || !window.akiniContacts.getSessions)
-              return void t.style.setProperty("display", "none", "important");
-            var e = window.akiniContacts.getSessions(),
-              n = window.akiniContacts.getActiveChatId ? window.akiniContacts.getActiveChatId() : "",
-              i = 0;
-            (Object.keys(e).forEach(function (t) {
-              String(t) !== String(n) && (i += Number(e[t].unread || 0));
-            }),
-              i > 0
-                ? ((t.textContent = i > 99 ? "99+" : String(i)),
-                  t.style.setProperty("display", "inline-flex", "important"),
-                  t.style.setProperty("visibility", "visible", "important"),
-                  t.style.setProperty("opacity", "1", "important"))
-                : (t.style.setProperty("display", "none", "important"),
-                  t.style.setProperty("visibility", "hidden", "important"),
-                  t.style.setProperty("opacity", "0", "important"),
-                  (t.textContent = "")));
           } catch (t) {}
         }),
         a(),
@@ -11744,10 +11809,28 @@ ki = document.getElementById("changeChatWallpaperBtn"),
               }));
           }
           window.__wbRenderGroupFilter = g;
-          function f() {
+          function f(_keep) {
             if ("survey" === window.__wbTab) return;
             const r = document.getElementById("wbContent");
             if (!r) return;
+            /* 就地操作（删字卡/多选删除/加入分组/显示更多）重渲染时保持滚动位置：
+               锚定当前第一个可见卡片——删掉它上面的卡也不跳 */
+            var _keepSt = _keep ? r.scrollTop : 0,
+              _anchor = null;
+            if (_keep) {
+              /* 直接从 DOM 取锚定卡文本——删除后数组索引会移位，不能靠 data-idx 查表 */
+              var _rt = r.getBoundingClientRect().top,
+                _its = r.querySelectorAll(".wb-word-item"),
+                _tab0 = window.__wbTab || t;
+              for (var _ai = 0; _ai < _its.length; _ai++) {
+                var _arc = _its[_ai].getBoundingClientRect();
+                if (_arc.bottom > _rt + 4) {
+                  var _tx0 = _its[_ai].querySelector(".wb-word-text");
+                  _anchor = { key: _tab0 + "::" + (_tx0 ? _tx0.textContent.trim() : ""), off: _arc.top - _rt };
+                  break;
+                }
+              }
+            }
             let c = d()
               .map((t, e) => ({
                 item: t,
@@ -11759,7 +11842,19 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                 (c =
                   "__ungrouped__" === n
                     ? c.filter(({ item: t }) => !t.gid)
-                    : c.filter(({ item: t }) => String(t.gid || "") === String(n))),
+                    : (function () {
+                        /* gid 兼容旧数据存分组名的情况（与分组管理计数/全选口径一致） */
+                        var _gn4 = "";
+                        try {
+                          m().forEach(function (_g) {
+                            String(_g.id) === String(n) && (_gn4 = String(_g.name || ""));
+                          });
+                        } catch (_eg4) {}
+                        return c.filter(({ item: t }) => {
+                          var _g1 = String(null == t.gid ? "" : t.gid);
+                          return _g1 === String(n) || (_gn4 && _g1 === _gn4);
+                        });
+                      })()),
               e)
             ) {
               const t = e.toLowerCase();
@@ -11822,10 +11917,41 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                 (c.length - _limit) +
                 " 条）</button>";
             r.innerHTML = _h;
+            if (_keep) {
+              /* 钉住锚定卡：立即钉一次，再在样式稳定后（rAF+180ms）各补钉一次——
+                 字体/样式异步落地会改卡高，只钉一次会被顶飞。用户已手动滚动则放弃补钉 */
+              var _pin = function () {
+                if (!_anchor) {
+                  r.scrollTop = _keepSt;
+                  return;
+                }
+                var _nIts = r.querySelectorAll(".wb-word-item");
+                for (var _bi = 0; _bi < _nIts.length; _bi++) {
+                  var _tx2 = _nIts[_bi].querySelector(".wb-word-text");
+                  if (_tx2 && _anchor.key === _tab0 + "::" + _tx2.textContent.trim()) {
+                    r.scrollTop +=
+                      _nIts[_bi].getBoundingClientRect().top - r.getBoundingClientRect().top - _anchor.off;
+                    return;
+                  }
+                }
+                r.scrollTop = _keepSt;
+              };
+              _pin();
+              var _pinned = r.scrollTop;
+              requestAnimationFrame(function () {
+                if (Math.abs(r.scrollTop - _pinned) < 2) {
+                  _pin();
+                  _pinned = r.scrollTop;
+                }
+              });
+              setTimeout(function () {
+                if (Math.abs(r.scrollTop - _pinned) < 2) _pin();
+              }, 180);
+            }
             var _lm = document.getElementById("wbLoadMore");
             _lm &&
               _lm.addEventListener("click", function () {
-                ((window.__wbLimit = _limit + 80), f());
+                ((window.__wbLimit = _limit + 80), f(!0));
               });
             y();
           }
@@ -11886,10 +12012,17 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                             var c = t.changedTouches && t.changedTouches[0];
                             if (c && !(Math.abs(c.clientX - a) > 10 || Math.abs(c.clientY - i) > 10)) {
                               var s = t.target.closest ? t.target.closest(e) : null;
-                              s && ((r = !0), n(t, s));
-                              try {
-                                t.preventDefault();
-                              } catch (t) {}
+                              /* 只在命中字卡项(.wb-word-item)时才 preventDefault 拦截 click；
+                                 其它元素（如底部「显示更多」按钮）必须放行，
+                                 否则 iOS 上 touchend preventDefault 会取消后续 click，
+                                 按钮点了完全没反应——主字卡「显示更多」失效就是这个。 */
+                              if (s) {
+                                r = !0;
+                                n(t, s);
+                                try {
+                                  t.preventDefault();
+                                } catch (t) {}
+                              }
                             }
                           }
                         },
@@ -11933,7 +12066,7 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                           window._akiniAllowRemove = 0;
                         }, 5000),
                         a.clear(),
-                        f(),
+                        f(!0),
                         g());
                     } else if (o || i) {
                       const t = o ? l : a;
@@ -12024,10 +12157,10 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                       }).length,
                       o = document.createElement("div");
                     ((o.style.cssText =
-                      "display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f8f8f8;border-radius:10px;margin-bottom:8px;"),
+                      "display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f7f7f7;border-radius:12px;margin-bottom:8px;"),
                       __akiniGuardHtml(
                         o,
-                        `\n                        <div style="display:flex;align-items:center;gap:8px;">\n                            <span style="font-size:14px;color:#333;font-weight:500;">${e.name}</span>\n                            <span style="font-size:12px;color:#aaa;">${a}条</span>\n                        </div>\n                        <div style="display:flex;align-items:center;gap:2px;margin:-10px -12px -10px 0;">\n                            <button type="button" data-gi="${i}" class="edit-group-btn" title="修改分组名称" style="background:none;border:none;color:#666;cursor:pointer;padding:10px 8px;min-width:36px;min-height:40px;touch-action:manipulation;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>\n                            <button type="button" data-gi="${i}" style="background:none;border:none;color:#ff6b6b;font-size:16px;cursor:pointer;padding:10px 12px;min-width:40px;min-height:40px;touch-action:manipulation;" class="del-group-btn">✕</button>\n                        </div>\n                    `,
+                        `\n                        <div style="display:flex;align-items:center;gap:8px;">\n                            <span style="font-size:14px;color:#000;font-weight:600;">${e.name}</span>\n                            <span style="font-size:12px;color:#888;">${a}条</span>\n                        </div>\n                        <div style="display:flex;align-items:center;gap:2px;margin:-10px -12px -10px 0;">\n                            <button type="button" data-gi="${i}" class="edit-group-btn" title="修改分组名称" style="background:none;border:none;color:#000;cursor:pointer;padding:10px 8px;min-width:36px;min-height:40px;touch-action:manipulation;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>\n                            <button type="button" data-gi="${i}" style="background:none;border:none;color:#000;font-size:16px;cursor:pointer;padding:10px 12px;min-width:40px;min-height:40px;touch-action:manipulation;" class="del-group-btn">✕</button>\n                        </div>\n                    `,
                       ),
                       n.appendChild(o));
                   })),
@@ -13062,7 +13195,23 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                   idx: e,
                 }))
                 .filter(({ item: e }) => (e.tab || "main") === (window.__wbTab || t));
-              if (("" !== n && (i = i.filter(({ item: t }) => String(t.gid || "") === String(n))), e)) {
+              /* 分组筛选口径与 f() 完全一致：__ungrouped__=未分组；gid 兼容存分组名的旧数据。
+                 之前没处理 __ungrouped__，未分组视图点全选选中 0 条，表现为"点了没反应"。 */
+              if ("" !== n)
+                if ("__ungrouped__" === n) i = i.filter(({ item: t }) => !t.gid);
+                else {
+                  var _gn3 = "";
+                  try {
+                    m().forEach(function (_g) {
+                      String(_g.id) === String(n) && (_gn3 = String(_g.name || ""));
+                    });
+                  } catch (_eg3) {}
+                  i = i.filter(({ item: t }) => {
+                    var _g0 = String(null == t.gid ? "" : t.gid);
+                    return _g0 === String(n) || (_gn3 && _g0 === _gn3);
+                  });
+                }
+              if (e) {
                 const t = e.toLowerCase();
                 i = i.filter(({ item: e }) => (e.text || e.content || "").toLowerCase().includes(t));
               }
@@ -13086,7 +13235,7 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                           .forEach((t) => e.splice(t, 1)),
                           u(e),
                           a.clear(),
-                          f(),
+                          f(!0),
                           g());
                       },
                     })
@@ -13109,10 +13258,26 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                     ((e.className = "wb-pick-group-btn"),
                       (e.dataset.gid = t.id),
                       (e.style.cssText =
-                        "padding:10px 14px;background:#f5f5f5;border:none;border-radius:10px;font-size:14px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;"),
+                        "padding:13px 16px;background:#f7f7f7;border:none;border-radius:12px;font-size:15px;color:#000;font-weight:600;cursor:pointer;text-align:center;width:100%;box-sizing:border-box;"),
                       (e.innerHTML = `${t.name}`),
                       P.appendChild(e));
                   }),
+                  /* 兜底纠样式：用户端 index.html 可能被旧缓存顶住，
+                     弹窗壳的黑边/黑底叉改在打开时用 JS 强制刷新一次 */
+                  D &&
+                    !D.__wbPatched &&
+                    ((D.__wbPatched = 1),
+                    (function () {
+                      var card = D.children[0];
+                      card &&
+                        (card.style.cssText =
+                          "background:#fff;border-radius:20px;width:100%;max-width:340px;max-height:62%;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;box-shadow:0 24px 64px rgba(0,0,0,.4);");
+                      var head = card && card.children[0];
+                      head && (head.style.borderBottom = "1px solid #f0f0f0");
+                      N &&
+                        (N.style.cssText =
+                          "width:30px;height:30px;border-radius:50%;background:transparent;color:#000;border:none;font-size:15px;font-weight:700;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;");
+                    })()),
                   D && ((D.style.display = "flex"), (D.style.pointerEvents = "auto")))
                 : alert("请先通过工具栏「分组」创建分组");
             }),
@@ -13128,7 +13293,7 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                   u(i),
                   a.clear(),
                   D && (D.style.display = "none"),
-                  f(),
+                  f(!0),
                   g());
               }),
             N &&
@@ -14060,7 +14225,24 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                 c.addEventListener("click", function (t) {
                   t.target === c && m();
                 })));
-            const g = mt().filter((t) => "icity" !== t.source);
+            let g = mt().filter((t) => "icity" !== t.source);
+            /* 本站是单联系人站点：没有联系人列表。朋友圈里所有"不是我发的"内容，
+               一律归到唯一默认联系人，历史旧名字/已删除联系人都不再显示。 */
+            var _pc = null,
+              _cname = localStorage.getItem("akini_ta_name") || "对方";
+            try {
+              var _cs =
+                window.akiniContacts && window.akiniContacts.getContacts
+                  ? window.akiniContacts.getContacts()
+                  : [];
+              _pc =
+                (_cs || []).filter(function (c) {
+                  return c && !c.__autoPlaceholder && c.id !== "ta_default";
+                })[0] ||
+                (_cs || [])[0] ||
+                null;
+              if (_pc && _pc.name) _cname = String(_pc.name);
+            } catch (_fg) {}
             if ((g.sort((t, e) => (e.ts || 0) - (t.ts || 0)), 0 === g.length && !window.__akiniStorageRestored)) return;
             if (((o.innerHTML = ""), 0 === g.length)) return void (r && (r.style.display = "flex"));
             r && (r.style.display = "none");
@@ -14080,40 +14262,38 @@ ki = document.getElementById("changeChatWallpaperBtn"),
             }
             (y.forEach((t, e) => {
               !t.author || t.author;
-              const n = (function (t) {
-                  if (!t.author || t.author === f)
-                    return (
-                      localStorage.getItem("akini_my_avatar") ||
-                      (window.__akiniAvatarCache && window.__akiniAvatarCache.my) ||
-                      ""
-                    );
-                  if (window.akiniContacts) {
-                    if (t.authorId) {
-                      var e = window.akiniContacts.getContactById(t.authorId);
-                      if (e) return e.avatar;
-                    }
-                    var n = window.akiniContacts.getContacts().find(function (e) {
-                      return e.name === t.author;
-                    });
-                    if (n) return n.avatar;
-                  }
-                  return localStorage.getItem("akini_ta_avatar") || "";
-                })(t),
-                i = t.author || f,
-                a = zt(n, 36),
+              var _isMe = t.authorId === "me" || !t.author || t.author === f || t.author === "我",
+                n = _isMe
+                  ? localStorage.getItem("akini_my_avatar") ||
+                    (window.__akiniAvatarCache && window.__akiniAvatarCache.my) ||
+                    ""
+                  : (_pc && _pc.avatar) || localStorage.getItem("akini_ta_avatar") || "",
+                i = _isMe ? f : _cname;
+              var a = zt(n, 36),
                 r = t.likes || [],
                 c = t.comments || [];
               r.includes(f);
               let s = "";
               if (r.length || c.length) {
-                const t = r.filter(function (t) {
-                  return t && String(t).trim();
-                });
+                const t = r
+                  .filter(function (t) {
+                    return t && String(t).trim();
+                  })
+                  .map(function (v) {
+                    return String(v) === f || "我" === String(v) ? f : _cname;
+                  })
+                  .filter(function (v, i, arr) {
+                    return arr.indexOf(v) === i;
+                  });
                 let n = t.length ? '<div style="font-size:12px;color:#333;">♡ ' + t.join("、") + "</div>" : "",
                   i = c
                     .map((t, n) => {
-                      var i = t.author || "对方",
-                        a = t.replyTo || "";
+                      var i = "我" === String(t.author) || String(t.author) === f ? f : _cname,
+                        a = t.replyTo
+                          ? "我" === String(t.replyTo) || String(t.replyTo) === f
+                            ? f
+                            : _cname
+                          : "";
                       const o = a
                         ? '<span style="font-weight:600;color:#333;">' +
                           i +
@@ -14140,7 +14320,9 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                           ? '<img class="comment-sticker-img" src="' +
                             r +
                             '" style="max-width:80px;max-height:80px;border-radius:6px;display:inline-block;vertical-align:middle;" alt=""/>'
-                          : '<span style="color:#333;">' + (t.text || "") + "</span>") +
+                          : '<span style="color:#333;">' +
+                            (t.text || (t.sticker ? "[表情包]" : "")) +
+                            "</span>") +
                         "</div>"
                       );
                     })
@@ -14163,7 +14345,11 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                     '</div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;color:#333;margin-bottom:4px;">' +
                     i +
                     '</div><div class="post-content">' +
-                    (t.text || "") +
+                    (function (v) {
+                      /* 多条字卡合并的动态不允许一句一行：旧数据里的换行在这里压成空格。
+                         信件走的是独立渲染，不受影响。 */
+                      return String(v == null ? "" : v).replace(/\r?\n+/g, " ");
+                    })(t.text) +
                     "</div>" +
                     (t.img
                       ? '<div class="post-image"><img ' +
@@ -15294,6 +15480,12 @@ Vi = document.getElementById("transferBtn"),
           function a(e, a) {
             if (!e || !a) return;
             ((n = a), (i = e), (window.__akiniMbCtxRow = a), (t.style.display = "block"));
+            /* 陪伴 / 观影聊天只保留 复制 / 引用 / 小气泡 / 删除，收藏不可用 */
+            try {
+              var _cw = !!(a.closest && a.closest("#companionMsgs,#watchChatBody")),
+                _fav = document.getElementById("ctxFav");
+              _fav && (_fav.style.display = _cw ? "none" : "");
+            } catch (e1) {}
             const o = e.getBoundingClientRect(),
               r = t.offsetWidth || 120,
               c = t.offsetHeight || 42;
@@ -15482,11 +15674,24 @@ Vi = document.getElementById("transferBtn"),
                   f = f.substring(g[t].length);
                   break;
                 }
-              const y = f.length > 15 ? f.slice(0, 15) + "…" : f,
-                p = w + "：" + y,
-                _ = document.getElementById("msgInput"),
-                h = document.getElementById("chatQuoteBar"),
-                v = document.getElementById("quoteText");
+              const y = f.length > 15 ? f.slice(0, 15) + "…" : f;
+              /* 陪伴/观影页的长按引用：写到各自输入框 + 引用条（主聊天是 #msgInput/#chatQuoteBar） */
+              var cw = (n.closest && n.closest("#companionMsgs,#watchChatBody")) || null,
+                _isComp = !!cw && cw.id === "companionMsgs";
+              if (_isComp && !d)
+                try {
+                  var cst = JSON.parse(localStorage.getItem("akini_companion_state") || "{}"),
+                    ctc =
+                      cst && cst.cid && window.akiniContacts
+                        ? (window.akiniContacts.getContactById && window.akiniContacts.getContactById(cst.cid)) ||
+                          (window.akiniContacts.getChatTarget && window.akiniContacts.getChatTarget(cst.cid))
+                        : null;
+                  if (ctc && (ctc.remark || ctc.name)) w = ctc.remark || ctc.name;
+                } catch (e) {}
+              const p = w + "：" + y,
+                _ = document.getElementById(cw ? (_isComp ? "companionMsgInput" : "watchMsgInput") : "msgInput"),
+                h = document.getElementById(cw ? (_isComp ? "companionQuoteBar" : "watchQuoteBar") : "chatQuoteBar"),
+                v = document.getElementById(cw ? (_isComp ? "companionQuoteText" : "watchQuoteText") : "quoteText");
               if (
                 (_ &&
                   (_.setAttribute("data-quote", p),
@@ -15526,6 +15731,28 @@ Vi = document.getElementById("transferBtn"),
               }
               o();
             }),
+            /* 陪伴/观影引用条的 ✕：清除各自输入框的引用状态 */
+            (function () {
+              [
+                ["companionQuoteClose", "companionMsgInput", "companionQuoteBar", "说点什么…"],
+                ["watchQuoteClose", "watchMsgInput", "watchQuoteBar", "发弹幕…"],
+              ].forEach(function (cfg) {
+                var btn = document.getElementById(cfg[0]);
+                if (!btn || btn.__bound) return;
+                btn.__bound = 1;
+                btn.addEventListener("click", function () {
+                  var inp = document.getElementById(cfg[1]),
+                    bar = document.getElementById(cfg[2]);
+                  if (inp) {
+                    (inp.removeAttribute("data-quote"),
+                      inp.removeAttribute("data-quote-sticker"),
+                      inp.removeAttribute("data-quote-sticker-mh"),
+                      (inp.placeholder = inp.__origPh || cfg[3]));
+                  }
+                  bar && bar.classList.remove("show");
+                });
+              });
+            })(),
             document.getElementById("ctxMiniBubble") &&
               document.getElementById("ctxMiniBubble").addEventListener("click", function () {
                 var t = window.__akiniMbCtxRow;
@@ -15800,12 +16027,12 @@ Vi = document.getElementById("transferBtn"),
                       w.appendChild(t));
                   }
                 })(),
-                f
-                  .slice()
-                  .sort(function (t, e) {
-                    return (e.ts || 0) - (t.ts || 0);
-                  })
-                  .forEach(function (e) {
+                (function () {
+                  var sorted = f.slice().sort(function (t, e) {
+                      return (e.ts || 0) - (t.ts || 0);
+                    }),
+                    groups = [];
+                  sorted.forEach(function (e) {
                     var n,
                       s,
                       l,
@@ -15815,58 +16042,94 @@ Vi = document.getElementById("transferBtn"),
                       var u = v(e.authorId);
                       ((n = u.avatar || ""), (s = u.name), (l = u.handle));
                     } else ((n = i), (s = r), (l = c));
-                    var m = zt(n, 40),
-                      g = document.createElement("div");
+                    var dt = new Date(e.ts || Date.now()),
+                      key =
+                        (d ? "me" : e.authorId || "ta") +
+                        "|" +
+                        dt.getFullYear() +
+                        "-" +
+                        dt.getMonth() +
+                        "-" +
+                        dt.getDate(),
+                      last = groups[groups.length - 1];
+                    if (!last || last.key !== key)
+                      groups.push({
+                        key: key,
+                        isMe: d,
+                        avatar: n,
+                        name: s,
+                        handle: l,
+                        avatarId: e.authorId || (d ? "me" : "ta"),
+                        date: dt,
+                        items: [],
+                      });
+                    groups[groups.length - 1].items.push(e);
+                  });
+                  var clockIcon =
+                      '<svg viewBox="0 0 24 24" fill="none" stroke="#c2c2c2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;display:inline-block;flex-shrink:0;margin-right:5px;"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3.2 2.1"/></svg>';
+                  groups.forEach(function (grp) {
+                    var g = document.createElement("div");
                     g.className = "icity-diary-card";
-                    var f = new Date(e.ts || Date.now()),
+                    var gd = grp.date,
                       y =
-                        f.toLocaleDateString("zh-CN", {
-                          month: "numeric",
-                          day: "numeric",
-                        }) +
-                        " · " +
-                        f.toLocaleDateString("zh-CN", {
-                          weekday: "short",
-                        }),
-                      p = String(f.getFullYear()),
-                      _ = String(f.getHours()).padStart(2, "0") + ":" + String(f.getMinutes()).padStart(2, "0"),
-                      h = d
+                        gd.getMonth() +
+                        1 +
+                        "月" +
+                        gd.getDate() +
+                        "日 · 星期" +
+                        ["日", "一", "二", "三", "四", "五", "六"][gd.getDay()],
+                      p = String(gd.getFullYear()),
+                      m = zt(grp.avatar, 48),
+                      h = grp.isMe
                         ? ""
                         : " onclick=\"var cid=this.getAttribute('data-contact-id'); if(cid==='ta'){var first=window.akiniContacts?window.akiniContacts.getContacts()[0]:null; cid=first?first.id:null;} if(window.showIcityTaProfile&amp;&amp;cid){window.showIcityTaProfile(cid);}\"";
-                    (g.setAttribute("data-diary-id", e.id),
-                      (g.innerHTML =
-                        '<div class="icity-diary-header">  <div class="icity-diary-avatar" data-contact-id="' +
-                        (e.authorId || (d ? "me" : "ta")) +
-                        '"' +
-                        h +
-                        ">" +
-                        m +
-                        '</div>  <div class="icity-diary-meta">    <div class="icity-diary-name">' +
-                        s +
-                        '</div>    <div class="icity-diary-handle">@' +
-                        l +
-                        '</div>  </div>  <div class="icity-diary-date">    <div>' +
-                        y +
-                        "</div>    <div>" +
-                        p +
-                        '</div>  </div></div><div class="icity-diary-text">' +
-                        e.text +
-                        '</div><div class="icity-diary-footer">  <span class="icity-diary-time"><svg viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>' +
-                        _ +
-                        '</span>  <button type="button" class="icity-more-btn" data-id="' +
-                        e.id +
-                        '" style="background:none;border:none;font-size:18px;color:#bbb;cursor:pointer;padding:4px;">⋮</button></div>'));
-                    var k = g.querySelector(".icity-more-btn");
-                    (k &&
-                      k.addEventListener("click", function (t) {
+                    g.innerHTML =
+                      '<div class="icity-diary-header">  <div class="icity-diary-avatar" data-contact-id="' +
+                      grp.avatarId +
+                      '"' +
+                      h +
+                      ">" +
+                      m +
+                      '</div>  <div class="icity-diary-meta">    <div class="icity-diary-name">' +
+                      grp.name +
+                      '</div>    <div class="icity-diary-handle">@' +
+                      grp.handle +
+                      '</div>  </div>  <div class="icity-diary-date">    <div>' +
+                      y +
+                      "</div>    <div>" +
+                      p +
+                      "</div>  </div></div>" +
+                      grp.items
+                        .map(function (e) {
+                          var time =
+                            String(new Date(e.ts || Date.now()).getHours()).padStart(2, "0") +
+                            ":" +
+                            String(new Date(e.ts || Date.now()).getMinutes()).padStart(2, "0");
+                          return (
+                            '<div class="icity-diary-entry" data-diary-id="' +
+                            e.id +
+                            '"><div class="icity-diary-text">' +
+                            e.text +
+                            '</div><div class="icity-diary-footer"><span class="icity-diary-time">' +
+                            clockIcon +
+                            time +
+                            '</span><button type="button" class="icity-more-btn" data-id="' +
+                            e.id +
+                            '" style="background:none;border:none;display:inline-flex;align-items:center;justify-content:center;font-size:20px;line-height:1;color:#c2c2c2;cursor:pointer;padding:2px 6px;margin-left:4px;-webkit-tap-highlight-color:transparent;">⋮</button></div></div>'
+                          );
+                        })
+                        .join("");
+                    (g.querySelectorAll(".icity-more-btn").forEach(function (btn) {
+                      btn.addEventListener("click", function (ev) {
+                        ev.stopPropagation();
                         var e = this.getAttribute("data-id"),
                           n = document.getElementById("icityActionSheet");
                         if (n) {
-                          ((n.style.display = "flex"), (n._currentId = e), (n._isMe = d));
+                          ((n.style.display = "flex"), (n._currentId = e), (n._isMe = grp.isMe));
                           var i = document.getElementById("icityActionButtonsWrap");
                           i && (i.style.display = "block");
                           var a = document.getElementById("icityActionDelete");
-                          a && (a.style.display = d ? "flex" : "none");
+                          a && (a.style.display = grp.isMe ? "flex" : "none");
                           var o = document.getElementById("icityActionPin");
                           if (o) {
                             var r = pt().find(function (t) {
@@ -15875,12 +16138,21 @@ Vi = document.getElementById("transferBtn"),
                             o.textContent = r && r.pinned ? "取消置顶" : "置顶日记";
                           }
                         }
-                      }),
-                      g.addEventListener("click", function (t) {
-                        t.target.closest(".icity-more-btn") || openIcityDetail(e);
+                      });
+                    }),
+                      g.addEventListener("click", function (ev) {
+                        if (ev.target.closest(".icity-more-btn")) return;
+                        if (ev.target.closest(".icity-diary-avatar")) return;
+                        var entry = ev.target.closest(".icity-diary-entry"),
+                          id = entry && entry.getAttribute("data-diary-id"),
+                          item = id && f.find(function (x) {
+                            return x.id == id;
+                          });
+                        item && openIcityDetail(item);
                       }),
                       w.appendChild(g));
-                  }));
+                  });
+                })());
               var y = document.getElementById("icityMyDiaryCount");
               y &&
                 (y.textContent = m.filter(function (t) {
@@ -15992,27 +16264,60 @@ Vi = document.getElementById("transferBtn"),
                             ? window.__akiniNaturalTime(m)
                             : String(m.getHours()).padStart(2, "0") + ":" + String(m.getMinutes()).padStart(2, "0"),
                           g = t.pinned
-                            ? '<span style="display:inline-block;margin-left:4px;padding:1px 6px;background:rgba(0,0,0,0.06);color:#888;font-size:11px;border-radius:8px;vertical-align:middle;">置顶</span>'
+                            ? '<span style="display:inline-block;margin-right:6px;padding:1px 6px;background:rgba(0,0,0,0.06);color:#888;font-size:11px;border-radius:8px;vertical-align:middle;">置顶</span>'
                             : "",
                           f = document.createElement("div");
                         return (
                           (f.className = "icity-profile-diary-card"),
                           (f.style.cssText =
-                            "background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.04);cursor:pointer;"),
+                            "background:#fff;border:none;padding:16px 16px 14px;margin:0;cursor:pointer;"),
                           (f.innerHTML =
-                            '<div style="display:flex;align-items:center;margin-bottom:10px;">  <div style="width:36px;height:36px;border-radius:50%;overflow:hidden;background:#f2f2f2;flex-shrink:0;margin-right:10px;display:flex;align-items:center;justify-content:center;">' +
-                            u +
-                            '</div>  <div style="flex:1;min-width:0;">    <div style="font-size:15px;font-weight:600;color:#222;line-height:1.3;">' +
-                            l +
+                            '<div class="icity-profile-diary-text" style="font-size:16px;color:#1a1a1a;line-height:1.8;word-break:break-word;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;">' +
                             g +
-                            '</div>    <div style="font-size:12px;color:#999;line-height:1.3;">@' +
-                            d +
-                            '</div>  </div></div><div style="font-size:16px;color:#333;line-height:1.75;word-break:break-all;white-space:normal;margin-bottom:10px;">' +
                             t.text +
-                            '</div><div style="display:flex;justify-content:flex-end;font-size:12px;color:#bbb;">' +
+                            '</div><div class="icity-profile-expand" style="display:none;font-size:13px;color:#4a90e2;margin-top:6px;line-height:1.4;">点击展开 (' +
+                            String(t.text || "").replace(/\s+/g, "").length +
+                            ' 字)</div><div style="display:flex;align-items:center;justify-content:flex-end;margin-top:10px;gap:14px;color:#c2c2c2;">' +
+                            '<span style="display:inline-flex;align-items:center;font-size:12px;color:#c2c2c2;line-height:1;"><svg viewBox="0 0 24 24" fill="none" stroke="#c2c2c2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;margin-right:5px;"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3.2 2.1"/></svg>' +
                             w +
-                            "</div>"),
-                          f.addEventListener("click", function () {
+                            '</span><span class="icity-profile-more-btn" data-id="' +
+                            t.id +
+                            '" style="display:inline-flex;align-items:center;justify-content:center;padding:2px 6px;color:#c2c2c2;font-size:20px;line-height:1;cursor:pointer;-webkit-tap-highlight-color:transparent;">⋮</span></div>'),
+                          setTimeout(function () {
+                            var txt = f.querySelector(".icity-profile-diary-text"),
+                              ex = f.querySelector(".icity-profile-expand");
+                            txt &&
+                              ex &&
+                              txt.scrollHeight > txt.clientHeight + 2 &&
+                              ((ex.style.display = "block"),
+                              (ex.onclick = function (ev) {
+                                (ev.stopPropagation(),
+                                  (txt.style.display = "block"),
+                                  txt.style.setProperty("-webkit-line-clamp", "unset"),
+                                  (txt.style.overflow = "visible"),
+                                  (ex.style.display = "none"));
+                              }));
+                          }, 0),
+                          f.addEventListener("click", function (e) {
+                            var mb = e.target && e.target.closest ? e.target.closest(".icity-profile-more-btn") : null;
+                            if (mb) {
+                              var sheet = document.getElementById("icityActionSheet");
+                              if (sheet) {
+                                ((sheet.style.display = "flex"), (sheet._currentId = t.id), (sheet._isMe = c));
+                                var bw = document.getElementById("icityActionButtonsWrap");
+                                bw && (bw.style.display = "block");
+                                var del = document.getElementById("icityActionDelete");
+                                del && (del.style.display = c ? "flex" : "none");
+                                var pin = document.getElementById("icityActionPin");
+                                if (pin) {
+                                  var cur = pt().find(function (x) {
+                                    return x.id == t.id;
+                                  });
+                                  pin.textContent = cur && cur.pinned ? "取消置顶" : "置顶日记";
+                                }
+                              }
+                              return;
+                            }
                             openIcityDetail(t);
                           }),
                           f
@@ -16052,8 +16357,10 @@ Vi = document.getElementById("transferBtn"),
               l = document.getElementById("icityDetailLikeBtn");
             l &&
               ((l.innerHTML =
-                '<span style="font-size:16px;color:#000;">♡</span><span style="font-size:14px;margin-left:5px;">喜欢</span>'),
-              (l.style.color = s ? "#000000" : "#888"));
+                '<span style="font-size:16px;color:' +
+                (s ? "#111111" : "#b5b5b5") +
+                ';">♡</span><span style="font-size:14px;margin-left:5px;">喜欢</span>'),
+              (l.style.color = s ? "#111111" : "#b5b5b5"));
             var d = document.getElementById("icityDetailLikers");
             d &&
               (c.length
@@ -16173,7 +16480,7 @@ Vi = document.getElementById("transferBtn"),
                               ? '<img class="comment-sticker-img" src="' +
                                 o +
                                 '" style="max-width:80px;max-height:80px;border-radius:6px;display:block;" alt=""/>'
-                              : t.text || "") +
+                              : t.text || (t.sticker ? "[表情包]" : "")) +
                             "</div></div></div>"
                           );
                         })
@@ -16436,49 +16743,84 @@ Vi = document.getElementById("transferBtn"),
                 var s = null,
                   l = 0,
                   d = null,
-                  u = null,
+                  avHiD = null,
                   m = [
                     {
                       key: "classic",
                       label: "icity",
-                      outer: "#f5f5f5",
-                      outerFrom: "#f5f5f5",
-                      outerTo: "#f5f5f5",
-                      outerSolid: "#f5f5f5",
+                      w: 440,
+                      outer: "#f0eeee",
+                      outerFrom: "#f0eeee",
+                      outerTo: "#f0eeee",
+                      outerSolid: "#f0eeee",
                       card: "#ffffff",
-                      accent: "#111111",
-                      text: "#222222",
+                      accent: "#383838",
+                      text: "#000000",
                       pattern: "none",
                       layout: "classic",
                     },
                     {
                       key: "pink",
                       label: "爱心",
-                      outer: "linear-gradient(145deg,#f9ccd4,#e8a0b0)",
-                      outerFrom: "#f9ccd4",
-                      outerTo: "#e8a0b0",
-                      outerSolid: "#e8a0b0",
+                      w: 420,
+                      outer: "#ebc2c7",
+                      outerFrom: "#ebc2c7",
+                      outerTo: "#ebc2c7",
+                      outerSolid: "#ebc2c7",
                       card: "#ffffff",
-                      accent: "#c45a7c",
-                      text: "#3a2a30",
-                      pattern: "dots",
-                      layout: "dateTop",
+                      accent: "#000000",
+                      text: "#000000",
+                      pattern: "hearts",
+                      layout: "heart",
                     },
                     {
                       key: "blue",
                       label: "天空",
-                      outer: "linear-gradient(145deg,#b8e0f8,#8cc8ec)",
-                      outerFrom: "#b8e0f8",
-                      outerTo: "#8cc8ec",
-                      outerSolid: "#8cc8ec",
+                      w: 420,
+                      outer: "#afd2eb",
+                      outerFrom: "#afd2eb",
+                      outerTo: "#afd2eb",
+                      outerSolid: "#afd2eb",
                       card: "#ffffff",
-                      accent: "#7a9ab0",
-                      text: "#2a3a48",
+                      accent: "#9aa3b7",
+                      text: "#33445a",
                       pattern: "dots",
-                      layout: "dateTop",
+                      layout: "sky",
                     },
                   ],
-                  w = {};
+                  w = {},
+                  /* 爱心纹样：与蓝色圆点同款 64px 交错网格，圆点换成圆润爱心。
+                     每颗心 ~23px 完整落在 tile 内（旧版第二颗溢出 viewBox 被切成半颗，
+                     且 38px 太大）；DOM 预览/canvas 导出/缩略图共用 */
+                  _heartTile =
+                    "data:image/svg+xml;charset=utf-8," +
+                    encodeURIComponent(
+                      '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><path d="M22 39.5C9.5 30.5 3 22 3 13.5 3 6.8 7.8 2.5 13.8 2.5c3.4 0 6.2 1.6 8.2 4.4 2-2.8 4.8-4.4 8.2-4.4 6 0 10.8 4.3 10.8 11 0 8.5-6.5 17-19 26z" fill="#ffffff" opacity="0.55" transform="translate(2.8 4.4) scale(0.6)"/><path d="M22 39.5C9.5 30.5 3 22 3 13.5 3 6.8 7.8 2.5 13.8 2.5c3.4 0 6.2 1.6 8.2 4.4 2-2.8 4.8-4.4 8.2-4.4 6 0 10.8 4.3 10.8 11 0 8.5-6.5 17-19 26z" fill="#ffffff" opacity="0.75" transform="translate(34.8 36.4) scale(0.6)"/></svg>',
+                    );
+                  window.__akiniHeartPat = { src: _heartTile, tw: 64, th: 64, offY: 0 };
+                  /* 预加载单元图，保证 canvas 兜底导出时已解码就绪 */
+                  (window.__akiniHeartImg = new Image()), (window.__akiniHeartImg.src = _heartTile);
+                  /* 头像高清化：导出前把头像原图按 384px 重新采样，
+                     截图时按 CSS 尺寸绘制即可保持清晰，不再事后在 canvas 上补画 */
+                  hiResAvatar = function (img) {
+                    try {
+                      if (!img || !img.naturalWidth || !img.naturalHeight) return null;
+                      var S = 384,
+                        c = document.createElement("canvas");
+                      ((c.width = S), (c.height = S));
+                      var x = c.getContext("2d");
+                      if (!x) return null;
+                      var ss = Math.min(img.naturalWidth, img.naturalHeight),
+                        sx = (img.naturalWidth - ss) / 2,
+                        sy = (img.naturalHeight - ss) / 2;
+                      ((x.imageSmoothingEnabled = !0),
+                        (x.imageSmoothingQuality = "high"),
+                        x.drawImage(img, sx, sy, ss, ss, 0, 0, S, S));
+                      return c.toDataURL("image/png");
+                    } catch (e) {
+                      return null;
+                    }
+                  };
                 ((window.openIcitySaveModal = function (e) {
                   try {
                     var n = e && (e.authorId || e.contactId);
@@ -16526,25 +16868,26 @@ Vi = document.getElementById("transferBtn"),
                     (function (t) {
                       if (
                         ((d = null),
-                        (u = null),
+                        (avHiD = null),
                         t.avatar && (t.avatar.startsWith("data:") || t.avatar.startsWith("http")))
                       ) {
                         var e = new Image();
                         (t.avatar.startsWith("http") && (e.crossOrigin = "anonymous"),
                           (e.onload = function () {
                             d = e;
+                            /* 预览直接用 384 重采样版：原图动辄几 MB，foreignObject 序列化后
+                               iOS 容易光栅化失败或把头像按 1x 光栅化成马赛克 */
                             try {
-                              var t = document.createElement("canvas");
-                              ((t.width = e.naturalWidth || 100),
-                                (t.height = e.naturalHeight || 100),
-                                t.getContext("2d").drawImage(e, 0, 0),
-                                (u = t.toDataURL("image/png")));
-                            } catch (t) {
-                              u = null;
-                            }
+                              avHiD = hiResAvatar(e);
+                            } catch (t) {}
+                            /* 头像解码完成后刷新预览，让 384 版本生效 */
+                            if (s)
+                              try {
+                                p(s, l);
+                              } catch (t) {}
                           }),
                           (e.onerror = function () {
-                            ((d = null), (u = null));
+                            ((d = null), (avHiD = null));
                           }),
                           __akiniGuardSrc(e, t.avatar));
                       }
@@ -16570,102 +16913,95 @@ Vi = document.getElementById("transferBtn"),
                       var t, e;
                       s &&
                         (function (t, e, n) {
-                          if (a && window.html2canvas) {
-                            m[e];
-                            var i = a.style.width || "",
-                              o = (a.parentNode && a.parentNode.style.maxWidth) || "";
-                            ((a.style.width = "360px"),
-                              a.parentNode && (a.parentNode.style.maxWidth = "none"),
-                              p(t, e),
-                              setTimeout(function () {
-                                a.getBoundingClientRect();
-                                var r = a.querySelectorAll("img"),
-                                  c = [];
-                                (r.forEach(function (t, e) {
-                                  ((c[e] = t.src),
-                                    u
-                                      ? __akiniGuardSrc(t, u)
-                                      : t.src.startsWith("data:") || (t.crossOrigin = "anonymous"));
-                                }),
-                                  window
-                                    .html2canvas(a, {
-                                      scale: 3,
-                                      useCORS: !0,
-                                      allowTaint: !1,
-                                      backgroundColor: null,
-                                      logging: !1,
-                                    })
-                                    .then(function (t) {
-                                      try {
-                                        n(null, t.toDataURL("image/png"));
-                                      } catch (t) {
-                                        n(t);
-                                      }
-                                    })
-                                    .catch(function (t) {
-                                      n(t);
-                                    })
-                                    .then(
-                                      function () {
-                                        v(a, i, o, t, e, r, c);
-                                      },
-                                      function () {
-                                        v(a, i, o, t, e, r, c);
-                                      },
-                                    ));
-                              }, 120));
-                          } else n(new Error("html2canvas unavailable"));
-                        })((t = s), (e = l), function (n, i) {
-                          n || !i
-                            ? (function (t, e, n) {
                                 if (a) {
                                   var i = a.style.width || "",
-                                    o = "";
+                                    o = "",
+                                    tw = (m[e] && m[e].w) || 440;
                                   (a.parentNode && (o = a.parentNode.style.maxWidth || ""),
-                                    (a.style.width = "360px"),
+                                    (a.style.width = tw + "px"),
                                     a.parentNode && (a.parentNode.style.maxWidth = "none"),
                                     p(t, e),
-                                    setTimeout(function () {
+                                    (a.style.transform = "none"),
+                                    a.parentNode && (a.parentNode.style.opacity = "0"),
+                                    (function (cb) {
+                                      /* 等头像真正解码完成再导出，否则 foreignObject 会把 40px 头像
+                                         按 1x 光栅化再放大，出现马赛克 */
+                                      var img =
+                                          a.querySelector(".icity-save-avatar img") ||
+                                          a.querySelector("img"),
+                                        done = !1,
+                                        finish = function () {
+                                          done || ((done = !0), cb());
+                                        };
+                                      if (!img || (img.complete && img.naturalWidth > 0))
+                                        return finish();
+                                      var to = setTimeout(finish, 900);
+                                      (img.addEventListener(
+                                        "load",
+                                        function () {
+                                          (clearTimeout(to), finish());
+                                        },
+                                        { once: !0 },
+                                      ),
+                                        img.addEventListener(
+                                          "error",
+                                          function () {
+                                            (clearTimeout(to), finish());
+                                          },
+                                          { once: !0 },
+                                        ));
+                                    })(function () {
                                       var r = a.getBoundingClientRect(),
-                                        c = Math.round(r.width),
-                                        s = Math.round(r.height);
+                                        c = a.offsetWidth || Math.round(r.width),
+                                        s = a.offsetHeight || Math.round(r.height),
+                                        SCALE = 4,
+                                        avLive =
+                                          a.querySelector(".icity-save-avatar img") ||
+                                          a.querySelector("img"),
+                                        avHi = avHiD || (avLive ? hiResAvatar(avLive) : null);
                                       try {
                                         var l = a.cloneNode(!0);
                                         ((l.style.width = c + "px"),
                                           (l.style.height = s + "px"),
                                           (l.style.boxSizing = "border-box"),
                                           (l.style.overflow = "visible"),
-                                          (l.style.boxShadow = "none"),
-                                          u &&
-                                            l.querySelectorAll("img").forEach(function (t) {
-                                              (t.closest(".icity-diary-avatar") || t.width < 120) &&
-                                                (__akiniGuardSrc(t, u), (t.crossOrigin = "anonymous"));
-                                            }));
+                                          (l.style.boxShadow = "none"));
+                                        /* 克隆里的头像换成 384px 重采样版本，foreignObject 直接按 4x 光栅化 */
+                                        if (avHi) {
+                                          var lv = l.querySelector(".icity-save-avatar img");
+                                          lv && (lv.src = avHi);
+                                        }
                                         var d = new XMLSerializer(),
                                           m = document.createElement("div");
+                                        /* 原画输出：SVG 声明 4 倍尺寸，内容用 transform:scale(4)，
+                                           浏览器直接以 1440px 级分辨率光栅化 */
                                         (m.setAttribute("xmlns", "http://www.w3.org/1999/xhtml"),
                                           (m.style.cssText =
                                             "width:" +
                                             c +
                                             "px;height:" +
                                             s +
-                                            "px;margin:0;padding:0;position:relative;"),
+                                            "px;margin:0;padding:0;position:relative;transform:scale(" +
+                                            SCALE +
+                                            ");transform-origin:0 0;"),
                                           m.appendChild(l));
                                         var w =
                                             '<svg xmlns="http://www.w3.org/2000/svg" width="' +
-                                            c +
+                                            SCALE * c +
                                             '" height="' +
-                                            s +
+                                            SCALE * s +
                                             '"><foreignObject width="100%" height="100%" x="0" y="0">' +
                                             d.serializeToString(m) +
                                             "</foreignObject></svg>",
                                           g = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(w),
                                           f = new Image(),
                                           y = document.createElement("canvas");
-                                        ((y.width = 3 * c), (y.height = 3 * s));
+                                        ((y.width = SCALE * c), (y.height = SCALE * s));
                                         var _ = y.getContext("2d");
                                         ((f.onload = function () {
-                                          _.drawImage(f, 0, 0, y.width, y.height);
+                                          ((_.imageSmoothingEnabled = !0),
+                                            (_.imageSmoothingQuality = "high"),
+                                            _.drawImage(f, 0, 0, y.width, y.height));
                                           try {
                                             n(null, y.toDataURL("image/png"));
                                           } catch (t) {
@@ -16681,11 +17017,12 @@ Vi = document.getElementById("transferBtn"),
                                       } finally {
                                         ((a.style.width = i),
                                           a.parentNode && (a.parentNode.style.maxWidth = o),
+                                          a.parentNode && (a.parentNode.style.opacity = ""),
                                           p(t, e));
                                       }
-                                    }, 100));
+                                    }));
                                 } else n(new Error("no preview"));
-                              })(t, e, function (n, i) {
+                        })((t = s), (e = l), function (n, i) {
                                 if (n || !i)
                                   try {
                                     h(
@@ -16737,6 +17074,16 @@ Vi = document.getElementById("transferBtn"),
                                                   (t.beginPath(), t.arc(o, a, 8, 0, 2 * Math.PI), t.fill(), (o += 60));
                                                 a += 60;
                                               }
+                                            } else if ("hearts" === e.pattern && window.__akiniHeartPat) {
+                                              /* 与 DOM 预览同一 64x64 交错网格单元平铺 */
+                                              var hp = window.__akiniHeartPat,
+                                                himg = window.__akiniHeartImg;
+                                              if (himg && himg.complete && himg.naturalWidth)
+                                                for (var ry = -1; ry * hp.th < i + hp.th; ry++)
+                                                  for (var cx = -1; cx * hp.tw < o + hp.tw; cx++)
+                                                    try {
+                                                      t.drawImage(himg, cx * hp.tw, ry * hp.th, hp.tw, hp.th);
+                                                    } catch (e) {}
                                             }
                                           })(v, n, 0, _),
                                           "classic" === n.layout &&
@@ -16753,35 +17100,41 @@ Vi = document.getElementById("transferBtn"),
                                             if (
                                               (t.save(),
                                               t.beginPath(),
-                                              t.arc(66, n + 20, 20, 0, 2 * Math.PI),
+                                              t.arc(74, n + 28, 28, 0, 2 * Math.PI),
                                               t.clip(),
                                               (t.fillStyle = "#f2f2f2"),
                                               t.fill(),
                                               d && d.complete && d.naturalWidth > 0)
                                             )
                                               try {
-                                                t.drawImage(d, 46, n, i, i);
+                                                var ss2 = Math.min(d.naturalWidth, d.naturalHeight),
+                                                  sx2 = (d.naturalWidth - ss2) / 2,
+                                                  sy2 = (d.naturalHeight - ss2) / 2;
+                                                ((t.imageSmoothingEnabled = !0),
+                                                  (t.imageSmoothingQuality = "high"),
+                                                  t.drawImage(d, sx2, sy2, ss2, ss2, 46, n, i, i));
                                               } catch (e) {
-                                                ((t.font = "22px sans-serif"),
+                                                ((t.font = "26px sans-serif"),
                                                   (t.textAlign = "center"),
                                                   (t.textBaseline = "middle"),
-                                                  t.fillText(a.avatar || "", 66, n + 20));
+                                                  t.fillText(a.avatar || "", 74, n + 28));
                                               }
                                             else
-                                              ((t.font = "22px sans-serif"),
+                                              ((t.font = "26px sans-serif"),
                                                 (t.textAlign = "center"),
                                                 (t.textBaseline = "middle"),
-                                                t.fillText(a.avatar || "", 66, n + 20));
+                                                t.fillText(a.avatar || "", 74, n + 28));
                                             t.restore();
-                                          })(v, 0, S + 4, 40, i),
+                                          })(v, 0, S + 4, 56, i),
                                           (v.font = "bold 15px sans-serif"),
-                                          (v.fillStyle = n.accent),
+                                          /* 昵称永远黑色，不跟主题色 */
+                                          (v.fillStyle = "#111"),
                                           (v.textBaseline = "alphabetic"),
                                           (v.textAlign = "left"),
-                                          v.fillText(i.name, 98, S + 18),
+                                          v.fillText(i.name, 114, S + 24),
                                           (v.font = "12px sans-serif"),
                                           (v.fillStyle = "#999"),
-                                          v.fillText("@" + i.handle, 98, S + 36),
+                                          v.fillText("@" + i.handle, 114, S + 42),
                                           "classic" === n.layout)
                                         ) {
                                           var I = a.cn.split("<br>");
@@ -16793,7 +17146,7 @@ Vi = document.getElementById("transferBtn"),
                                             (v.textAlign = "left"));
                                         }
                                         return (
-                                          (S += 58),
+                                          (S += 76),
                                           "dateTop" === n.layout &&
                                             ((v.font = "bold 24px sans-serif"),
                                             (v.fillStyle = n.accent),
@@ -16813,11 +17166,36 @@ Vi = document.getElementById("transferBtn"),
                                           (v.font = "12px sans-serif"),
                                           (v.fillStyle = "#bbb"),
                                           (v.textBaseline = "alphabetic"),
-                                          v.fillText(a.time, 46, S + 10),
-                                          (v.textAlign = "right"),
-                                          (v.font = "12px sans-serif"),
-                                          v.fillText("Created from iCity | 我的日记", 314, S + 10),
-                                          (v.textAlign = "left"),
+                                          /* 时间前画线条时钟（比时间字大） */
+                                          (function () {
+                                            try {
+                                              (v.save(),
+                                                (v.strokeStyle = "#bbb"),
+                                                (v.lineWidth = 1.6),
+                                                (v.lineCap = "round"),
+                                                v.beginPath(),
+                                                v.arc(53, S + 5.5, 7.5, 0, 2 * Math.PI),
+                                                v.stroke(),
+                                                v.beginPath(),
+                                                v.moveTo(53, S + 1.5),
+                                                v.lineTo(53, S + 5.5),
+                                                v.lineTo(56.2, S + 7.8),
+                                                v.stroke(),
+                                                v.restore());
+                                            } catch (t) {}
+                                          })(),
+                                          v.fillText(a.time, 66, S + 10),
+                                          /* icity 白卡样式不要右下角文字；粉/蓝样式挪到底图最底部彩色区域 */
+                                          "classic" !== n.layout &&
+                                            (function () {
+                                              try {
+                                                ((v.fillStyle = "rgba(255,255,255,0.9)"),
+                                                  (v.font = "500 10px sans-serif"),
+                                                  (v.textAlign = "center"),
+                                                  v.fillText("Created from iCity | 我的日记", o / 2, b + p + r / 2 + 3.5),
+                                                  (v.textAlign = "left"));
+                                              } catch (t) {}
+                                            })(),
                                           h.toDataURL("image/png")
                                         );
                                       })(t, e),
@@ -16826,9 +17204,7 @@ Vi = document.getElementById("transferBtn"),
                                     alert("生成图片失败，可能是头像图片跨域导致的。请尝试更换成emoji头像后重试。");
                                   }
                                 else h(i);
-                              })
-                            : h(i);
-                        });
+                              });
                     }));
               }
               function g(t) {
@@ -16885,33 +17261,44 @@ Vi = document.getElementById("transferBtn"),
                   handle: e ? i : o,
                   avatar: e
                     ? localStorage.getItem("akini_my_avatar") ||
+                      localStorage.getItem("akini_icity_my_avatar") ||
                       (window.__akiniAvatarCache && window.__akiniAvatarCache.my) ||
                       ""
                     : r,
                 };
               }
               function y(t) {
+                /* 天空：白色大圆点，直径 16.5，横向间距 48.2，行距 29.2、交错 24.1 */
                 if ("dots" === t.pattern) {
-                  var e = (function (t, e) {
-                    var n = t + "|" + "60|8";
+                  var e = (function () {
+                    var n = "dots-v3";
                     if (w[n]) return w[n];
                     var i = document.createElement("canvas");
-                    ((i.width = 360), (i.height = 360));
+                    ((i.width = 288), (i.height = 174));
                     var a = i.getContext("2d");
-                    (a.scale(3, 3), (a.fillStyle = t));
-                    for (var o = 0; o < 5; o++)
-                      for (var r = o * e * 0.5, c = o % 2 == 0 ? 0 : 30, s = -1; s < 5; s++) {
-                        var l = s * e + c;
-                        (a.beginPath(), a.arc(l, r, 8, 0, 2 * Math.PI), a.fill());
-                      }
+                    (a.scale(3, 3), (a.fillStyle = "rgba(255,255,255,0.3)"));
+                    [[8.25, 8.25], [56.45, 8.25], [32.35, 37.45], [80.55, 37.45]].forEach(function (p) {
+                      [p[0] - 96, p[0], p[0] + 96].forEach(function (cx) {
+                        [p[1] - 58, p[1], p[1] + 58].forEach(function (cy) {
+                          (a.beginPath(), a.arc(cx, cy, 8.25, 0, 2 * Math.PI), a.fill());
+                        });
+                      });
+                    });
                     return ((w[n] = i.toDataURL("image/png")), w[n]);
-                  })("rgba(255,255,255,0.55)", 60);
+                  })();
                   return (
                     '<div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;background-image:url(' +
                     e +
-                    ');background-size:60px 60px;"></div>'
+                    ');background-size:96px 58px;"></div>'
                   );
                 }
+                /* 爱心：64px 交错网格平铺（与蓝色圆点同布局，形状为圆润爱心） */
+                if ("hearts" === t.pattern)
+                  return (
+                    '<div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;background-image:url(&quot;' +
+                    _heartTile +
+                    '&quot;);background-size:64px 64px;"></div>'
+                  );
                 return "";
               }
               function p(t, e) {
@@ -16919,68 +17306,180 @@ Vi = document.getElementById("transferBtn"),
                   var n = m[e],
                     i = f(t),
                     o = g(t),
-                    r = (function (t) {
-                      return zt(t.avatar, 48);
-                    })(i),
+                    r = avHiD
+                      ? '<img src="' +
+                        avHiD +
+                        '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">'
+                      : zt(i.avatar, 256),
                     c = y(n),
-                    s = "28px",
-                    l = "",
-                    d = s;
-                  "classic" === n.layout &&
-                    ((l =
-                      '<div style="position:absolute;top:24px;left:28px;font-size:21px;font-weight:800;color:#111;font-family:sans-serif;letter-spacing:-0.5px;z-index:2;">icity · 我的日记</div>'),
-                    (d = "70px"));
-                  var u = "";
-                  "dateTop" === n.layout &&
-                    (u =
-                      '<div style="font-size:24px;font-weight:800;color:' +
-                      n.accent +
-                      ';margin-bottom:14px;letter-spacing:1px;">' +
-                      o.ymd +
-                      "</div>");
-                  var w = "";
-                  "classic" === n.layout &&
-                    (w =
-                      '<div style="font-size:11px;color:#bbb;text-align:right;line-height:1.5;flex-shrink:0;">' +
-                      o.cn +
-                      "</div>");
-                  var p =
-                      '<div style="display:flex;align-items:center;margin-bottom:16px;">  <div style="width:42px;height:42px;border-radius:50%;overflow:hidden;background:#f2f2f2;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-right:12px;">' +
-                      r +
-                      '</div>  <div style="flex:1;min-width:0;">    <div style="font-size:15px;font-weight:700;color:' +
-                      n.accent +
-                      ';line-height:1.3;">' +
-                      i.name +
-                      '</div>    <div style="font-size:12px;color:#999;line-height:1.3;">@' +
-                      i.handle +
-                      "</div>  </div>" +
-                      w +
-                      "</div>",
-                    _ = "classic" === n.layout ? p : p + u;
-                  ((a.style.background = n.outer),
-                    (a.style.position = "relative"),
-                    (a.innerHTML =
-                      c +
-                      l +
-                      '<div style="position:relative;background:' +
-                      n.card +
-                      ";padding:18px;margin:0 " +
-                      s +
-                      " " +
-                      s +
-                      " " +
-                      s +
-                      ";margin-top:" +
-                      d +
+                    font =
+                      "-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',sans-serif",
+                    clock = function (size, color) {
+                      return (
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="' +
+                        color +
+                        '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:' +
+                        size +
+                        'px;height:' +
+                        size +
+                        'px;flex-shrink:0;margin-right:5px;display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3.2 2.1"/></svg>'
+                      );
+                    },
+                    av = function (size, gap) {
+                      return (
+                        '<div class="icity-save-avatar" style="width:' +
+                        size +
+                        "px;height:" +
+                        size +
+                        "px;border-radius:50%;overflow:hidden;background:#f2f2f2;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-right:" +
+                        (gap == null ? 8 : gap) +
+                        "px;font-size:" +
+                        Math.round(size * 0.5) +
+                        'px;">' +
+                        r +
+                        "</div>"
+                      );
+                    },
+                    meta = function (nameSize, handleSize, handleColor) {
+                      return (
+                        '<div style="flex:1;min-width:0;text-align:left;"> <div style="font-size:' +
+                        nameSize +
+                        "px;font-weight:700;color:#000;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:" +
+                        font +
+                        ';">' +
+                        i.name +
+                        '</div> <div style="font-size:' +
+                        handleSize +
+                        "px;color:" +
+                        (handleColor || "#a3a3a3") +
+                        ";line-height:1.3;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:" +
+                        font +
+                        ';">@' +
+                        i.handle +
+                        "</div> </div>"
+                      );
+                    },
+                    body = function (size, lineHeight, color) {
+                      return (
+                        '<div style="font-size:' +
+                        size +
+                        "px;color:" +
+                        color +
+                        ";line-height:" +
+                        lineHeight +
+                        ";word-break:break-word;white-space:pre-wrap;text-align:left;font-family:" +
+                        font +
+                        ';">' +
+                        t.text +
+                        "</div>"
+                      );
+                    },
+                    timeRow = function (size, color, iconSize, extra) {
+                      return (
+                        '<div style="display:flex;justify-content:flex-start;align-items:center;font-size:' +
+                        size +
+                        "px;color:" +
+                        color +
+                        ";line-height:1.2;font-family:" +
+                        font +
+                        ";" +
+                        (extra || "margin-top:5px;") +
+                        '">' +
+                        clock(iconSize || 14, color) +
+                        "<span>" +
+                        o.time +
+                        "</span></div>"
+                      );
+                    },
+                    html = "";
+                  if ("classic" === n.layout) {
+                    var cn = String(o.cn || "").split("<br>");
+                    html =
+                      '<div style="position:relative;width:100%;background:' +
+                      n.outer +
+                      ";padding:26px 0 26px;box-sizing:border-box;font-family:" +
+                      font +
                       ';">' +
-                      _ +
-                      '<div style="font-size:17px;color:' +
-                      n.text +
-                      ';line-height:1.7;word-break:break-all;white-space:normal;margin-bottom:18px;">' +
-                      t.text +
-                      '</div><div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#bbb;">  <span>' +
-                      o.time +
-                      "</span>  <span>Created from iCity | 我的日记</span></div></div>"));
+                      '<div style="padding:0 32px 15px;line-height:1;white-space:nowrap;">' +
+                      '<span style="font-size:30px;font-weight:800;color:#383838;letter-spacing:0;">icity</span>' +
+                      '<span style="font-size:26px;font-weight:800;color:#383838;margin:0 2px 0 2px;">·</span>' +
+                      '<span style="font-size:22px;font-weight:600;color:#383838;">我的日记</span></div>' +
+                      '<div style="position:relative;background:#fff;margin:0 16px;padding:0;box-shadow:0 2px 12px rgba(0,0,0,.045);">' +
+                      '<div style="display:flex;align-items:center;padding:4px 11px;background:#fafafa;border-bottom:1px solid #f5f5f5;">' +
+                      av(38, 9) +
+                      meta(16, 12, "#aaa8a7") +
+                      '<div style="font-size:14px;color:#a3a3a3;text-align:right;line-height:1.45;flex-shrink:0;margin-left:10px;font-family:' +
+                      font +
+                      ';">' +
+                      cn[0] +
+                      (cn[1] ? '<br><span style="font-size:12px;">' + cn[1] + "</span>" : "") +
+                      "</div></div>" +
+                      '<div style="padding:16px 17px 10px;">' +
+                      body(16, 1.6, n.text) +
+                      timeRow(12, "#cfcfcf", 14, "margin-top:6px;") +
+                      "</div></div></div>";
+                  } else if ("heart" === n.layout) {
+                    html =
+                      '<div style="position:relative;width:100%;background:' +
+                      n.outer +
+                      ';padding:50px 14px 71px;box-sizing:border-box;overflow:hidden;font-family:' +
+                      font +
+                      ';">' +
+                      c +
+                      '<div style="position:relative;z-index:1;background:#fff;border-radius:14px;padding:23px 22px 34px;box-shadow:0 8px 26px rgba(120,60,70,.10);">' +
+                      '<div style="display:flex;align-items:flex-start;">' +
+                      av(44, 11) +
+                      meta(17, 13, "#a5a5a5") +
+                      "</div>" +
+                      '<div style="font-size:20px;font-weight:800;color:#000;margin-top:14px;letter-spacing:0;line-height:1.2;">' +
+                      o.ymd +
+                      "</div>" +
+                      '<div style="margin-top:12px;">' +
+                      body(18, 1.6, n.text) +
+                      timeRow(13, "#bfbfbf", 15, "margin-top:8px;") +
+                      "</div></div>" +
+                      '<div style="position:absolute;left:0;right:0;bottom:33px;text-align:center;font-size:14px;font-weight:500;color:rgba(255,255,255,.9);pointer-events:none;letter-spacing:.2px;">Created from iCity | 我的日记</div></div>';
+                  } else {
+                    html =
+                      '<div style="position:relative;width:100%;background:' +
+                      n.outer +
+                      ';padding:60px 23px 60px;box-sizing:border-box;overflow:hidden;font-family:' +
+                      font +
+                      ';">' +
+                      c +
+                      '<div style="position:relative;z-index:1;background:#fff;border-radius:10px;padding:24px 31px 34px;box-shadow:0 8px 26px rgba(80,120,160,.12);">' +
+                      '<div style="font-size:17px;font-weight:700;color:' +
+                      n.accent +
+                      ';letter-spacing:2px;margin-bottom:12px;text-align:left;white-space:nowrap;">' +
+                      o.ymd +
+                      "</div>" +
+                      '<div style="display:flex;align-items:flex-start;">' +
+                      av(44, 14) +
+                      meta(17, 13, "#000000") +
+                      "</div>" +
+                      '<div style="margin-top:22px;">' +
+                      body(18, 1.6, n.text) +
+                      timeRow(13, "#c6c6c6", 15, "margin-top:8px;") +
+                      "</div>" +
+                      '<div style="text-align:center;font-size:12.5px;color:#cbcbcb;margin-top:28px;letter-spacing:.3px;">Created from iCity | 我的日记</div>' +
+                      "</div></div>";
+                  }
+                  var _pw = (n.w || 440),
+                    _s = 1;
+                  try {
+                    var _pc = (a.parentNode && a.parentNode.clientWidth) || 0;
+                    if (_pc > 0 && _pc < _pw) _s = _pc / _pw;
+                    a.parentNode && (a.parentNode.style.overflow = "hidden");
+                  } catch (t2) {}
+                  ((a.style.width = _pw + "px"),
+                    (a.style.transformOrigin = "center center"),
+                    (a.style.transform = _s < 0.999 ? "scale(" + _s.toFixed(4) + ")" : "none"),
+                    (a.style.margin = "0 auto"),
+                    (a.style.background = "transparent"),
+                    (a.style.position = "relative"),
+                    (a.style.boxShadow = "none"),
+                    (a.style.borderRadius = "0"),
+                    (a.innerHTML = html));
                 }
               }
               function _() {
@@ -16995,41 +17494,39 @@ Vi = document.getElementById("transferBtn"),
                       ";background:#fff;cursor:pointer;flex-shrink:0;position:relative;overflow:hidden;padding:3px;box-shadow:0 1px 4px rgba(0,0,0,0.08);";
                     var o =
                       '<div style="width:100%;aspect-ratio:1;border-radius:9px;background:' +
-                      ("classic" === t.key ? "#222" : t.outer) +
+                      t.outerSolid +
                       ';position:relative;overflow:hidden;">';
-                    ("classic" === t.key
-                      ? ((o +=
-                          '<div style="position:absolute;top:4px;left:4px;right:4px;height:18px;background:#fff;border-radius:3px;opacity:0.9;"></div>'),
-                        (o +=
-                          '<div style="position:absolute;bottom:4px;left:4px;right:4px;height:34px;background:#fff;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,0.15);"></div>'))
-                      : "pink" === t.key
-                        ? ((o +=
-                            '<div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.35) 2px,transparent 2px),radial-gradient(circle,rgba(255,255,255,0.35) 2px,transparent 2px);background-size:10px 10px;background-position:0 0, 5px 5px;"></div>'),
-                          (o +=
-                            '<div style="position:absolute;bottom:4px;left:4px;right:4px;height:32px;background:#fff;border-radius:4px;"></div>'))
-                        : "blue" === t.key &&
-                          ((o +=
-                            '<div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.55) 2px,transparent 2px),radial-gradient(circle,rgba(255,255,255,0.55) 2px,transparent 2px);background-size:10px 10px;background-position:0 0, 5px 5px;"></div>'),
-                          (o +=
-                            '<div style="position:absolute;bottom:4px;left:4px;right:4px;height:32px;background:#fff;border-radius:4px;"></div>')),
-                      (o += "</div>"),
-                      a &&
-                        (o +=
-                          '<div style="position:absolute;top:4px;right:4px;width:18px;height:18px;background:#4a90e2;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;line-height:1;">✓</div>'),
-                      (o +=
-                        '<div style="margin-top:5px;font-size:12px;color:' +
-                        (a ? "#4a90e2" : "#888") +
-                        ";font-weight:" +
-                        (a ? "600" : "400") +
-                        ';">' +
-                        t.label +
-                        "</div>"),
-                      (i.innerHTML =
-                        '<div style="display:flex;flex-direction:column;align-items:center;">' + o + "</div>"),
-                      i.addEventListener("click", function () {
-                        ((l = e), _(), p(s, l));
-                      }),
-                      n.appendChild(i));
+                    if ("classic" === t.key)
+                      o +=
+                        '<div style="position:absolute;top:6px;left:5px;font-size:11px;font-weight:800;color:#141414;letter-spacing:-.6px;line-height:1;">icity</div><div style="position:absolute;top:2px;bottom:0;left:0;right:0;display:flex;align-items:flex-end;"><div style="width:100%;height:76%;background:#fff;"></div></div>';
+                    else if ("pink" === t.key)
+                      o +=
+                        '<div style="position:absolute;inset:0;background-image:url(&quot;' +
+                        _heartTile +
+                        '&quot;);background-size:32px 32px;"></div><div style="position:absolute;left:7px;right:7px;bottom:7px;height:52%;background:#fff;border-radius:5px;"></div>';
+                    else
+                      o +=
+                        '<div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.6) 3px,transparent 3.5px);background-size:11px 11px;background-position:0 0;"></div><div style="position:absolute;left:8px;right:8px;bottom:8px;height:50%;background:#fff;border-radius:5px;"></div>';
+                    o += "</div>";
+                    if (a)
+                      o +=
+                        '<div style="position:absolute;top:4px;right:4px;width:18px;height:18px;background:#4a90e2;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;line-height:1;">✓</div>';
+                    o +=
+                      '<div style="margin-top:5px;font-size:12px;color:' +
+                      (a ? "#4a90e2" : "#888") +
+                      ";font-weight:" +
+                      (a ? "600" : "400") +
+                      ';">' +
+                      t.label +
+                      "</div>";
+                    i.innerHTML =
+                      '<div style="display:flex;flex-direction:column;align-items:center;">' +
+                      o +
+                      "</div>";
+                    i.addEventListener("click", function () {
+                      ((l = e), _(), p(s, l));
+                    });
+                    n.appendChild(i);
                   }));
               }
               function h(t) {
@@ -17052,6 +17549,7 @@ Vi = document.getElementById("transferBtn"),
                   }),
                   (t.style.width = e),
                   t.parentNode && (t.parentNode.style.maxWidth = n),
+                  t.parentNode && (t.parentNode.style.opacity = ""),
                   p(i, a));
               }
             })(),
@@ -17289,10 +17787,16 @@ Vi = document.getElementById("transferBtn"),
                       }).length,
                       g = document.getElementById("icityTaDiaryCount");
                     (g && (g.textContent = w),
-                      n("icityTaProfileDiaries", t),
+                      /* 先进界面再异步渲染日记列表：日记多/图大时同步渲染会阻塞主线程，
+                         表现为点击后要等一会儿才进界面 */
                       (a.style.display = "flex"),
                       requestAnimationFrame(function () {
                         a.classList.add("show");
+                        setTimeout(function () {
+                          try {
+                            n("icityTaProfileDiaries", t);
+                          } catch (_e2) {}
+                        }, 30);
                       }));
                   }
                 }
@@ -18406,7 +18910,9 @@ window.__akiniPatchAvatarCell = function (t, e) {
                 return t.text || t.content || "";
               })
               .filter(Boolean)
-              .join("\n");
+              /* 多张字卡合成一条动态时不要一句一行；只有信件才允许换行。
+                 用空格把卡片连成一段，避免朋友圈出现竖排短句列表。 */
+              .join(" ");
           }
           (void 0,
             (window.__akiniNotifQueue = window.__akiniNotifQueue || []),
@@ -19097,6 +19603,8 @@ window.__akiniPatchAvatarCell = function (t, e) {
                 (window.akiniStore && window.akiniStore.set
                   ? window.akiniStore.set("akini_toggle_" + t, i ? "1" : "0")
                   : localStorage.setItem("akini_toggle_" + t, i ? "1" : "0"),
+                  /* 标记为用户手动设置，启动纠偏逻辑不再重置它，重进后保持用户选择 */
+                  localStorage.setItem("akini_toggle_" + t + "_user", "1"),
                   "darkModeToggle" === t && document.body.classList.toggle("dark-mode", i),
                   ("timestampToggle" === t || "readReceiptToggle" === t) &&
                     "function" == typeof window.__akiniRefreshChatMeta &&
@@ -19105,13 +19613,19 @@ window.__akiniPatchAvatarCell = function (t, e) {
           }
           (!(function () {
             try {
+              /* 不强制改动任何用户开关：用户在设置里手动打开的选择必须保留，
+                 重进后保持不变。iPhone 崩溃的真正根源是超大壁纸/封面图解码（已修复），
+                 不是这些开关；keepAlive 音频虽耗资源，但用户主动开启是其明确选择。 */
               if ("20261107" !== localStorage.getItem("akini_app_version")) {
                 localStorage.setItem("akini_app_version", "20261107");
-                /* 老用户迁移：默认打开「消息弹窗」与「后台推送」，
-                   让微信/朋友圈/网易云/icity/陪伴/观影/商店都能收到局内+后台通知 */
+                /* 消息弹窗/后台推送/后台运行/悬浮球默认全部关闭，
+                   需要时由用户在设置里手动打开，不在版本迁移时强制开启。
+                   关键：只在"从未设置过"(null)时写入默认值；
+                   用户已经手动开过/关过的(ls 里已有值)，迁移绝不能覆盖——
+                   否则每次版本升级都会把用户手动打开的开关重置掉。 */
                 try {
-                  localStorage.setItem("akini_toggle_msgPopupToggle", "1");
-                  localStorage.setItem("akini_toggle_pushNotifyToggle", "1");
+                  if (null === localStorage.getItem("akini_toggle_msgPopupToggle")) localStorage.setItem("akini_toggle_msgPopupToggle", "0");
+                  if (null === localStorage.getItem("akini_toggle_pushNotifyToggle")) localStorage.setItem("akini_toggle_pushNotifyToggle", "0");
                 } catch (_nt) {}
                 var t = function (t, e) {
                   null === localStorage.getItem(t) && localStorage.setItem(t, e);
@@ -19139,9 +19653,9 @@ window.__akiniPatchAvatarCell = function (t, e) {
           })(),
             (window.__akiniBootStep = "dom-ready:toggles"),
             t("keepAliveToggle", !1),
-            t("pushNotifyToggle", !0),
-            t("msgPopupToggle", !0),
-            t("musicMiniToggle", !0));
+            t("pushNotifyToggle", !1),
+            t("msgPopupToggle", !1),
+            t("musicMiniToggle", !1));
           var e = null;
           async function n() {
             if ("wakeLock" in navigator)
@@ -19933,12 +20447,19 @@ window.__akiniPatchAvatarCell = function (t, e) {
           } catch (t) {}
           return e;
         }),
+        /* 对齐 ZY：表情包地址不做协议白名单过滤（ZY 直接 <img src=c.sticker> 原样渲染），
+           任何非空字符串都渲染；只负责解包对象形态。防止旧数据里的 blob:/相对路径/ref
+           被吞掉导致评论只剩空白 */
         (window.__akiniStickerUrl = function (t) {
           if (!t) return "";
-          if ("string" == typeof t) return /^(data:image\/|https?:\/\/)/.test(t) ? t : "";
-          if ("string" == typeof t.s && /^(data:image\/|https?:\/\/)/.test(t.s)) return t.s;
-          var e = t.url || t.src || t.data;
-          return "string" == typeof e && /^(data:image\/|https?:\/\/)/.test(e) ? e : "";
+          if ("string" == typeof t) return t.trim();
+          if ("object" == typeof t)
+            try {
+              var c = [t.s, t.src, t.url, t.data, t.dataUrl, t.dataURL];
+              for (var i = 0; i < c.length; i++)
+                if ("string" == typeof c[i] && c[i].trim()) return c[i].trim();
+            } catch (t) {}
+          return "";
         }),
         (function t(e) {
           if (
@@ -20314,6 +20835,250 @@ window.__akiniPatchAvatarCell = function (t, e) {
               }
             }
           }
+          function u(t, e, n) {
+            if (!t.__nePainting) {
+              ((t.__nePainting = 1),
+                setTimeout(function () {
+                  t.__nePainting = 0;
+                }, 0));
+              var i = l() || [],
+                a = {},
+                o = {};
+              i.forEach(function (t) {
+                (t && t.neId && (a[String(t.neId)] = t), t && (o[String(t.name)] = t));
+              });
+              var r =
+                '<div style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:#f8f8f8;border:1px solid #f0f0f0"><div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:13px;font-weight:600;color:#1a1a1a">我的歌单（' +
+                e.length +
+                '）</div><button id="nePlRefresh" type="button" style="border:1px solid #e0e0e0;border-radius:8px;background:#fff;font-size:12px;color:#555;padding:4px 10px;cursor:pointer">刷新</button></div>';
+              (e.length ||
+                (r += '<div style="font-size:12px;color:#999;text-align:center;padding:8px">账号里还没有歌单</div>'),
+                e.forEach(function (t, e) {
+                  var n = a[String(t.id)] || o[String(t.name)],
+                    i = !!n,
+                    c = i ? (n.tracks || []).length : t.trackCount || 0;
+                  r +=
+                    '<div style="display:flex;align-items:center;gap:10px;padding:8px;background:#fff;border-radius:10px;border:1px solid #eee"><img src="' +
+                    (t.coverImgUrl || "") +
+                    '" style="width:38px;height:38px;border-radius:8px;object-fit:cover;background:#eee;flex-shrink:0" onerror="this.style.visibility=\'hidden\'"/><div style="flex:1;min-width:0"><div style="font-size:13px;color:#1a1a1a;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
+                    String(t.name || "") +
+                    '</div><div style="font-size:11px;color:#999;margin-top:2px">' +
+                    (i ? "已导入 · 本地 " + c + " 首" : "未导入 · 共 " + c + " 首") +
+                    '</div></div><button type="button" data-nepl-import="' +
+                    e +
+                    '" style="flex-shrink:0;height:32px;padding:0 14px;border:none;border-radius:8px;background:#1a1a1a;color:#fff;font-size:12px;cursor:pointer">' +
+                    (i ? "更新" : "导入") +
+                    "</button></div>";
+                }),
+                (r +=
+                  '<div style="font-size:11px;color:#999;line-height:1.5">点「导入」抓取该歌单；改动后点「更新」同步；app 删除歌单后点「刷新」自动清理本地。</div></div>'),
+                (t.innerHTML = r));
+              var c = document.getElementById("nePlRefresh");
+              (c &&
+                c.addEventListener("click", function () {
+                  m(!0);
+                }),
+                t.querySelectorAll("[data-nepl-import]").forEach(function (t) {
+                  t.addEventListener("click", function () {
+                    var n = e[parseInt(t.getAttribute("data-nepl-import"), 10)];
+                    n &&
+                      ((t.textContent = "导入中…"),
+                      (t.disabled = !0),
+                      g(String(n.id), n.name, !1)
+                        .then(function () {
+                          ((t.textContent = "已更新"),
+                            setTimeout(function () {
+                              m();
+                            }, 600));
+                        })
+                        .catch(function () {
+                          ((t.textContent = "重试"), (t.disabled = !1));
+                        }));
+                  });
+                }));
+            }
+          }
+          function m(t) {
+            var e = document.getElementById("neMyPlaylists");
+            if (!e)
+              try {
+                (e = document.createElement("div")).id = "neMyPlaylists";
+                var n = document.getElementById("musicNeAccountRow");
+                if (!n || !n.parentNode) return Promise.resolve();
+                n.parentNode.insertBefore(e, n.nextSibling);
+              } catch (t) {
+                return Promise.resolve();
+              }
+            if (!window.__akiniNeLoggedIn)
+              return (
+                e.innerHTML ||
+                  (e.innerHTML =
+                    '<div style="padding:12px;border-radius:12px;background:#f8f8f8;border:1px dashed #e0e0e0;font-size:12px;color:#999;text-align:center;line-height:1.6">「我的歌单」面板<br>扫码登录后自动展示账号全部歌单</div>'),
+                Promise.resolve()
+              );
+            var i = "";
+            try {
+              i =
+                window.__akiniNeCk ||
+                localStorage.getItem("akini_ne_ck") ||
+                sessionStorage.getItem("akini_ne_ck") ||
+                localStorage.getItem("akini_netease_cookie") ||
+                "";
+            } catch (t) {}
+            i.indexOf("MUSIC_U=") < 0 && (i = "");
+            var a = !1;
+            try {
+              var o = JSON.parse(localStorage.getItem("akini_ne_pl_cache") || "null");
+              o &&
+                Array.isArray(o.list) &&
+                o.list.length &&
+                (!o.ck || o.ck === i) &&
+                ((a = !0),
+                (window.__akiniDbgPlN = o.list.length),
+                (window.__akiniDbgExtra = "缓存直显·静默刷新"),
+                window.__akiniNeDbg && window.__akiniNeDbg(),
+                u(e, o.list, o.ts));
+            } catch (t) {}
+            if (a && !t) {
+              try {
+                (window.__akiniDbgExtra = "缓存直显"),
+                  window.__akiniNeDbg && window.__akiniNeDbg();
+              } catch (t) {}
+              return Promise.resolve();
+            }
+            return (
+              (e.innerHTML =
+                '<div style="padding:10px 4px;font-size:12px;color:#999;text-align:center">正在拉取歌单…</div>'),
+              fetch(
+                "https://backend.miaoda.online/projects/supabase364656900228300800/functions/v1/akini-netease?action=playlists",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "text/plain;charset=utf-8",
+                  },
+                  body: JSON.stringify({
+                    sid: window.__akiniGetNeSid ? window.__akiniGetNeSid() : "",
+                    cookie: i,
+                  }),
+                },
+              )
+                .then(function (t) {
+                  return t.json();
+                })
+                .then(function (t) {
+                  if (t && 401 === t.code && !e.__neAdoptTried) {
+                    e.__neAdoptTried = 1;
+                    var n = "";
+                    try {
+                      n =
+                        localStorage.getItem("akini_ne_ck") ||
+                        sessionStorage.getItem("akini_ne_ck") ||
+                        window.__akiniNeCk ||
+                        "";
+                    } catch (t) {}
+                    if (n.indexOf("MUSIC_U=") >= 0)
+                      return (
+                        (e.innerHTML =
+                          '<div style="padding:10px;font-size:12px;color:#999;text-align:center">正在同步登录状态…</div>'),
+                        fetch(
+                          "https://backend.miaoda.online/projects/supabase364656900228300800/functions/v1/akini-netease?action=session/adopt",
+                          {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "text/plain;charset=utf-8",
+                            },
+                            body: JSON.stringify({
+                              sid: window.__akiniGetNeSid ? window.__akiniGetNeSid() : "",
+                              cookie: n,
+                            }),
+                          },
+                        )
+                          .then(function () {
+                            return (e.__neAdoptTried = 0), m(!0);
+                          })
+                          .catch(function () {
+                            e.innerHTML =
+                              '<div style="padding:10px;font-size:12px;color:#c00;text-align:center">歌单拉取失败：登录状态同步失败</div>';
+                          })
+                      );
+                  }
+                  if (t && 200 === t.code) {
+                    var a = t.playlists || [];
+                    try {
+                      localStorage.setItem(
+                        "akini_ne_pl_cache",
+                        JSON.stringify({
+                          ts: Date.now(),
+                          ck: i,
+                          list: a,
+                        }),
+                      );
+                    } catch (t) {}
+                    try {
+                      (window.__akiniDbgPlN = a.length),
+                        (window.__akiniDbgExtra = "playlists code " + t.code),
+                        window.__akiniNeDbg && window.__akiniNeDbg();
+                    } catch (t) {}
+                    var o = l() || [],
+                      r = {};
+                    a.forEach(function (t) {
+                      r[String(t.id)] = 1;
+                    });
+                    var c = !1;
+                    if (a.length > 0) {
+                      o = o.filter(function (t) {
+                        return !(t && t.neId && !r[String(t.neId)]) || ((c = !0), !1);
+                      });
+                    }
+                    if (c) {
+                      try {
+                        localStorage.setItem(
+                          "akini_music_playlists_v2",
+                          JSON.stringify(o),
+                        );
+                      } catch (t) {}
+                      var s = "";
+                      try {
+                        s = localStorage.getItem("akini_music_playlist_cur") || "";
+                      } catch (t) {}
+                      var w = !1;
+                      o.forEach(function (t) {
+                        t.key === s && (w = !0);
+                      }),
+                        !w && o.length && d(o[0].key, !1);
+                      try {
+                        window._renderPlaylist && window._renderPlaylist();
+                      } catch (t) {}
+                    }
+                    u(e, a);
+                  } else {
+                    e.innerHTML =
+                      '<div style="padding:10px;font-size:12px;color:#c00;text-align:center">歌单拉取失败：' +
+                      ((t && t.msg) || "未登录") +
+                      "</div>";
+                    try {
+                      (window.__akiniDbgPlN = -1),
+                        (window.__akiniDbgExtra =
+                          "playlists code " + (t && t.code) + " msg " + (t && t.msg)),
+                        window.__akiniNeDbg && window.__akiniNeDbg();
+                    } catch (t) {}
+                  }
+                })
+                .catch(function () {
+                  if (a)
+                    try {
+                      (window.__akiniDbgExtra = "刷新失败·保留缓存"),
+                        window.__akiniNeDbg && window.__akiniNeDbg();
+                    } catch (t) {}
+                  else
+                    e.innerHTML =
+                      '<div style="padding:10px;font-size:12px;color:#c00;text-align:center">歌单拉取失败，请检查网络</div>';
+                })
+            );
+          }
+          try {
+            window._renderNeMyPlaylists = m;
+          } catch (D) {}
           function w() {
             var t = document.getElementById("musicPlaylistContainer");
             if (t) {
@@ -20338,13 +21103,13 @@ window.__akiniPatchAvatarCell = function (t, e) {
               if (
                 i &&
                 ((o =
-                  '<div data-pl-head="1" style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:10px;background:rgba(255,255,255,0.06);border-radius:12px;cursor:pointer;-webkit-tap-highlight-color:transparent;">' +
+                  '<div data-pl-head="1" style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:10px;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;-webkit-tap-highlight-color:transparent;">' +
                   (i.cover
                     ? '<img src="' +
                       __akCov(i.cover, 96) +
-                      '" style="width:42px;height:42px;border-radius:8px;object-fit:cover;background:#333;flex-shrink:0;" onerror="this.onerror=null;this.src=window.__akiniDefaultCover">'
-                    : '<div style="width:42px;height:42px;border-radius:8px;background:#333;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;">🎵</div>') +
-                  '<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
+                      '" style="width:42px;height:42px;border-radius:8px;object-fit:cover;background:#eee;flex-shrink:0;" onerror="this.onerror=null;this.src=window.__akiniDefaultCover">'
+                    : '<div style="width:42px;height:42px;border-radius:8px;background:#eee;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;">🎵</div>') +
+                  '<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
                   Tt(i.name || "未命名歌单") +
                   '</div><div style="font-size:11px;color:#999;margin-top:2px;">' +
                   (i.tracks || []).length +
@@ -20355,7 +21120,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
               ) {
                 for (
                   var c =
-                      '<div style="margin:-4px 0 10px;background:rgba(255,255,255,0.04);border-radius:12px;overflow:hidden;">',
+                      '<div style="margin:-4px 0 10px;background:rgba(0,0,0,0.03);border-radius:12px;overflow:hidden;">',
                     s = 0;
                   s < e.length;
                   s++
@@ -20366,19 +21131,19 @@ window.__akiniPatchAvatarCell = function (t, e) {
                     '<div data-pl-pick="' +
                     d.key +
                     '" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:' +
-                    (u ? "rgba(79,124,255,0.16)" : "transparent") +
-                    ';border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;-webkit-tap-highlight-color:transparent;">' +
+                    (u ? "rgba(0,0,0,0.07)" : "transparent") +
+                    ';border-bottom:1px solid rgba(0,0,0,0.06);cursor:pointer;-webkit-tap-highlight-color:transparent;">' +
                     (d.cover
                       ? '<img src="' +
                         __akCov(d.cover, 96) +
-                        '" style="width:32px;height:32px;border-radius:6px;object-fit:cover;background:#333;flex-shrink:0;" onerror="this.onerror=null;this.src=window.__akiniDefaultCover">'
-                      : '<div style="width:32px;height:32px;border-radius:6px;background:#333;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;">🎵</div>') +
-                    '<div style="flex:1;min-width:0;"><div style="font-size:13px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
+                        '" loading="lazy" decoding="async" style="width:32px;height:32px;border-radius:6px;object-fit:cover;background:#eee;flex-shrink:0;" onerror="this.onerror=null;this.src=window.__akiniDefaultCover">'
+                      : '<div style="width:32px;height:32px;border-radius:6px;background:#eee;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;">🎵</div>') +
+                    '<div style="flex:1;min-width:0;"><div style="font-size:13px;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
                     Tt(d.name || "未命名歌单") +
                     '</div><div style="font-size:11px;color:#888;">' +
                     (d.tracks || []).length +
                     "首</div></div>" +
-                    (u ? '<span style="font-size:12px;color:#4f7cff;flex-shrink:0;">播放中</span>' : "") +
+                    (u ? '<span style="font-size:12px;color:#1a1a1a;font-weight:600;flex-shrink:0;">播放中</span>' : "") +
                     "</div>";
                 }
                 o += c += "</div>";
@@ -20390,20 +21155,24 @@ window.__akiniPatchAvatarCell = function (t, e) {
                   m +=
                     '<div data-idx="' +
                     e +
-                    '" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:' +
-                    (n ? "rgba(79,124,255,0.18)" : "rgba(255,255,255,0.05)") +
-                    ';margin-bottom:8px;cursor:pointer;"><div style="width:46px;height:46px;border-radius:8px;background:#333;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;">' +
+                    '"' +
+                    (n ? ' data-current="1"' : "") +
+                    ' style="display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;background:' +
+                    (n ? "rgba(0,0,0,0.08)" : "rgba(0,0,0,0.04)") +
+                    ';margin-bottom:8px;cursor:pointer;"><div style="width:46px;height:46px;border-radius:8px;background:#eee;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;">' +
                     (t.cover
                       ? '<img src="' +
                         __akCov(t.cover, 96) +
-                        '" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.src=window.__akiniDefaultCover">'
+                        '" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.src=window.__akiniDefaultCover">'
                       : "🎵") +
-                    '</div><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
+                    '</div><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
                     Tt(t.title) +
                     '</div><div style="font-size:12px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
                     Tt(t.artist) +
-                    '</div></div><div style="font-size:13px;color:' +
-                    (n ? "#4f7cff" : "#666") +
+                    '</div></div><div style="font-size:13px;font-weight:' +
+                    (n ? "600" : "400") +
+                    ';color:' +
+                    (n ? "#1a1a1a" : "#bbb") +
                     ';">' +
                     (n ? "播放中" : "") +
                     '</div><span class="playlist-del-btn" data-del-idx="' +
@@ -20414,8 +21183,185 @@ window.__akiniPatchAvatarCell = function (t, e) {
               } else
                 t.innerHTML =
                   o +
-                  '<div style="text-align:center;color:#888;padding:20px;font-size:14px;">暂无歌曲</div>';
+                  '<div style="text-align:center;color:#888;padding:20px;font-size:14px;">暂无歌曲，请导入歌单</div>';
             }
+          }
+          function g(t, e, n) {
+            if (((e = e || ""), "netease" !== tt.platform))
+              return Promise.reject(new Error("暂不支持该平台"));
+            if (!t) return Promise.reject(new Error("缺少歌单 ID"));
+            var _pid = String(t);
+            var o = encodeURIComponent(e || "");
+            return fetch(L + "/playlist/track/all?id=" + encodeURIComponent(String(t)) + "&cookie=" + o)
+              .then(function (t) {
+                return t.json();
+              })
+              .then(function (t) {
+                if (
+                  (console.log("[Akini Netease] /playlist/track/all response", t), t && 200 !== t.code && 0 !== t.code)
+                )
+                  throw new Error(t.message || t.msg || "track/all 返回异常");
+                var e = t.songs || (t.data && t.data.songs) || [];
+                if (!e.length) throw new Error("track/all 无歌曲");
+                var _nm = (t.playlist && t.playlist.name) || "";
+                if (_nm)
+                  return {
+                    tracks: e,
+                    name: _nm,
+                  };
+                return fetch(L + "/playlist/detail?id=" + encodeURIComponent(_pid) + "&cookie=" + o)
+                  .then(function (r) {
+                    return r.json();
+                  })
+                  .then(function (d) {
+                    var _p = (d && d.playlist) || (d && d.data && d.data.playlist) || {};
+                    return {
+                      tracks: e,
+                      name: _p.name || "",
+                    };
+                  })
+                  .catch(function () {
+                    return {
+                      tracks: e,
+                      name: "",
+                    };
+                  });
+              })
+              .catch(function (e) {
+                return (
+                  console.warn("[Akini Netease] track/all failed, fallback to detail", e),
+                  fetch(L + "/playlist/detail?id=" + encodeURIComponent(String(t)) + "&cookie=" + o)
+                    .then(function (t) {
+                      return t.json();
+                    })
+                    .then(function (t) {
+                      if (
+                        (console.log("[Akini Netease] /playlist/detail response", t),
+                        t && 200 !== t.code && 0 !== t.code)
+                      )
+                        throw new Error(t.message || t.msg || "返回数据异常 (code:" + t.code + ")");
+                      var e = t && t.playlist;
+                      if ((!e && t && t.data && (e = t.data.playlist), !e))
+                        throw new Error("返回数据异常：缺少 playlist");
+                      return {
+                        tracks: e.tracks || t.songs || [],
+                        name: e.name || "",
+                      };
+                    })
+                );
+              })
+              .then(function (e) {
+                var i = e.tracks,
+                  a = e.name;
+                if (!i.length) throw new Error("歌单为空或需要登录");
+                var o = (function (t) {
+                  return t && t.length
+                    ? t.map(function (t) {
+                        var e =
+                            (t.ar || t.artists || [])
+                              .map(function (t) {
+                                return t.name;
+                              })
+                              .join("/") ||
+                            t.artist ||
+                            "未知歌手",
+                          n =
+                            (t.al && (t.al.picUrl || t.al.pic)) ||
+                            t.cover ||
+                            (t.album && (t.album.picUrl || t.album.pic)) ||
+                            t.picUrl ||
+                            "";
+                        return {
+                          id: t.id,
+                          title: t.name || t.title,
+                          artist: e,
+                          cover: n,
+                          duration: t.dt || t.duration || 0,
+                        };
+                      })
+                    : [];
+                })(i);
+                return (
+                  n ||
+                    ((function () {
+                      for (
+                        var n = l(), i = e.name || a || "导入歌单 " + (n.length + 1), r = "", c = 0;
+                        c < n.length;
+                        c++
+                      )
+                        if (n[c] && String(n[c].name) === String(i)) {
+                          ((r = n[c].key),
+                            (n[c].tracks = o),
+                            (n[c].neId = t),
+                            o[0] && o[0].cover && (n[c].cover = o[0].cover));
+                          break;
+                        }
+                      if (r) {
+                        try {
+                          localStorage.setItem("akini_music_playlists_v2", JSON.stringify(n));
+                        } catch (t) {}
+                        (d(r, !1), console.log("[歌单] 同步更新:", i, "歌曲数:", o.length));
+                      } else {
+                        var s = "pl_" + Date.now();
+                        n.push({
+                          key: s,
+                          name: String(i),
+                          cover: (o[0] && o[0].cover) || "",
+                          tracks: o,
+                          neId: t,
+                        });
+                        try {
+                          localStorage.setItem("akini_music_playlists_v2", JSON.stringify(n));
+                        } catch (t) {}
+                        (d(s, !1), console.log("[歌单] 新增歌单:", i, "歌曲数:", o.length));
+                      }
+                    })(),
+                    h(),
+                    se(N[O], !1),
+                    ae("已导入 " + N.length + " 首（注：VIP歌曲受版权限制仅能试听片段）"),
+                    w(),
+                    D.playlistOverlay && (D.playlistOverlay.style.display = "flex"),
+                    alert("已导入「" + (a || "未知歌单") + "」共 " + N.length + " 首（VIP / 付费歌曲仅能试听片段）")),
+                  o
+                );
+              })
+              .catch(function (t) {
+                var e = t.message || "";
+                return (
+                  (-1 === e.indexOf("歌单不存在") && -1 === e.indexOf("404")) ||
+                    (e = "歌单不存在或无法访问。请检查是否已登录、歌单是否被删除或设为私密。"),
+                  n || alert("导入失败：" + e),
+                  Promise.reject(t)
+                );
+              });
+          }
+                    function f(t, e) {
+            e = e || "";
+            var n = [],
+              i = 0;
+            if (!t || !t.length) return n;
+            !(function a() {
+              if (i >= t.length)
+                return n.length
+                  ? (rt(n), w(), void alert("已合并导入全部歌单，共 " + n.length + " 首"))
+                  : void alert("没有导入任何歌曲");
+              var o = t[i];
+              i++;
+              var r = o.id || o;
+              r
+                ? g(r, e, !0)
+                    .then(function (t) {
+                      (t &&
+                        t.forEach(function (t) {
+                          n.push(t);
+                        }),
+                        setTimeout(a, 200));
+                    })
+                    .catch(function (t) {
+                      setTimeout(a, 200);
+                    })
+                : a();
+            })();
           }
           function y() {
             if (D.lyricsBody) {
@@ -20618,6 +21564,11 @@ window.__akiniPatchAvatarCell = function (t, e) {
                     el: m,
                   }),
                   St.length > 200 && St.shift());
+                /* 一起听互发消息统计：只数从这个界面发消息按钮/回信产生的气泡，
+                   微信/陪伴/观影等其他聊天不计（r6 总结卡片读这个计数） */
+                try {
+                  window.__akiniMusicCountMsg && window.__akiniMusicCountMsg(!!e);
+                } catch (t) {}
                 try {
                   window._idbStore &&
                     window._idbStore.set &&
@@ -20838,6 +21789,14 @@ window.__akiniPatchAvatarCell = function (t, e) {
               X = 0,
               Q = null,
               Z = !1,
+              tt = {
+                key: "",
+                cookie: "",
+                timer: null,
+                checking: !1,
+                platform: "netease",
+                qrType: 1,
+              },
               et = {};
             try {
               var nt = localStorage.getItem("akini_music_listen_together");
@@ -21120,8 +22079,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                   try {
                     window._openMusicMenu && window._openMusicMenu();
                   } catch (t) {}
-                })
-              );
+                }));
             var wt = document.getElementById("musicSongUrlInput"),
               gt = document.getElementById("musicSongNameInput"),
               ft = document.getElementById("musicSongArtistInput"),
@@ -21364,6 +22322,10 @@ window.__akiniPatchAvatarCell = function (t, e) {
                           D.contactPicker && (D.contactPicker.style.display = "none"),
                           I(!0),
                           D.page && (D.page.style.display = "block"));
+                        // 选择器入口直接置了 listening_active=1，这里补齐会话计数归零/起点
+                        try {
+                          window.__akiniMusicSessionReset && window.__akiniMusicSessionReset();
+                        } catch (t) {}
                         try {
                           (s("music"), syncAvatars(), Bt());
                         } catch (t) {}
@@ -21500,7 +22462,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                   } catch (t) {}
                   (e(),
                     D.songName && (D.songName.textContent = "一起听"),
-                    D.artist && (D.artist.textContent = "点右上角扫码登录网易云"),
+                    D.artist && (D.artist.textContent = "点击右上角导入歌单"),
                     D.cover && __akiniGuardSrc(D.cover, __akDefaultCover),
                     w(),
                     v(),
@@ -21552,7 +22514,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                             } catch (t) {}
                             (e(),
                               D.songName && (D.songName.textContent = "一起听"),
-                              D.artist && (D.artist.textContent = "点右上角扫码登录网易云"),
+                              D.artist && (D.artist.textContent = "点击右上角导入歌单"),
                               D.cover && __akiniGuardSrc(D.cover, __akDefaultCover),
                               ae("歌单已清空"));
                           } else if (t === O) {
@@ -21575,6 +22537,10 @@ window.__akiniPatchAvatarCell = function (t, e) {
                       var o = parseInt(a.getAttribute("data-idx"), 10);
                       if (isNaN(o) || o < 0 || o >= N.length) return;
                       ((O = o), (lt = !0));
+                      // 点歌也开始计一首（一起听「本次一起听了 N 首」）
+                      try {
+                        window.__akiniMusicTrackSwitch && window.__akiniMusicTrackSwitch();
+                      } catch (t) {}
                       try {
                         localStorage.setItem("akini_music_index", String(O));
                       } catch (t) {}
@@ -21682,8 +22648,8 @@ window.__akiniPatchAvatarCell = function (t, e) {
               (se(It, !1), ae("已预加载: " + (It.title || "未知")));
             } else
               ((D.songName.textContent = "一起听"),
-                (D.artist.textContent = "点右上角扫码登录网易云"),
-                ae("歌单为空"));
+                (D.artist.textContent = "点击右上角导入歌单"),
+                ae("歌单为空，请先导入歌单"));
           }
           function Ct() {
             try {
@@ -22382,12 +23348,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                             return void setTimeout(function () {
                               oe(c, "retry");
                             }, 200);
-                          var d =
-                            L +
-                            "/song/url?id=" +
-                            encodeURIComponent(r) +
-                            "&br=999000" +
-                            (window.__akiniNeCookieParam ? window.__akiniNeCookieParam() : "");
+                          var d = L + "/song/url?id=" + encodeURIComponent(r) + "&br=999000";
                           return (
                             (d += "&realIP=" + encodeURIComponent(window._neteaseRealIp || "223.5.5.5")),
                             void setTimeout(function () {
@@ -22397,14 +23358,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                         }
                         if ("fetch" === n || "fetch-retry" === n) {
                           if (
-                            ((d =
-                              r
-                                ? L +
-                                  "/song/url?id=" +
-                                  encodeURIComponent(r) +
-                                  "&br=999000" +
-                                  (window.__akiniNeCookieParam ? window.__akiniNeCookieParam() : "")
-                                : "") &&
+                            ((d = r ? L + "/song/url?id=" + encodeURIComponent(r) + "&br=999000" : "") &&
                               (d += "&realIP=" + encodeURIComponent(window._neteaseRealIp || "223.5.5.5")),
                             d)
                           )
@@ -22657,7 +23611,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
             if (!t)
               return (
                 D.songName && (D.songName.textContent = "一起听"),
-                D.artist && (D.artist.textContent = "点右上角扫码登录网易云"),
+                D.artist && (D.artist.textContent = "点击右上角导入歌单"),
                 D.cover && __akiniGuardSrc(D.cover, me),
                 void (D.vipHint && (D.vipHint.style.display = "none"))
               );
@@ -22689,7 +23643,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
             if (!t)
               return (
                 (D.songName.textContent = "一起听"),
-                (D.artist.textContent = "点右上角扫码登录网易云"),
+                (D.artist.textContent = "点击右上角导入歌单"),
                 void ae("歌单为空，请先导入")
               );
             (de(), Ft(), Ot(), ae("准备播放: " + (t.title || "未知")), (G = 0));
@@ -22819,8 +23773,6 @@ window.__akiniPatchAvatarCell = function (t, e) {
                     });
                 })(2));
             })(t.id),
-              (window._renderPlaylist = w),
-              (window.Bt = w),
               (window._akiniMusicReloadPlaylist = function () {
                 try {
                   !(function (t) {
@@ -22850,7 +23802,8 @@ window.__akiniPatchAvatarCell = function (t, e) {
               }),
               setTimeout(function () {
                 window._akiniMusicReloadPlaylist();
-              }, 100));
+              }, 100),
+              (window._renderNeMyPlaylists = m));
             try {
               var i = document.getElementById("musicMenuOverlay");
               i &&
@@ -22889,6 +23842,9 @@ window.__akiniPatchAvatarCell = function (t, e) {
                 } catch (t) {}
               }, 8e3),
               (window._openMusicMenu = function () {
+                try {
+                  window._renderNeMyPlaylists && window._renderNeMyPlaylists();
+                } catch (t) {}
                 try {
                   p();
                 } catch (t) {

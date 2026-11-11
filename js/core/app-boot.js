@@ -364,7 +364,13 @@ window._akiniActiveMsgAction = null;
             '" style="max-width:120px;max-height:120px;border-radius:8px;display:block;" alt=""/ data-preserve-inline="1"></div>'
           : '<div class="bubble">' + m(e) + "</div>";
         ((a.innerHTML =
-          '<div class="msg-content-line"><div class="msg-avatar">' + c(t.avatar) + "</div>" + r + "</div>"),
+          '<div class="msg-content-line"><div class="msg-avatar" data-sender-name="' +
+          m((t && t.name) || "") +
+          '">' +
+          c(t.avatar) +
+          "</div>" +
+          r +
+          "</div>"),
           i.appendChild(a));
         try {
           window.__akiniProcessMsgMeta(a);
@@ -678,7 +684,7 @@ window._akiniActiveMsgAction = null;
         },
       );
     }
-    function x(t, e) {
+    function x(t, e, q) {
       var n = h("watchChatBody");
       if (n) {
         var i = "";
@@ -692,7 +698,14 @@ window._akiniActiveMsgAction = null;
             e +
             '" style="max-width:120px;max-height:120px;border-radius:8px;display:block;" alt=""/ data-preserve-inline="1"></div>'
           : '<div class="bubble">' + m(t) + "</div>";
-        ((a.innerHTML = '<div class="msg-content-line">' + r + '<div class="msg-avatar">' + i + "</div></div>"),
+        /* 引用：与主聊天一致，气泡下方整宽引用卡（右对齐，留出头像位 46px） */
+        var qh = "";
+        if (q && window.__akiniQuoteCardHtml)
+          qh =
+            '<div style="flex-basis:100%;width:100%;box-sizing:border-box;margin-top:2px;padding-right:46px;text-align:right;">' +
+            window.__akiniQuoteCardHtml(q.n, q.t, q.s, q.mh) +
+            "</div>";
+        ((a.innerHTML = '<div class="msg-content-line">' + r + '<div class="msg-avatar">' + i + "</div></div>" + qh),
           n.appendChild(a));
         try {
           window.__akiniProcessMsgMeta(a);
@@ -728,14 +741,35 @@ window._akiniActiveMsgAction = null;
         var n = e.value.trim(),
           i = window.__watchPendingSticker || null;
         if (n || i) {
+          /* 引用：读取输入框上的 data-quote（长按消息"引用"写入） */
+          var q = null;
+          if (!i && e.getAttribute && e.getAttribute("data-quote")) {
+            var qs = e.getAttribute("data-quote") || "";
+            var qn = qs.replace(/[：:].*/, "").trim() || qs;
+            var qt = qs.length > qn.length ? qs.slice(qn.length).replace(/^[：:]/, "").trim() : "";
+            q = {
+              n: qn,
+              t: qt,
+              s: e.getAttribute("data-quote-sticker") || "",
+              mh: e.getAttribute("data-quote-sticker-mh") || "",
+            };
+          }
           ((window.__watchPendingSticker = null),
             (e.value = ""),
             e.__stickerHint &&
               ((e.placeholder = e.__origPh || ("msgInput" === e.id ? "iMessage信息" : "发送消息…")),
               (e.__stickerHint = !1)),
-            x(n, i),
+            x(n, i, q),
             n && w() && S(n),
             d());
+          if (q) {
+            (e.removeAttribute("data-quote"),
+              e.removeAttribute("data-quote-sticker"),
+              e.removeAttribute("data-quote-sticker-mh"),
+              (e.placeholder = e.__origPh || "发弹幕…"));
+            var qb = h("watchQuoteBar");
+            qb && qb.classList.remove("show");
+          }
           try {
             if (window.__akiniToggleOn && window.__akiniToggleOn("readReceiptToggle")) {
               var a = 1500 + 2500 * Math.random();
@@ -1477,9 +1511,3 @@ window._akiniActiveMsgAction = null;
   })());
 /* 补发内容时间戳回写——离线期间应发的内容，时间用计划时间而非上线时间 */
 window.__akiniBackdateTs = 0;
-window.__akiniNowTs = function () {
-  var b = window.__akiniBackdateTs || 0;
-  var now = Date.now();
-  if (b && b < now - 30000) return b + Math.floor(Math.random() * 90000);
-  return now;
-};

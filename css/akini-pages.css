@@ -286,12 +286,94 @@ body.dark-mode #wordbankOverlay .wb-toolbar .tool-btn svg {
   background: var(--pg-paper) !important;
   border-bottom: 1px solid var(--pg-line) !important;
 }
-#icityArea .icity-diary-card,
-#icityArea [class*="diary-card"],
-#icityArea [style*="background:#fff"][style*="border-radius"] {
+/* 日记feed：一个帖子一张直角卡片，灰底白卡、卡片间留缝；卡片内 头部/内容/时间 用细线隔开，头部浅灰底 */
+#icityArea #icityDiaryList {
+  background: #f0f0f0 !important;
+  padding: 5px 0 10px !important;
+}
+#icityArea #icityDiaryList .icity-diary-card {
+  background: #fff !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin: 0 5px 10px !important;
+  padding: 0 !important;
+  position: relative;
+  overflow: hidden;
+}
+#icityArea #icityDiaryList .icity-diary-header {
+  background: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 0;
+  padding: 14px 16px 12px;
+}
+#icityArea #icityDiaryList .icity-diary-entry {
+  padding: 14px 16px 12px;
+  position: relative;
+}
+#icityArea #icityDiaryList .icity-diary-entry + .icity-diary-entry {
+  border-top: 0 !important;
+}
+/* 同一天多条日记之间的分割线：两头各留 16px，不贴卡片边缘 */
+#icityArea #icityDiaryList .icity-diary-entry + .icity-diary-entry::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: #f2f2f2;
+  pointer-events: none;
+}
+#icityArea #icityDiaryList .icity-diary-text {
+  margin-bottom: 0;
+  padding: 0;
+}
+#icityArea #icityDiaryList .icity-diary-footer {
+  padding: 10px 0 0;
+}
+/* 发布页卡片：直角扁平 */
+#icityArea #icityTab2 [style*="border-radius:14px"] {
+  border: 1px solid #f0f0f0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+/* 双方主页帖子：白卡左右留 14px 不贴边，卡片间用两端不挨边的细线隔开；
+   容器用浅灰底，避免列表很短时下方出现一整块惨白空白 */
+#icityArea #icityMyProfileDiaries,
+#icityArea #icityTaProfileDiaries {
+  background: #f8f8f8 !important;
+  padding: 8px 14px 16px !important;
+}
+#icityArea .icity-profile-diary-card {
   background: var(--pg-paper) !important;
-  border: 1px solid var(--pg-line) !important;
-  border-radius: 16px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin-bottom: 0 !important;
+  padding: 14px 16px !important;
+  position: relative;
+}
+#icityArea .icity-profile-diary-card:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 0;
+  height: 1px;
+  background: #ececec;
+  pointer-events: none;
+}
+/* 个人主页：头部区域与帖子列表之间的隔断带 */
+#icityArea #icityMyProfileDiaries,
+#icityArea #icityTaProfileDiaries {
+  border-top: 8px solid #f5f5f5 !important;
+}
+/* 日记详情卡片：直角扁平，与列表卡片一致 */
+#icityDetailModal #icityDetailScroll > div:first-child {
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 #icityArea [style*="color:#1a1a1a"] {
   color: var(--pg-ink) !important;
@@ -448,4 +530,15 @@ body.dark-mode #wordbankOverlay .wb-toolbar .tool-btn svg {
 /* 点击唱片后展开控制条 */
 .akini-music-mini.open .amm-ctrl {
   display: flex;
+}
+
+/* 首页固定整屏，不再上下滑动（内容放不下由 fit-scale 等比缩放兜底） */
+#homeScreens.content-wrapper,
+#homeScreens,
+.home-slider,
+.home-screen,
+.home-screen.active {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: pan-x !important;
 }

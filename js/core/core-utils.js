@@ -11,10 +11,6 @@ var __akiniGuardBg = function (el, v) {
   if (el && el.style && el.style.backgroundImage !== s) el.style.backgroundImage = s;
   return s;
 };
-var __akiniGuardBgRaw = function (el, v) {
-  if (el && el.style && el.style.backgroundImage !== v) el.style.backgroundImage = v;
-  return v;
-};
 var __akiniGuardHtml = function (el, v) {
   if (el && el.innerHTML !== v) el.innerHTML = v;
   return v;

@@ -1,5 +1,62 @@
 /* 启动层：在页面解析前建立全局常量与兼容环境。 */
 
+/* 启动崩溃诊断器：把启动各阶段时间戳同步写入 localStorage。
+   若页面崩溃重进，下次启动时日志仍可读，用于定位卡死/崩溃的具体阶段。
+   读取方式：控制台跑 localStorage.getItem('akini_boot_trace') 或访问 #bootdiag */
+(function () {
+  try {
+    var KEY = "akini_boot_trace";
+    var prev = null;
+    try { prev = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) {}
+    /* 上次启动若没到 ready 阶段，说明上次崩溃/被杀，保留下来供上报 */
+    if (prev && prev.steps && !prev.ready) {
+      try { localStorage.setItem("akini_boot_trace_last", JSON.stringify(prev)); } catch (e) {}
+    }
+    var t0 = Date.now();
+    var trace = { ua: (navigator.userAgent || "").slice(0, 120), dpr: window.devicePixelRatio || 1, t0: t0, steps: {}, ready: false };
+    function flush() {
+      try { localStorage.setItem(KEY, JSON.stringify(trace)); } catch (e) {}
+    }
+    window.__akiniBootTrace = function (name) {
+      try {
+        trace.steps[name] = Date.now() - t0;
+        flush();
+      } catch (e) {}
+    };
+    window.__akiniBootTraceReady = function () {
+      try { trace.ready = true; flush(); } catch (e) {}
+    };
+    window.__akiniGetBootDiag = function () {
+      var last = null;
+      try { last = JSON.parse(localStorage.getItem("akini_boot_trace_last") || "null"); } catch (e) {}
+      return { current: trace, lastCrash: last };
+    };
+    flush();
+    window.__akiniBootTrace("boot_js_start");
+    /* 全局错误也记入 trace */
+    try {
+      window.addEventListener("error", function (e) {
+        try {
+          trace.steps["err_" + (trace._errn = (trace._errn || 0) + 1)] =
+            (Date.now() - t0) + ":" + String((e && e.message) || "").slice(0, 80);
+          flush();
+        } catch (_) {}
+      }, true);
+      window.addEventListener("unhandledrejection", function (e) {
+        try {
+          trace.steps["rej_" + (trace._rejn = (trace._rejn || 0) + 1)] =
+            (Date.now() - t0) + ":" + String((e && e.reason && e.reason.message) || (e && e.reason) || "").slice(0, 80);
+          flush();
+        } catch (_) {}
+      });
+    } catch (e) {}
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", function () { window.__akiniBootTrace("domcontentloaded"); });
+    }
+    window.addEventListener("load", function () { window.__akiniBootTrace("window_load"); });
+  } catch (e) {}
+})();
+
 /* 开屏期间锁定页面，只显示启动画面 */
 try {
   document.documentElement.className += " akini-boot-lock";
@@ -630,8 +687,11 @@ document.addEventListener(
 })();
 
 /* ---- boot block 11 ---- */
-/* 网易云 API 代理（扫码登录/歌词/直链/一起听使用） */
+/* 网易云 API 代理（歌单导入/一起听使用） */
 window.AKINI_NETEASE_PROXY = "https://api.mc666.org.cn";
+/* Akini 自建网易云后端：扫码登录/会话/取歌优先走它，公共代理仅作兜底 */
+window.AKINI_NETEASE_SERVER =
+  "https://backend.miaoda.online/projects/supabase364656900228300800/functions/v1/akini-netease";
 
 /* ---- boot block 13 ---- */
 /* 时序桩：main.js 启动渲染可能先于内联头像助手定义，先占位避免 ReferenceError 中断启动链；真正的实现紧随其后会覆盖它 */

@@ -221,11 +221,24 @@ body.dark-mode #app-mail #mailBody {
   gap: 12px;
   position: relative;
 }
+#app-mail .mail-list:empty {
+  animation: none;
+}
 
 @keyframes mail-card-in {
   from {
     opacity: 0;
     transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mail-list-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -243,7 +256,7 @@ body.dark-mode #app-mail #mailBody {
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.025), 0 12px 34px var(--mail-shadow);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-  animation: mail-card-in 0.42s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation: none;
   touch-action: manipulation;
 }
 
@@ -284,22 +297,6 @@ body.dark-mode #app-mail .mail-card.is-unread {
   body.dark-mode #app-mail .mail-card:hover {
     border-color: rgba(242, 242, 239, 0.3);
   }
-}
-
-#app-mail .mail-list .mail-card:nth-child(2) {
-  animation-delay: 0.04s;
-}
-#app-mail .mail-list .mail-card:nth-child(3) {
-  animation-delay: 0.08s;
-}
-#app-mail .mail-list .mail-card:nth-child(4) {
-  animation-delay: 0.12s;
-}
-#app-mail .mail-list .mail-card:nth-child(5) {
-  animation-delay: 0.16s;
-}
-#app-mail .mail-list .mail-card:nth-child(6) {
-  animation-delay: 0.2s;
 }
 
 #app-mail .mail-card-head {
@@ -439,7 +436,6 @@ body.dark-mode #app-mail .mail-card.is-unread {
   align-items: center;
   gap: 10px;
   text-align: center;
-  animation: mail-card-in 0.5s ease both;
 }
 
 #app-mail .mail-empty-art {

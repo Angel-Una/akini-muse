@@ -133,6 +133,41 @@
     });
   }
 
+  /* 导入聊天记录：不再把 mediaStore 里的图片还原成内联 base64（单条会话可到几十 MB，
+     手机导入必闪退）。直接改写成运行时本来就会用的 data-mh 占位 + 外置媒体，
+     并把媒体写进 akini_media_ 的 IDB 键，渲染时按需取图。 */
+  function rewriteImgTag(tag, hash, ph) {
+    var esc = tag.indexOf('\\"') >= 0;
+    var q = esc ? '\\"' : '"';
+    var cleaned = tag.replace(
+      /\ssrc=\\?"(?:__akRef__m\d+|data:(?:image|video|audio)\/[^"\\<>]+)\\?"/i,
+      "",
+    );
+    return cleaned.replace(/<img\b/i, "<img data-mh=" + q + hash + q + " src=" + q + ph + q);
+  }
+  function importChatHistory(str, store) {
+    if (typeof str !== "string") return str;
+    var media = window.__akiniMedia;
+    if (!media || !media.put) return inlineMediaFromString(str, store);
+    var ph = media.PLACEHOLDER || "";
+    /* 1) 新版备份：图片已抽成 __akRef__mN */
+    str = str.replace(/<img\b[^>]*__akRef__m\d+[^>]*>/gi, function (tag) {
+      var mm = tag.match(/__akRef__m(\d+)/);
+      var blob = mm && store ? store["m" + mm[1]] : null;
+      if (!blob) return tag;
+      var hash = media.put(blob);
+      return hash ? rewriteImgTag(tag, hash, ph) : tag;
+    });
+    /* 2) 旧备份：仍然内联 data URL，同样外置，避免整段历史塞满 base64 */
+    str = str.replace(/<img\b[^>]*data:(?:image|video|audio)\/[^>]*>/gi, function (tag) {
+      var mm = tag.match(/data:(?:image|video|audio)\/[^"\\\s>]+/i);
+      if (!mm || mm[0].length < 24 * 1024) return tag;
+      var hash = media.put(mm[0]);
+      return hash ? rewriteImgTag(tag, hash, ph) : tag;
+    });
+    return str;
+  }
+
   function processLocalStorageValueForExport(str, state, key) {
     if (str == null) return str;
     if (typeof str !== "string") return str;
@@ -163,9 +198,10 @@
   function processLocalStorageValueForImport(str, store, key) {
     if (str == null) return str;
     if (typeof str !== "string") return str;
-    /* 聊天记录：导出时用正则抽走了内嵌 data URL，这里反向还原，不 JSON.parse。 */
+    /* 聊天记录：导出时用正则抽走了内嵌 data URL，这里反向还原，不 JSON.parse。
+       注意用带外置的版本：图片改写成 data-mh 占位，绝不把几十 MB base64 塞回历史。 */
     if (key && key.indexOf("akini_chat_history_") === 0) {
-      return inlineMediaFromString(str, store);
+      return importChatHistory(str, store);
     }
     try {
       var parsed = JSON.parse(str);
@@ -755,14 +791,17 @@ window._akiniAllowRemove = false;
         // localStorage.setItem 的拦截层已把每个键镜像到「内存 + IndexedDB 队列」。
         // 必须等 IDB 事务真正提交完再回调：聊天记录、聊天背景这类大图/大文本只存在 IDB，
         // 以前这里 fire-and-forget 后 1.5s 就刷新，事务被中断 → 导入后聊天和背景“消失”。
+        var _doneFired = false;
         var _afterFlush = function () {
+          if (_doneFired) return;
+          _doneFired = true;
           try {
             localStorage.removeItem("akini_localstorage_snapshot");
           } catch (e) {}
           try {
             localStorage.removeItem("akini_localstorage_snapshot_backup");
           } catch (e) {}
-          
+
 window._akiniAllowRemove = false;
 
           if (done) done(count);
@@ -770,6 +809,14 @@ window._akiniAllowRemove = false;
         try {
           if (window.akiniStore && window.akiniStore.flushIdb) window.akiniStore.flushIdb(_afterFlush);
           else _afterFlush();
+        } catch (e) {
+          _afterFlush();
+        }
+        /* IDB.set 的回调在个别机型/配额紧张时可能永远不回来（事务 abort、回调丢失），
+           导致导入完成回调永不执行：看起来"导入完了但界面还是旧的"，缓存里还留着
+           旧占位联系人，于是又冒出"另一个联系人"。这里兜底：最多等 2.5s 必须收尾。 */
+        try {
+          setTimeout(_afterFlush, 2500);
         } catch (e) {
           _afterFlush();
         }
@@ -808,7 +855,17 @@ window._akiniAllowRemove = false;
         for (; _wi < end; _wi++) {
           var src = _wkeys[_wi][0],
             kk = _wkeys[_wi][1];
-          tryWrite(kk, processLocalStorageValueForImport(src[kk], mediaStore, kk));
+          /* 单个键（尤其是超大聊天记录 / 异常媒体引用）处理失败时，
+             只跳过这一项，不能让它把整批写入中断——以前一处异常会让 finishOk
+             永远不执行：导入看似成功、实际内存快照还是旧联系人，随后原地补建
+             就多出「另一个联系人」，重进才恢复正常。 */
+          try {
+            tryWrite(kk, processLocalStorageValueForImport(src[kk], mediaStore, kk));
+          } catch (eKey) {
+            try {
+              console.warn("[akini] 导入跳过异常键", kk, eKey && eKey.message);
+            } catch (eLog) {}
+          }
         }
         if (_wi < _wkeys.length) {
           setTimeout(step, 0);

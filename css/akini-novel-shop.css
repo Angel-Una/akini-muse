@@ -132,7 +132,7 @@ body.dark-mode #app-shop {
 }
 
 #app-novel-reader {
-  background: var(--ns-bg) !important;
+  /* 阅读背景由 JS 内联设置（用户可换色/换图），这里不写死 */
 }
 
 #app-novel-reader .nv-reader-header {
@@ -151,7 +151,6 @@ body.dark-mode #app-shop {
   letter-spacing: 1px;
 }
 #app-novel-reader #novelReaderContent {
-  color: #1c1c1a !important;
   font-family: "Songti SC", "STSong", "SimSun", serif !important;
   line-height: 1.9 !important;
   letter-spacing: 0.6px;
@@ -204,15 +203,13 @@ body.dark-mode #app-shop {
   border-bottom: 1px dashed var(--ns-line) !important;
 }
 #novelPickerConfirm,
-#novelRenameOk,
-#novelReaderMenu #novelFlipScroll {
+#novelRenameOk {
   background: var(--ns-ink) !important;
   color: var(--ns-paper) !important;
   border-radius: 999px !important;
   letter-spacing: 2px;
 }
 #novelRenameCancel,
-#novelReaderMenu #novelFlipPage,
 #novelReaderMenu #novelFontMinus,
 #novelReaderMenu #novelFontPlus {
   border: 1px solid var(--ns-line) !important;

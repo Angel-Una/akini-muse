@@ -268,19 +268,37 @@ window.__akiniS1HardRestore();
 document.addEventListener("DOMContentLoaded", function () {
   window.__akiniS1HardRestore();
 });
-/* 首屏之后数据才从 IDB 回填，必须多轮补渲染（只兜底不覆盖，有值即跳过） */
-[600, 1500, 3000, 6000, 10000].forEach(function (ms) {
+/* 首屏之后数据才从 IDB 回填，必须补渲染（只兜底不覆盖，有值即跳过）。
+   原来 5 个定时器 + 4 个事件并发触发，每次都把大图重新塞进 DOM 让 Safari 重新解码；
+   现在合并节流：短窗口内只执行一次，定时器也减到 2 个递进补刷。 */
+var __akiniS1LastRun = 0,
+  __akiniS1Timer = null;
+function __akiniS1Throttled(minGap) {
+  var now = Date.now();
+  if (now - __akiniS1LastRun < minGap) {
+    if (__akiniS1Timer) return;
+    __akiniS1Timer = setTimeout(function () {
+      __akiniS1Timer = null;
+      __akiniS1LastRun = Date.now();
+      try {
+        window.__akiniS1HardRestore();
+      } catch (e) {}
+    }, minGap - (now - __akiniS1LastRun));
+    return;
+  }
+  __akiniS1LastRun = now;
+  try {
+    window.__akiniS1HardRestore();
+  } catch (e) {}
+}
+[1500, 6000].forEach(function (ms) {
   setTimeout(function () {
-    try {
-      window.__akiniS1HardRestore();
-    } catch (e) {}
+    __akiniS1Throttled(0);
   }, ms);
 });
 ["akini-storage-restored", "akini-img-ready", "load", "pageshow"].forEach(function (evt) {
   window.addEventListener(evt, function () {
-    try {
-      window.__akiniS1HardRestore();
-    } catch (e) {}
+    __akiniS1Throttled(800);
   });
 });
 window.__akiniOnVisible(function () { 

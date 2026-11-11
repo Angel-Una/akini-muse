@@ -442,7 +442,6 @@
      旧版可能存过纯链接（http...）或系统字体族名，启动恢复时自动兼容迁移。 */
   var KEY = "akini_bubble_font";
   var NAME_KEY = "akini_bubble_font_name";
-  var nameInput = null;
   var urlInput = document.getElementById("bubbleFontInput");
   var applyBtn = document.getElementById("bubbleFontApply");
   var clearBtn = document.getElementById("bubbleFontClear");

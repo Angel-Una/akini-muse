@@ -483,7 +483,10 @@ if (window.__navBack) {
     target.style.opacity = "1";
     target.style.pointerEvents = "auto";
     if (app === "chat-list" || app === "friends") target.style.background = "#f2f2f2";
-    document.body.appendChild(target);
+    /* 只在父节点不是 body 时搬一次。以前每次点 App 都无条件 appendChild，
+       已挂在 body 下的整棵 App DOM 会被反复摘下再插回，iOS 上会触发整页
+       重新布局/图片重新解码，内存瞬间飙高后直接被系统杀掉重进。 */
+    if (target.parentNode !== document.body) document.body.appendChild(target);
     /* 收窄气泡标注观察器到当前 app 容器，避免遍历整棵 body */
     if (window.__akiniBubbleTagObserve) window.__akiniBubbleTagObserve(target);
   }

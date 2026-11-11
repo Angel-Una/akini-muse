@@ -172,9 +172,6 @@
     lastEmptyTipAt = now;
     try {
       return void window.__akiniNotify(EMPTY_TIP);
-      return void window.showNotification(EMPTY_TIP, "info", 3500);
-      return void window.ae("字卡库为空");
-      return void window.__akiniToast(EMPTY_TIP);
     } catch (e) {}
   }
 

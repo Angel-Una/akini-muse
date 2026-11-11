@@ -234,7 +234,11 @@
       "click",
       function (ev) {
         var t = ev.target && ev.target.closest ? ev.target.closest("#musicMiniToggle") : null;
-        if (t) setTimeout(sync, 120);
+        if (t) {
+          /* 用户手动点了，标记为手动设置，启动纠偏不再重置 */
+          try { localStorage.setItem("akini_toggle_musicMiniToggle_user", "1"); } catch (e) {}
+          setTimeout(sync, 120);
+        }
       },
       true,
     );

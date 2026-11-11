@@ -270,7 +270,6 @@
       return '<img src="' + av + '" decoding="sync" style="width:100%;height:100%;object-fit:cover;" alt=""/>';
     /* 默认头像（emoji/空）统一走 nt()：与聊天页一致人形线条 SVG 兜底 */
     return window.nt(av || "", size || 40);
-    return '<span style="font-size:' + Math.round((size || 40) * 0.45) + 'px;">' + (av || "") + "</span>";
   }
   function _myAvatar() {
     try {
@@ -701,7 +700,7 @@
         _srvWrite(arr);
         _srvSel = {};
         window.__srvJustDone = Date.now();
-        renderSurveyWbTab();
+        renderSurveyWbTab(true);
       },
     });
   }
@@ -714,20 +713,22 @@
     var ov = document.createElement("div");
     ov.id = "srvGroupPickOv";
     ov.style.cssText =
-      "position:fixed;top:0;left:0;width:100%;height:100%;z-index:8400;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;";
+      "position:fixed;top:0;left:0;width:100%;height:100%;z-index:8400;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;";
     var h =
-      '<div style="background:#fff;border-radius:16px;padding:20px;width:85%;max-height:60%;overflow-y:auto;display:flex;flex-direction:column;gap:12px;box-sizing:border-box;">' +
-      '<div style="font-size:16px;font-weight:600;color:#333">选择分组</div>';
+      '<div style="background:#fff;border-radius:20px;width:100%;max-width:340px;max-height:62%;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;box-shadow:0 24px 64px rgba(0,0,0,.4);">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:15px 16px 12px;border-bottom:1px solid #f0f0f0;flex-shrink:0;">' +
+      '<div style="font-size:16px;font-weight:800;color:#000;letter-spacing:2px;">选择分组</div>' +
+      '<button type="button" data-cancel="1" style="width:30px;height:30px;border-radius:50%;background:transparent;color:#000;border:none;font-size:15px;font-weight:700;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button></div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;padding:14px 16px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch;">';
     groups.forEach(function (g) {
       h +=
         '<button type="button" data-gid="' +
         g.id +
-        '" style="padding:10px 14px;background:#f5f5f5;border:none;border-radius:10px;font-size:14px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;">' +
+        '" class="wb-pick-group-btn" style="padding:13px 16px;background:#f7f7f7;border:none;border-radius:12px;font-size:15px;color:#000;font-weight:600;cursor:pointer;text-align:center;width:100%;box-sizing:border-box;">' +
         String(g.name).replace(/</g, "&lt;") +
         "</button>";
     });
-    h +=
-      '<button type="button" data-cancel="1" style="padding:10px;background:#eee;border:none;border-radius:10px;font-size:14px;cursor:pointer;">取消</button></div>';
+    h += "</div></div>";
     ov.innerHTML = h;
     ov.addEventListener("click", function (e) {
       if (!ov.contains(e.target)) return;
@@ -757,7 +758,7 @@
       _srvWrite(arr);
       _srvSel = {};
       window.__srvJustDone = Date.now();
-      renderSurveyWbTab();
+      renderSurveyWbTab(true);
     });
   }
   function _srvBlockDo(blocked) {
@@ -773,7 +774,7 @@
     _srvWrite(arr);
     _srvSel = {};
     window.__srvJustDone = Date.now();
-    renderSurveyWbTab();
+    renderSurveyWbTab(true);
   }
   function _srvDedup() {
     var arr = _srvRead();
@@ -826,19 +827,19 @@
         return String(x.g) === String(g.id);
       }).length;
       h +=
-        '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f8f8f8;border-radius:10px;margin-bottom:8px;">' +
-        '<div style="display:flex;align-items:center;gap:8px;min-width:0;"><span style="font-size:14px;color:#333;font-weight:500;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f7f7f7;border-radius:12px;margin-bottom:8px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;min-width:0;"><span style="font-size:14px;color:#000;font-weight:600;">' +
         String(g.name).replace(/</g, "&lt;") +
-        '</span><span style="font-size:12px;color:#aaa;">' +
+        '</span><span style="font-size:12px;color:#888;">' +
         cnt +
         "份</span></div>" +
         '<div style="display:flex;align-items:center;gap:2px;margin:-10px -12px -10px 0;">' +
         '<button type="button" class="srv-group-edit" data-gi="' +
         gi +
-        '" style="background:none;border:none;color:#666;cursor:pointer;padding:10px 8px;min-width:36px;min-height:40px;touch-action:manipulation;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>' +
+        '" style="background:none;border:none;color:#000;cursor:pointer;padding:10px 8px;min-width:36px;min-height:40px;touch-action:manipulation;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>' +
         '<button type="button" class="srv-group-del" data-gi="' +
         gi +
-        '" style="background:none;border:none;color:#ff6b6b;font-size:16px;cursor:pointer;padding:10px 12px;min-width:40px;min-height:40px;touch-action:manipulation;">&#10005;</button></div></div>';
+        '" style="background:none;border:none;color:#000;font-size:16px;cursor:pointer;padding:10px 12px;min-width:40px;min-height:40px;touch-action:manipulation;">&#10005;</button></div></div>';
     });
     list.innerHTML = h;
     list.querySelectorAll(".srv-group-edit").forEach(function (btn) {
@@ -972,9 +973,11 @@
   }
 
   /* 字卡库【问卷】Tab 原生渲染，完全复刻表情包联系人横条逻辑（无我的，每个联系人独立问卷，右上角新增进创建问卷） */
-  function renderSurveyWbTab() {
+  function renderSurveyWbTab(_keep) {
     var box = _wbSrvPanel();
     if (!box) return;
+    /* 就地操作（删除/加入分组）重渲染时保持滚动位置，不回顶部 */
+    var _keepSt = _keep ? box.scrollTop : 0;
     var tb = document.querySelector("#wordbankOverlay .wb-toolbar");
     if (tb) tb.style.display = "";
     var gf = document.getElementById("wbGroupFilter");
@@ -1231,6 +1234,7 @@
     h += "</div>";
 
     box.innerHTML = h;
+    if (_keep) box.scrollTop = _keepSt;
     box.__srvSig = _sigS;
     _srvSyncBars();
 
@@ -1357,16 +1361,31 @@
      已挂载的面板与签名一致时直接复用现有节点——不重造 <img>，切 tab 与点工具都不会闪。 */
   /* 旧版表情包默认角色被固定成「我」，导致导入/新增的表情包全落在 akini_stickers_me。
      一次性归位：用户从未手动切换过角色、默认联系人还没有表情包时，把这些表情包移给默认联系人。 */
-  var _stkRoleFixing = false;
   function _stkFixLegacyRole() {
     try {
       localStorage.setItem("akini_stk_role_fix_v1", "1");
     } catch (e) {}
   }
 
-  function renderStickerTab() {
+  function renderStickerTab(_keep) {
     var box = _wbPanel();
     if (!box) return;
+    /* 就地操作（删除/加入分组/显示更多）重渲染时保持滚动位置：
+       锚定第一个可见表情包的图片 src——删掉它上面的也不跳 */
+    var _keepSt = _keep ? box.scrollTop : 0,
+      _anchor = null;
+    if (_keep) {
+      var _rt = box.getBoundingClientRect().top,
+        _its = box.querySelectorAll(".wb-stk-item");
+      for (var _ai = 0; _ai < _its.length; _ai++) {
+        var _arc = _its[_ai].getBoundingClientRect();
+        if (_arc.bottom > _rt + 4) {
+          var _img0 = _its[_ai].querySelector("img");
+          if (_img0) _anchor = { src: _img0.getAttribute("src"), off: _arc.top - _rt };
+          break;
+        }
+      }
+    }
     /* 主屏幕 PWA / 轻量模式：表情包图片不在启动时全量读入内存，
        打开表情包 tab 时再从 IndexedDB 水合，避免冷启动一次性解码几十 MB 图片被系统杀掉 */
     if (!window.__stkHydratedDone && (window.__AKINI_STANDALONE || window.__AKINI_SAFE_MODE)) {
@@ -1503,11 +1522,40 @@
           "</div>") +
       "</div>";
     box.innerHTML = h;
+    if (_keep) {
+      /* 钉住锚定图：立即钉一次，样式/图片异步落地后再补钉，用户已手动滚动则放弃 */
+      var _pin = function () {
+        if (!_anchor) {
+          box.scrollTop = _keepSt;
+          return;
+        }
+        var _nIts = box.querySelectorAll(".wb-stk-item");
+        for (var _bi = 0; _bi < _nIts.length; _bi++) {
+          var _nImg = _nIts[_bi].querySelector("img");
+          if (_nImg && _nImg.getAttribute("src") === _anchor.src) {
+            box.scrollTop += _nIts[_bi].getBoundingClientRect().top - box.getBoundingClientRect().top - _anchor.off;
+            return;
+          }
+        }
+        box.scrollTop = _keepSt;
+      };
+      _pin();
+      var _pinned = box.scrollTop;
+      requestAnimationFrame(function () {
+        if (Math.abs(box.scrollTop - _pinned) < 2) {
+          _pin();
+          _pinned = box.scrollTop;
+        }
+      });
+      setTimeout(function () {
+        if (Math.abs(box.scrollTop - _pinned) < 2) _pin();
+      }, 180);
+    }
     box.__stkSig = _sig;
     var _slm = document.getElementById("wbStkLoadMore");
     _slm &&
       _slm.addEventListener("click", function () {
-        ((window.__stkLimit = _stkLimit + 80), renderStickerTab());
+        ((window.__stkLimit = _stkLimit + 80), renderStickerTab(true));
       });
     _syncModeBars();
     /* 容器级事件委托：touchend 捕获阶段。
@@ -1625,7 +1673,7 @@
         }
         _delTarget = null;
         sh.style.display = "none";
-        renderStickerTab();
+        renderStickerTab(true);
       });
   }
 
@@ -1764,19 +1812,19 @@
       }).length;
       /* 行样式与其他三个 tab 的分组管理完全一致（一致内联样式，仅单位用"张"） */
       h +=
-        '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f8f8f8;border-radius:10px;margin-bottom:8px;">' +
-        '<div style="display:flex;align-items:center;gap:8px;min-width:0;"><span style="font-size:14px;color:#333;font-weight:500;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f7f7f7;border-radius:12px;margin-bottom:8px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;min-width:0;"><span style="font-size:14px;color:#000;font-weight:600;">' +
         _esc(g.name) +
-        '</span><span style="font-size:12px;color:#aaa;">' +
+        '</span><span style="font-size:12px;color:#888;">' +
         cnt +
         "张</span></div>" +
         '<div style="display:flex;align-items:center;gap:2px;margin:-10px -12px -10px 0;">' +
         '<button type="button" class="stk-group-edit" data-gi="' +
         gi +
-        '" title="修改分组名称" style="background:none;border:none;color:#666;cursor:pointer;padding:10px 8px;min-width:36px;min-height:40px;touch-action:manipulation;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>' +
+        '" title="修改分组名称" style="background:none;border:none;color:#000;cursor:pointer;padding:10px 8px;min-width:36px;min-height:40px;touch-action:manipulation;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>' +
         '<button type="button" class="stk-group-del del-group" data-gi="' +
         gi +
-        '" style="background:none;border:none;color:#ff6b6b;font-size:16px;cursor:pointer;padding:10px 12px;min-width:40px;min-height:40px;touch-action:manipulation;">✕</button></div></div>';
+        '" style="background:none;border:none;color:#000;font-size:16px;cursor:pointer;padding:10px 12px;min-width:40px;min-height:40px;touch-action:manipulation;">✕</button></div></div>';
     });
     list.innerHTML = h;
     list.querySelectorAll(".stk-group-edit").forEach(function (btn) {
@@ -1874,20 +1922,22 @@
     ov.id = "stkGroupPickOv";
     /* 与其他三个 tab 的「选择分组」弹窗样式统一（居中白卡 + wb-pick-group-btn） */
     ov.style.cssText =
-      "position:fixed;top:0;left:0;width:100%;height:100%;z-index:8400;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;";
+      "position:fixed;top:0;left:0;width:100%;height:100%;z-index:8400;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;";
     var h =
-      '<div style="background:#fff;border-radius:16px;padding:20px;width:85%;max-height:60%;overflow-y:auto;display:flex;flex-direction:column;gap:12px;box-sizing:border-box;">' +
-      '<div style="font-size:16px;font-weight:600;color:#333">选择分组</div>';
+      '<div style="background:#fff;border-radius:20px;width:100%;max-width:340px;max-height:62%;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;box-shadow:0 24px 64px rgba(0,0,0,.4);">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:15px 16px 12px;border-bottom:1px solid #f0f0f0;flex-shrink:0;">' +
+      '<div style="font-size:16px;font-weight:800;color:#000;letter-spacing:2px;">选择分组</div>' +
+      '<button type="button" data-cancel="1" style="width:30px;height:30px;border-radius:50%;background:transparent;color:#000;border:none;font-size:15px;font-weight:700;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button></div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;padding:14px 16px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch;">';
     groups.forEach(function (g) {
       h +=
         '<button type="button" data-gid="' +
         g.id +
-        '" class="wb-pick-group-btn" style="padding:10px 14px;background:#f5f5f5;border:none;border-radius:10px;font-size:14px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;">' +
+        '" class="wb-pick-group-btn" style="padding:13px 16px;background:#f7f7f7;border:none;border-radius:12px;font-size:15px;color:#000;font-weight:600;cursor:pointer;text-align:center;width:100%;box-sizing:border-box;">' +
         _esc(g.name) +
         "</button>";
     });
-    h +=
-      '<button type="button" data-cancel="1" style="padding:10px;background:#eee;border:none;border-radius:10px;font-size:14px;cursor:pointer;">取消</button></div>';
+    h += "</div></div>";
     ov.innerHTML = h;
     ov.addEventListener("click", function (e) {
       /* 创建本弹窗的原始点击会继续冒泡经过 body，closest('button') 会误匹配工具栏按钮导致弹窗闪关并被移到未分组；
@@ -2021,7 +2071,7 @@
         _stkWrite(cid, arr);
         _stkSel = {};
         window.__stkJustDone = Date.now();
-        renderStickerTab();
+        renderStickerTab(true);
       },
     });
   }
@@ -2040,7 +2090,7 @@
       _stkWrite(cid, arr);
       _stkSel = {};
       window.__stkJustDone = Date.now();
-      renderStickerTab();
+      renderStickerTab(true);
     });
   }
   function _stkBlockDo(blocked) {
@@ -2057,7 +2107,7 @@
     _stkWrite(cid, arr);
     _stkSel = {};
     window.__stkJustDone = Date.now();
-    renderStickerTab();
+    renderStickerTab(true);
   }
 
   function _bindStickerToolbar() {
@@ -2291,17 +2341,60 @@
     }
   }
 
-  /* ---- 通用表情包选择面板（评论/观影输入栏用，读「我」的表情包库） ---- */
+  /* ---- 通用表情包选择面板（评论/观影/陪伴输入栏用） ----
+     与主聊天表情面板同款：顶部头像横滑条（我 + 各联系人，可切换表情包库）+ 右上角 ✕，
+     下方 52px 小图 flex 流式排列；面板贴在触发输入栏正上方，无遮罩、无标题栏。 */
   var _pickCb = null;
-  window.__openStickerPickPanel = function (onPick) {
-    _pickCb = onPick;
+  var _pickSel = "me";
+  var _pickOutFn = null;
+  function _pickHide() {
     var p = document.getElementById("stickerPickPanel");
-    var g = document.getElementById("stickerPickGrid");
-    if (!p || !g) return;
-    var arr = _stkRead("me").filter(function (it) {
+    if (p) p.style.display = "none";
+    if (_pickOutFn) {
+      document.removeEventListener("click", _pickOutFn, true);
+      _pickOutFn = null;
+    }
+  }
+  function _pickPeople() {
+    var myName = "我";
+    try {
+      myName = localStorage.getItem("akini_my_name") || "我";
+    } catch (e) {}
+    var people = [{ id: "me", name: myName, avatar: _myAvatar() }];
+    try {
+      var cs = (window.akiniContacts && window.akiniContacts.getContacts && window.akiniContacts.getContacts()) || [];
+      cs.forEach(function (c) {
+        if (c && c.id != null) people.push({ id: String(c.id), name: c.remark || c.name || "TA", avatar: c.avatar || "" });
+      });
+    } catch (e) {}
+    return people;
+  }
+  function _pickRender(p) {
+    var people = _pickPeople();
+    if (!people.some(function (x) { return x.id === _pickSel; })) _pickSel = "me";
+    var strip =
+      '<div style="position:relative;width:100%;display:flex;gap:14px;overflow-x:auto;padding:10px 38px 8px 14px;background:#fff;-webkit-overflow-scrolling:touch;flex-shrink:0;border-bottom:1px solid rgba(0,0,0,0.06);margin-bottom:8px;box-sizing:border-box;">';
+    people.forEach(function (o) {
+      var sel = o.id === _pickSel;
+      strip +=
+        '<div class="stk-pick-av" data-cid="' +
+        _esc(o.id) +
+        '" style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;cursor:pointer;-webkit-tap-highlight-color:transparent;"><div style="width:44px;height:44px;border-radius:50%;overflow:hidden;background:#f0f0f0;display:flex;align-items:center;justify-content:center;flex-shrink:0;' +
+        (sel ? "box-shadow:0 0 0 2px #1a1a1a;" : "") +
+        '">' +
+        _avHtml(o.avatar, 44) +
+        '</div><span style="font-size:11px;color:' +
+        (sel ? "#1a1a1a;font-weight:600" : "#888") +
+        ';max-width:52px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2;">' +
+        _esc(o.name) +
+        "</span></div>";
+    });
+    strip +=
+      '<button class="stk-pick-x" type="button" style="position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.06);border:none;color:#666;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;">✕</button></div>';
+    var arr = _stkRead(_pickSel).filter(function (it) {
       return !it.b;
     });
-    if (!arr.length) {
+    if (!arr.length && _pickSel === "me") {
       try {
         var gb = JSON.parse(localStorage.getItem("akini_stickers") || "[]");
         if (Array.isArray(gb))
@@ -2313,27 +2406,49 @@
             });
       } catch (e) {}
     }
-    var h = "";
+    var nm = "";
+    for (var i = 0; i < people.length; i++) if (people[i].id === _pickSel) nm = people[i].name;
+    var h = '';
     arr.forEach(function (it, i) {
-      /* 弃用 aspect-ratio（旧 Android WebView 不支持会导致 item 高度塌陷、图片全部堆叠），
-         改用 padding-bottom:100% 方形兼容写法 */
       h +=
-        '<div class="stk-pick-item" data-idx="' +
+        '<button class="stk-pick-item" data-idx="' +
         i +
-        '" style="width:100%;height:0;padding-bottom:100%;background:#f7f7f7;border-radius:10px;overflow:hidden;position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent;"><img src="' +
+        '" type="button" style="background:none;border:none;padding:2px;cursor:pointer;-webkit-tap-highlight-color:transparent;"><img src="' +
         it.s +
-        '" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;" alt=""/></div>';
+        '" style="width:52px;height:52px;border-radius:6px;object-fit:cover;display:block;" alt=""/></button>';
     });
-    g.innerHTML =
-      h ||
-      '<div style="grid-column:1/-1;text-align:center;color:#bbb;font-size:13px;padding:36px 0;">还没有表情包，去「字卡库 → 表情包」添加</div>';
-    g.querySelectorAll(".stk-pick-item").forEach(function (el) {
+    h =
+      '<div style="width:100%;display:flex;flex-wrap:wrap;gap:10px;align-items:center;max-height:35vh;overflow-y:auto;-webkit-overflow-scrolling:touch;">' +
+      (h ||
+        '<div style="width:100%;text-align:center;font-size:12px;color:#bbb;padding:24px 0;">' +
+          (_pickSel === "me" ? "暂无表情包" : _esc(nm) + " 暂无表情包") +
+          "</div>") +
+      "</div>";
+    p.innerHTML = strip + h;
+    p.querySelectorAll(".stk-pick-av").forEach(function (el) {
       el.addEventListener("click", function () {
-        var it = arr[parseInt(this.getAttribute("data-idx"), 10)];
-        p.style.display = "none";
-        if (it && _pickCb) _pickCb(it.s);
+        _pickSel = this.getAttribute("data-cid");
+        _pickRender(p);
       });
     });
+    var x = p.querySelector(".stk-pick-x");
+    x &&
+      x.addEventListener("click", function () {
+        _pickHide();
+      });
+    p.querySelectorAll(".stk-pick-item").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var it = arr[parseInt(this.getAttribute("data-idx"), 10)];
+        var cb = _pickCb;
+        _pickHide();
+        if (it && cb) cb(it.s);
+      });
+    });
+  }
+  window.__openStickerPickPanel = function (onPick, anchorEl) {
+    _pickCb = onPick || null;
+    var p = document.getElementById("stickerPickPanel");
+    if (!p) return;
     /* 观影全屏时面板移到全屏元素内（Fullscreen API 下 body 级 fixed 元素不可见/布局异常） */
     try {
       var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
@@ -2344,20 +2459,47 @@
         p.__origParent.appendChild(p);
       }
     } catch (e) {}
+    _pickSel = "me";
+    _pickRender(p);
+    /* 定位：贴在触发输入栏正上方（同主聊天 emojiPanel 的 bottom:100% 效果）；
+       z-index 压过调用方所在弹层 */
+    var bottom = 0,
+      z = 8400;
+    try {
+      if (anchorEl && anchorEl.getBoundingClientRect) {
+        var r = anchorEl.getBoundingClientRect();
+        if (r && r.height) bottom = Math.max(0, window.innerHeight - r.top);
+        var node = anchorEl;
+        while (node && node !== document.body) {
+          var zz = parseInt(window.getComputedStyle(node).zIndex, 10);
+          if (!isNaN(zz)) z = Math.max(z, zz + 1);
+          node = node.parentElement;
+        }
+      }
+    } catch (e) {}
+    p.style.bottom = bottom + "px";
+    p.style.zIndex = String(z);
     p.style.display = "flex";
+    /* 点面板外任意处收起 */
+    if (!_pickOutFn) {
+      var outFn = function (ev) {
+        var pp = document.getElementById("stickerPickPanel");
+        if (!pp || pp.style.display === "none") {
+          document.removeEventListener("click", outFn, true);
+          _pickOutFn = null;
+          return;
+        }
+        if (pp.contains(ev.target)) return;
+        _pickHide();
+      };
+      _pickOutFn = outFn;
+      setTimeout(function () {
+        if (_pickOutFn === outFn) document.addEventListener("click", outFn, true);
+      }, 0);
+    }
   };
   function _bindPickPanel() {
-    var p = document.getElementById("stickerPickPanel");
-    var c = document.getElementById("stickerPickClose");
-    if (!p || p.__bound) return;
-    p.__bound = 1;
-    p.addEventListener("click", function (e) {
-      if (e.target === p) p.style.display = "none";
-    });
-    c &&
-      c.addEventListener("click", function () {
-        p.style.display = "none";
-      });
+    /* 面板内容每次打开时整体重渲染，无需静态绑定 */
   }
 
   /* ---- 三处输入栏表情包按钮 ---- */
@@ -2425,7 +2567,7 @@
       fb.addEventListener("click", function (e) {
         window.__openStickerPickPanel(function (src) {
           _markPending(document.getElementById("friendsCommentInput"), "__friendsPendingSticker", src);
-        });
+        }, fb.parentElement);
       });
     }
     var ib = document.getElementById("icityDetailCommentStickerBtn");
@@ -2434,7 +2576,7 @@
       ib.addEventListener("click", function (e) {
         window.__openStickerPickPanel(function (src) {
           _markPending(document.getElementById("icityDetailCommentInput"), "__icityPendingSticker", src);
-        });
+        }, ib.parentElement);
       });
     }
     var wb = document.getElementById("watchStickerBtn");
@@ -2450,7 +2592,7 @@
             var sb = document.getElementById("watchSendBtn");
             if (sb) sb.click();
           }
-        });
+        }, document.getElementById("watchInputBar"));
       });
     }
     /* 朋友圈评论弹窗：点遮罩关闭 + 发送后恢复占位 */

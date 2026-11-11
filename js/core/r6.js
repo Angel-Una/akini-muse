@@ -908,11 +908,22 @@
     try {
       localStorage.setItem("akini_music_listening_active", "0");
     } catch (e) {}
+    // 归零计数器：防止下一场（未走 startMusicSessionTracking 的入口）读到残留值
+    _musicSessionSongCount = 0;
+    _musicSessionMyMsgs = 0;
+    _musicSessionTaMsgs = 0;
     /* 会话结束，清除邀请方标记，下次会话从零开始判定 */
     try {
       localStorage.setItem("akini_music_invited_by_ta", "0");
     } catch (e) {}
   }
+  // 供 core 的联系人选择器确认入口调用：该入口直接置 listening_active=1，
+  // 不经 startMusicSessionTracking，会带上上一场残留的计数/时长。
+  window.__akiniMusicSessionReset = function () {
+    try {
+      if ("1" === localStorage.getItem("akini_music_listening_active")) startMusicSessionTracking();
+    } catch (e) {}
+  };
 
 
   /* ============ COMPANION HOME PAGE ============ */
@@ -1042,26 +1053,6 @@
   }
 
   /* ============ PROBABILITY SETTINGS (统一到设置页自定义概率模块) ============ */
-  function openProbSettings() {
-    try {
-      // 关闭音乐相关界面，打开设置页概率模块
-      var app = $("app-music");
-      if (app) {
-        app.style.display = "none";
-        app.classList.remove("show");
-      }
-      var menu = $("musicMenuPanel");
-      if (menu) menu.style.display = "none";
-      var sa = $("settingsArea");
-      if (sa) sa.style.display = "flex";
-      if (typeof window.__openProbArea === "function") {
-        window.__openProbArea();
-      } else {
-        var pa = $("akiniProbArea");
-        if (pa) pa.style.display = "flex";
-      }
-    } catch (e) {}
-  }
   function closeProbSettings() {
     var ov = $("probSettingsOverlay");
     if (ov) ov.style.display = "none";
@@ -1069,32 +1060,24 @@
 
   /* ============ BINDINGS ============ */
   function bind() {
-    // 消息统计
+    // 消息统计：只统计「一起听界面里发消息按钮」发出的气泡（core 的 C() 里调用
+    // __akiniMusicCountMsg）。之前挂在 __akiniChatLog.append 上，会把一起听期间的
+    // 微信/陪伴/观影等其他聊天消息全算进来——用户根本没在一起听界面聊天，
+    // 总结却显示互发了几十条。
     try {
-      if (typeof window.__akiniAppendMessageHTML === "function" && !window.__akiniAppendMessageHTML.__r6wrapped) {
-        var origAppend = window.__akiniAppendMessageHTML;
-        window.__akiniAppendMessageHTML = function () {
-          try {
-            var html = arguments[1] || "";
-            var active = false;
-            try {
-              active = "1" === localStorage.getItem("akini_music_listening_active");
-            } catch (e) {}
-            if (active) {
-              if (/msg-row me\b/.test(html)) _musicSessionMyMsgs++;
-              else if (/msg-row (other|ta)\b/.test(html)) _musicSessionTaMsgs++;
-            }
-          } catch (e) {}
-          return origAppend.apply(this, arguments);
-        };
-        window.__akiniAppendMessageHTML.__r6wrapped = true;
-      }
+      window.__akiniMusicCountMsg = function (isMe) {
+        try {
+          if ("1" !== localStorage.getItem("akini_music_listening_active")) return;
+          if (isMe) _musicSessionMyMsgs++;
+          else _musicSessionTaMsgs++;
+        } catch (e) {}
+      };
     } catch (e) {}
 
-    /* 歌曲计数：core 的切歌函数 a() 里会回调 __akiniMusicTrackSwitch。
-       上一首/下一首/自动续播/概率切歌全都走那个函数，所以这里一处就能统计全。
+    /* 歌曲计数：core 的切歌函数 a()（上一首/下一首/自动续播/概率切歌）
+       和歌单面板点歌 handler 里都会回调 __akiniMusicTrackSwitch，两处统计全。
        以前只包了 window.musicControlNext / Prev（只有悬浮控件调用），
-       普通点播放器的上一首/下一首、以及歌曲自动播完切下一首都不会计数，
+       普通点播放器的上一首/下一首、自动播完切歌、点歌单里的歌都不会计数，
        于是「本次一起听了 N 首歌曲 / 累计 N 首」永远显示 0。 */
     window.__akiniMusicTrackSwitch = function () {
       try {

@@ -26,8 +26,16 @@
 
         var sc = b.closest(".home-screen");
         if (!sc) continue;
+        /* 首页固定整屏：不再上下滚动，放不下时只做等比缩放 */
         sc.style.setProperty("overflow-x", "hidden", "important");
-        sc.style.setProperty("overflow-y", "auto", "important");
+        sc.style.setProperty("overflow-y", "hidden", "important");
+        if (sc.scrollTop) sc.scrollTop = 0;
+        var _wrap = document.getElementById("homeScreens");
+        if (_wrap) {
+          _wrap.style.setProperty("overflow-x", "hidden", "important");
+          _wrap.style.setProperty("overflow-y", "hidden", "important");
+          if (_wrap.scrollTop) _wrap.scrollTop = 0;
+        }
 
         var scRect = sc.getBoundingClientRect();
         if (scRect.height < 40) continue; // 隐藏的首页（高度 0）跳过
@@ -58,7 +66,7 @@
 
         var s = avail / natural;
         if (s > 1) s = 1;
-        if (s < 0.55) s = 0.55; // 再小就看不清了，剩下的交给纵向滚动
+        if (s < 0.45) s = 0.45; // 没有纵向滚动兜底，最小缩放再压低一点确保整屏放得下
         if (1 - s < 0.01) continue;
 
         /* 样式表里有 transform:none!important，必须用 inline important 才能压过它 */

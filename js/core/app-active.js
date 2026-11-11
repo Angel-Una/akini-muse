@@ -189,6 +189,4 @@
   [1500, 4000, 9000].forEach(function (ms) {
     setTimeout(_killLegacy, ms);
   });
-
-  window.akiniActiveEngine = { reschedule: manage, fire: _fire };
 })();

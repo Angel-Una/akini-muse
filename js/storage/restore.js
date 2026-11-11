@@ -180,14 +180,38 @@
 
   function applyHomeBg(url) {
     if (!url || typeof url !== "string" || url.length <= 10) return;
-    /* 只写 CSS 变量 + 标记类，渲染交给 perf-lite.css / akini-style.css，
-       不再重复写内联 !important。 */
+    /* 幂等去重：同一张图已经上过就不再重写 CSS 变量。
+       启动期有十几个恢复通道（load/img-ready/storage-restored/多个定时器/onVisible）
+       会反复调用本函数；重写 --akini-home-bg 会让 Safari 重新解析并解码整张 base64 位图，
+       十几张 MB 级壁纸并发解码直接 OOM —— 这是 iPhone「重复出现问题」崩溃的根源。 */
+    var pf0 = document.getElementById("phoneFrame");
+    if (pf0 && pf0.getAttribute("data-applied-home-bg") === url) return;
+    /* 存量大图（用户早期未压缩或压缩不够的壁纸，可能几 MB base64）直接上墙会让 Safari
+       解码几十 MB 位图而崩溃。超过阈值先异步压缩成小图，压缩完成再上墙并回写存储，
+       之后启动就只读到小图——这是"用过一段时间必崩、全新能进"的根治。 */
+    if (url.length > 500000 && typeof window.compressImageDataUrl === "function" && !pf0.__akiniBgCompressing) {
+      pf0.__akiniBgCompressing = true;
+      window.compressImageDataUrl(url, function (compressed) {
+        try { pf0.__akiniBgCompressing = false; } catch (e) {}
+        var v = (compressed && compressed.length < url.length) ? compressed : url;
+        /* 回写压缩后的小图，下次启动不再触发压缩 */
+        try { localStorage.setItem("akini_home_bg", v); } catch (e) {}
+        try { if (window.__akiniSaveImageKey) window.__akiniSaveImageKey("akini_home_bg", v); } catch (e) {}
+        try { if (window._idbStore && window._idbStore.set) window._idbStore.set("akini_home_bg", v); } catch (e) {}
+        pf0.setAttribute("data-applied-home-bg", v);
+        try {
+          document.documentElement.style.setProperty("--akini-home-bg", 'url("' + v + '")');
+        } catch (e) {}
+        pf0.classList.add("has-custom-bg");
+      }, { maxSide: 1280, quality: 0.82, forceJpeg: true });
+      return;
+    }
+    if (pf0) pf0.setAttribute("data-applied-home-bg", url);
     try {
       document.documentElement.style.setProperty("--akini-home-bg", 'url("' + url + '")');
     } catch (e) {}
-    var pf = document.getElementById("phoneFrame");
-    if (!pf) return;
-    pf.classList.add("has-custom-bg");
+    if (!pf0) return;
+    pf0.classList.add("has-custom-bg");
   }
 
   /* 壁纸兜底恢复：localStorage 配额满时壁纸只存在 IndexedDB/localforage 里，
@@ -279,29 +303,47 @@
     return "";
   }
 
-  /* 首页顶部大卡封面 / 背景卡：配额满时值可能只存在 IndexedDB，
-     同步读不到就必须异步从 IDB 取回，否则刷新后永远是灰底空白。 */
-  function applyCoverArea(url) {
-    if (!url || typeof url !== "string" || url.length <= 10) return;
-    var el = document.getElementById("coverAreaMain");
-    if (!el) return;
-    if (el.getAttribute("data-applied-bg") === url) return;
-    el.setAttribute("data-applied-bg", url);
+  /* 超大 base64 图片统一"先压缩再上屏"：存量用户早期存的壁纸/封面/拍立得可能是几 MB，
+     直接塞进 backgroundImage 会让 Safari 解码几十 MB 位图而 OOM（用过必崩的根源）。
+     所有背景位共用同一守卫：超过 300KB 先压缩到 1280px JPEG，压缩后回写存储再上屏。 */
+  function __applyLargeBg(el, url, keys, attrName) {
+    if (!el || !url || typeof url !== "string" || url.length <= 10) return;
+    attrName = attrName || "data-applied-bg";
+    if (el.getAttribute(attrName) === url) return;
+    if (url.length > 500000 && typeof window.compressImageDataUrl === "function" && !el.__akiniBgCompressing) {
+      el.__akiniBgCompressing = true;
+      window.compressImageDataUrl(url, function (compressed) {
+        try { el.__akiniBgCompressing = false; } catch (e) {}
+        var v = (compressed && compressed.length < url.length) ? compressed : url;
+        try {
+          (keys || []).forEach(function (k) {
+            try { localStorage.setItem(k, v); } catch (e) {}
+            try { if (window.__akiniSaveImageKey) window.__akiniSaveImageKey(k, v); } catch (e) {}
+            try { if (window._idbStore && window._idbStore.set) window._idbStore.set(k, v); } catch (e) {}
+          });
+        } catch (e) {}
+        el.setAttribute(attrName, v);
+        el.style.setProperty("background-image", 'url("' + v + '")', "important");
+        el.style.setProperty("background-size", "cover", "important");
+        el.style.setProperty("background-position", "center", "important");
+        el.style.setProperty("background-repeat", "no-repeat", "important");
+      }, { maxSide: 1280, quality: 0.82, forceJpeg: true });
+      return;
+    }
+    el.setAttribute(attrName, url);
     el.style.setProperty("background-image", 'url("' + url + '")', "important");
     el.style.setProperty("background-size", "cover", "important");
     el.style.setProperty("background-position", "center", "important");
     el.style.setProperty("background-repeat", "no-repeat", "important");
   }
+  function applyCoverArea(url) {
+    if (!url || typeof url !== "string" || url.length <= 10) return;
+    /* COVER_KEYS 在下方定义，压缩是异步回调，执行时已赋值，直接用即可 */
+    __applyLargeBg(document.getElementById("coverAreaMain"), url, typeof COVER_KEYS !== "undefined" ? COVER_KEYS : ["akini_cover_img"], "data-applied-bg");
+  }
   function applyBgArea(url) {
     if (!url || typeof url !== "string" || url.length <= 10) return;
-    var el = document.getElementById("bgArea");
-    if (!el) return;
-    if (el.getAttribute("data-applied-bg") === url) return;
-    el.setAttribute("data-applied-bg", url);
-    el.style.setProperty("background-image", 'url("' + url + '")', "important");
-    el.style.setProperty("background-size", "cover", "important");
-    el.style.setProperty("background-position", "center", "important");
-    el.style.setProperty("background-repeat", "no-repeat", "important");
+    __applyLargeBg(document.getElementById("bgArea"), url, typeof DAY_KEYS !== "undefined" ? DAY_KEYS : ["akini_day_bg"], "data-applied-bg");
   }
   function applyPolaroid(url, el) {
     try {
@@ -309,11 +351,7 @@
       if (!el || !url || typeof url !== "string" || url.length <= 10) return;
       var cur = el.style.backgroundImage || "";
       if (cur && cur.indexOf(url) >= 0 && el.style.getPropertyPriority("background-image") === "important") return;
-      el.setAttribute("data-applied-src", url);
-      el.style.setProperty("background-image", 'url("' + url + '")', "important");
-      el.style.setProperty("background-size", "cover", "important");
-      el.style.setProperty("background-position", "center", "important");
-      el.style.setProperty("background-repeat", "no-repeat", "important");
+      __applyLargeBg(el, url, ["akini_s1_photo"], "data-applied-src");
     } catch (e) {}
   }
   var COVER_KEYS = ["akini_cover_img", "akini_cover_bg", "akini_s2_cover", "cover_bg"];
@@ -416,28 +454,40 @@
     }
   }
   scheduleRestore();
-  window.addEventListener("load", restoreAllImagesAndConfig);
-  /* 图片键从 IndexedDB 回填完成后（可能晚于首屏），再补一次壁纸/头像恢复 */
+  /* 启动期把多个恢复通道（load / img-ready / storage-restored / 迟到兜底）合并节流：
+     短窗口内无论多少个事件触发，只真正执行一次，避免 IDB 重读 + 大图反复上屏在移动端并发。 */
+  var _lastFullRestore = 0,
+    _fullRestoreTimer = null;
+  function restoreAllThrottled(minGap) {
+    var now = Date.now();
+    if (now - _lastFullRestore < minGap) {
+      if (_fullRestoreTimer) return;
+      _fullRestoreTimer = setTimeout(function () {
+        _fullRestoreTimer = null;
+        _lastFullRestore = Date.now();
+        try {
+          restoreAllImagesAndConfig();
+        } catch (e) {}
+      }, minGap - (now - _lastFullRestore));
+      return;
+    }
+    _lastFullRestore = now;
+    try {
+      restoreAllImagesAndConfig();
+    } catch (e) {}
+  }
+  window.addEventListener("load", function () {
+    restoreAllThrottled(800);
+  });
   window.addEventListener("akini-img-ready", function () {
-    try {
-      restoreAllImagesAndConfig();
-    } catch (e) {}
+    restoreAllThrottled(800);
   });
-  /* 存储层对账完成后再补一轮（IDB → LS 回填发生在首屏之后，晚到的数据必须重新上屏） */
   window.addEventListener("akini-storage-restored", function () {
-    try {
-      restoreAllImagesAndConfig();
-    } catch (e) {}
+    restoreAllThrottled(800);
   });
-  /* 只保留一次迟到兜底；主要依赖 load / akini-img-ready / akini-storage-restored 事件，
-     以前 4 个定时器会重复跑 4 遍 IDB 读取，是启动卡顿来源之一 */
-  [1500].forEach(function (ms) {
-    setTimeout(function () {
-      try {
-        restoreAllImagesAndConfig();
-      } catch (e) {}
-    }, ms);
-  });
+  setTimeout(function () {
+    restoreAllThrottled(0);
+  }, 1500);
   /* 从后台切回前台时再补一轮：系统可能在此期间清掉/延迟写入图片，
      或者 iOS 已把页面重载——重新上屏一次，避免"要再进一次才显示"。 */
   window.__akiniOnVisible(function () { setTimeout(function () {
@@ -459,7 +509,9 @@
       applyHomeBg(v);
     } catch (e) {}
   }
-  [300, 800, 1600, 3200].forEach(function (ms) {
+  /* 原本 4 个定时器并发重设壁纸，现在合并成一个递进补刷序列，且 applyHomeBg 已幂等去重，
+     值没变就直接跳过——不再让 Safari 反复解码同一张 base64 大图。 */
+  [800, 3200].forEach(function (ms) {
     setTimeout(reapplyHomeBg, ms);
   });
 
@@ -474,7 +526,8 @@
       if (v) applyPolaroid(v, el);
     } catch (e) {}
   }
-  [300, 800, 1600, 3200, 6000].forEach(function (ms) {
+  /* 5 个定时器并发 → 合并为 2 个递进补刷；applyPolaroid 内部已有"同图+important 才跳过"判断。 */
+  [800, 3200].forEach(function (ms) {
     setTimeout(reapplyPolaroid, ms);
   });
   window.addEventListener("akini-storage-restored", reapplyPolaroid);
@@ -627,7 +680,6 @@ window.__akiniRestoredDone = true;
   (function () {
     var modal = document.getElementById("mailDetailModal");
     if (!modal) return;
-    var lastShown = 0;
     function visible() {
       try {
         return getComputedStyle(modal).display !== "none" && modal.offsetParent !== null;
@@ -641,35 +693,6 @@ window.__akiniRestoredDone = true;
   function syncSentMailStatus() {
     /* 寄出的信仅在对方回信真正投递（app.js checkStatus）时才置为已读，不再按时间自动置读 */
     return;
-    try {
-      var raw = localStorage.getItem("akini_mail_sent");
-      if (!raw) return;
-      var list = JSON.parse(raw);
-      if (!Array.isArray(list) || !list.length) return;
-      var now = Date.now();
-      var dirty = false;
-      for (var i = 0; i < list.length; i++) {
-        var m = list[i];
-        if (!m) continue;
-        if (m.replyTime && now >= m.replyTime && (!m.isRead || !m.repliedByTa)) {
-          m.isRead = true;
-          m.read = true;
-          m.repliedByTa = true;
-          dirty = true;
-        } else if (!m.replyTime && m.ts && now - m.ts >= 60000 && !m.isRead) {
-          m.isRead = true;
-          m.read = true;
-          dirty = true;
-        }
-      }
-      if (dirty) {
-        /* 单通道：akiniStore.set 内部已包含 localStorage + IndexedDB */
-        if (window.akiniStore && window.akiniStore.set)
-          window.akiniStore.set("akini_mail_sent", JSON.stringify(list));
-        else localStorage.setItem("akini_mail_sent", JSON.stringify(list));
-        if (window.__renderMail) window.__renderMail();
-      }
-    } catch (e) {}
   }
   syncSentMailStatus();
   /* 对齐 原生：去掉 30 秒常驻轮询，改为页面回到前台时同步一次 */
@@ -1193,23 +1216,6 @@ window.__akiniSaveImageKey = function (key, url) {
     if (window.__akiniImgSet) window.__akiniImgSet(key, url);
   } catch (ex) {}
 };
-window.__akiniPersistImage = function (key, url, callback) {
-  if (!key || !url) {
-    if (callback) callback(url);
-    return;
-  }
-  var save = function (v) {
-    v = v || url;
-    window.__akiniSaveImageKey(key, v);
-    if (callback) callback(v);
-  };
-  if (typeof window.compressImageDataUrl === "function") {
-    window.compressImageDataUrl(url, save, { maxSide: 2000, quality: 0.92 });
-  } else {
-    save(url);
-  }
-};
-
 document.addEventListener("DOMContentLoaded", function () {
 });
 

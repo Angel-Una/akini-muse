@@ -227,6 +227,15 @@
           ? '<div class="bubble">[图片已清理]</div>'
           : '<div class="bubble">' + esc(m.text || "") + "</div>";
       row.innerHTML = '<div class="msg-content-line">' + bubbleHtml + "</div>";
+      /* 引用：与主聊天一致，气泡下方整宽引用卡（我→右对齐，对方→左对齐） */
+      if (m.quote && window.__akiniQuoteCardHtml) {
+        row.innerHTML +=
+          '<div style="flex-basis:100%;width:100%;box-sizing:border-box;margin-top:2px;text-align:' +
+          (me ? "right" : "left") +
+          ';">' +
+          window.__akiniQuoteCardHtml(m.quote.n, m.quote.t, m.quote.s, m.quote.mh) +
+          "</div>";
+      }
       box.appendChild(row);
       try {
         window.__akiniProcessMsgMeta(row);
@@ -446,31 +455,6 @@
     }
   }
 
-  function myStickerPool() {
-    var arr = [];
-    try {
-      arr = JSON.parse(lsGet("akini_stickers_me", "[]")) || [];
-    } catch (e) {}
-    if (!Array.isArray(arr)) arr = [];
-    try {
-      var legacy = JSON.parse(lsGet("akini_stickers", "[]")) || [];
-      if (Array.isArray(legacy) && legacy.length) arr = arr.concat(legacy);
-    } catch (e) {}
-    var out = [],
-      seen = {};
-    arr.forEach(function (it) {
-      var s2 = "";
-      if (typeof it === "string") s2 = it;
-      else if (it && typeof it.s === "string") s2 = it.s;
-      var blocked = it && typeof it === "object" && (it.b === 1 || it.b === true || it.b === "1");
-      /* 去重 key 用完整 dataURL——slice(0,64) 前缀撞车会误杀同规格图片 */
-      if (!blocked && /^data:image\//.test(s2) && !seen[s2]) {
-        seen[s2] = 1;
-        out.push(s2);
-      }
-    });
-    return out;
-  }
   function companionStickerPool(cid) {
     /* 该联系人专属表情包（与观影 watchStickerPool 同数据源 getContactStickersSync） */
     var out = [];
@@ -581,10 +565,35 @@
     var input = $("companionMsgInput");
     var v = imgUrl ? "" : ((input && input.value) || "").trim();
     if (!imgUrl && !v) return;
+    /* 引用：读取输入框上的 data-quote（长按消息"引用"写入），随消息存到 quote 字段 */
+    var quote = null;
+    if (!imgUrl && input && input.getAttribute("data-quote")) {
+      var q = input.getAttribute("data-quote") || "";
+      var qn = q.replace(/[：:].*/, "").trim() || q;
+      var qt = q.length > qn.length ? q.slice(qn.length).replace(/^[：:]/, "").trim() : "";
+      quote = {
+        n: qn,
+        t: qt,
+        s: input.getAttribute("data-quote-sticker") || "",
+        mh: input.getAttribute("data-quote-sticker-mh") || "",
+      };
+    }
     st.msgs = st.msgs || [];
-    st.msgs.push(imgUrl ? { side: "me", img: imgUrl, ts: Date.now() } : { side: "me", text: v, ts: Date.now() });
+    st.msgs.push(
+      imgUrl
+        ? { side: "me", img: imgUrl, ts: Date.now() }
+        : { side: "me", text: v, ts: Date.now(), quote: quote },
+    );
     saveCompanionState(st);
-    if (input) input.value = "";
+    if (input) {
+      input.value = "";
+      (input.removeAttribute("data-quote"),
+        input.removeAttribute("data-quote-sticker"),
+        input.removeAttribute("data-quote-sticker-mh"),
+        (input.placeholder = input.__origPh || "说点什么…"));
+      var qb = $("companionQuoteBar");
+      qb && qb.classList.remove("show");
+    }
     renderCompanionMsgs(true);
     scheduleCompanionReply(st.cid);
   }
@@ -703,34 +712,11 @@
 
     if (emojiBtn)
       emojiBtn.addEventListener("click", function () {
-        /* 表情面板 = 我给自己添加的表情包（字卡库-表情包 tab） */
-        if (emojiGrid) {
-          var pool = myStickerPool();
-          if (pool.length) {
-            emojiGrid.innerHTML = pool
-              .map(function (s2, i) {
-                return (
-                  '<button type="button" class="akcp-stk" data-i="' +
-                  i +
-                  '" style="background:0 0;border:none;padding:4px;cursor:pointer;touch-action:manipulation"><img src="' +
-                  esc(s2) +
-                  '" style="width:62px;height:62px;object-fit:contain;display:block;pointer-events:none" alt="表情包"></button>'
-                );
-              })
-              .join("");
-            Array.prototype.forEach.call(emojiGrid.querySelectorAll(".akcp-stk"), function (el) {
-              el.addEventListener("click", function () {
-                var s2 = pool[parseInt(el.getAttribute("data-i"), 10)];
-                if (s2) sendCompanionMsg(s2);
-                closeSheet("companionEmojiSheet");
-              });
-            });
-          } else {
-            emojiGrid.innerHTML =
-              '<div style="grid-column:1/-1;text-align:center;color:#999;font-size:13px;padding:34px 0;line-height:1.9">还没有表情包<br>去字卡库-表情包里添加吧</div>';
-          }
-        }
-        openSheet("companionEmojiSheet");
+        /* 与主聊天表情面板同款（头像横滑条 + 52px 流式小图），贴在输入栏上方 */
+        if (typeof window.__openStickerPickPanel === "function")
+          window.__openStickerPickPanel(function (src) {
+            sendCompanionMsg(src);
+          }, emojiBtn.parentElement);
       });
     if (emojiSheet)
       emojiSheet.addEventListener("click", function (e) {
@@ -1007,7 +993,7 @@
         idbSet(CONTENT_PREFIX + id, txt);
         /* 导入时立即解析章节并缓存 */
         var tmpParas = txt
-          .split(/\n+/)
+          .split(/\r\n|\r|\n/)
           .map(function (p) {
             return p.trim();
           })
@@ -1162,94 +1148,88 @@
   var _pagedPages = [];
   var _pagedIdx = 0;
 
-  function pageWidth() {
-    var content = $("novelReaderContent");
-    return content ? content.clientWidth : 1;
-  }
-
-  function pageHeight() {
-    var content = $("novelReaderContent");
-    return content ? content.clientHeight : 1;
-  }
-
-  /* 视口真实分页算法：逐段渲染到隐藏测量容器，溢出则分页 */
+  /* 视口真实分页算法：一次渲染全部段落批量测量（offsetTop 差值含段间距），
+     页项记录 {t:文本, p:段落号}，单段超页的按字符二分切块，保证不漏字 */
   function _computePages() {
-    if (!_readerParas.length) {
-      _pagedPages = [[]];
-      return;
-    }
+    _pagedPages = [[]];
+    if (!_readerParas.length) return;
     var content = $("novelReaderContent");
-    if (!content) {
-      _pagedPages = [[]];
-      return;
-    }
-
-    // 创建测量容器，完全继承当前正文样式
+    if (!content) return;
+    var cs = window.getComputedStyle(content);
+    var w = Math.max(50, content.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0));
+    /* 8px 安全边距，防止临界行被 overflow:hidden 裁掉 */
+    var maxH = Math.max(60, content.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0) - 8);
     var meas = document.createElement("div");
     meas.style.cssText =
-      "position:absolute;top:-9999px;left:-9999px;width:" +
-      (pageWidth() - 40) +
-      "px;visibility:hidden;box-sizing:content-box;";
-    var s = readerSettings();
-    meas.style.fontSize = s.fontSize + "px";
-    meas.style.lineHeight = s.lineHeight;
-    meas.style.color = s.textColor;
-    meas.style.background = "transparent";
-    document.body.appendChild(meas);
-
-    var maxH = pageHeight() - 40; // 减去上下 padding
-    var pages = [];
-    var currentPageParas = [];
-    var currentH = 0;
+      "position:absolute;top:0;left:-9999px;width:" + w + "px;visibility:hidden;box-sizing:border-box;";
+    meas.style.fontSize = cs.fontSize;
+    meas.style.lineHeight = cs.lineHeight;
+    meas.style.fontFamily = cs.fontFamily;
     var pStyle = "margin:0 0 1em;text-indent:2em;word-break:break-all;";
-
-    for (var i = 0; i < _readerParas.length; i++) {
-      var para = _readerParas[i];
-      meas.innerHTML = '<p style="' + pStyle + '">' + esc(para) + "</p>";
-      var h = meas.firstChild.getBoundingClientRect().height;
-      if (h > maxH) {
-        // 单段超过一页：按字符拆分
-        var chars = para.split("");
-        var chunk = "";
-        for (var j = 0; j < chars.length; j++) {
-          chunk += chars[j];
-          meas.innerHTML = '<p style="' + pStyle + '">' + esc(chunk) + "</p>";
-          if (meas.firstChild.getBoundingClientRect().height > maxH) {
-            chunk = chunk.slice(0, -1);
-            if (currentH + meas.firstChild.getBoundingClientRect().height > maxH && currentPageParas.length) {
-              pages.push(currentPageParas);
-              currentPageParas = [];
-              currentH = 0;
-            }
-            currentPageParas.push(chunk);
-            currentH += meas.firstChild.getBoundingClientRect().height;
-            chunk = chars[j];
-          }
-        }
-        if (chunk) {
-          meas.innerHTML = '<p style="' + pStyle + '">' + esc(chunk) + "</p>";
-          if (currentH + meas.firstChild.getBoundingClientRect().height > maxH && currentPageParas.length) {
-            pages.push(currentPageParas);
-            currentPageParas = [];
-            currentH = 0;
-          }
-          currentPageParas.push(chunk);
-          currentH += meas.firstChild.getBoundingClientRect().height;
-        }
-      } else {
-        if (currentH + h > maxH && currentPageParas.length) {
-          pages.push(currentPageParas);
-          currentPageParas = [];
-          currentH = 0;
-        }
-        currentPageParas.push(para);
-        currentH += h;
+    var html = "";
+    for (var i = 0; i < _readerParas.length; i++)
+      html += '<p style="' + pStyle + '">' + esc(_readerParas[i]) + "</p>";
+    meas.innerHTML = html;
+    document.body.appendChild(meas);
+    var kids = meas.children;
+    var N = kids.length;
+    /* 单段超高时用第二个隐藏容器二分切块 */
+    var meas2 = document.createElement("div");
+    meas2.style.cssText = meas.style.cssText;
+    meas2.style.fontSize = cs.fontSize;
+    meas2.style.lineHeight = cs.lineHeight;
+    meas2.style.fontFamily = cs.fontFamily;
+    document.body.appendChild(meas2);
+    function pieceH(t) {
+      meas2.innerHTML = '<p style="' + pStyle + '">' + esc(t) + "</p>";
+      return meas2.firstChild.getBoundingClientRect().height;
+    }
+    var pages = [],
+      cur = [],
+      curH = 0;
+    function flush() {
+      if (cur.length) {
+        pages.push(cur);
+        cur = [];
+        curH = 0;
       }
     }
-    if (currentPageParas.length) pages.push(currentPageParas);
-    if (!pages.length) pages.push([]);
+    function pushItem(t, p, h) {
+      if (curH + h > maxH && cur.length) flush();
+      cur.push({ t: t, p: p });
+      curH += h;
+    }
+    for (var k = 0; k < N; k++) {
+      var el = kids[k];
+      var hh = k + 1 < N ? kids[k + 1].offsetTop - el.offsetTop : el.offsetHeight;
+      if (el.offsetHeight > maxH) {
+        /* 单段超页：字符二分切块，块间正常参与分页 */
+        var para = _readerParas[k];
+        var start = 0;
+        while (start < para.length) {
+          var lo = 1,
+            hi = para.length - start,
+            fit = 1;
+          while (lo <= hi) {
+            var mid = (lo + hi) >> 1;
+            if (pieceH(para.slice(start, start + mid)) <= maxH) {
+              fit = mid;
+              lo = mid + 1;
+            } else hi = mid - 1;
+          }
+          var piece = para.slice(start, start + fit);
+          pushItem(piece, k, pieceH(piece));
+          start += fit;
+        }
+      } else {
+        pushItem(_readerParas[k], k, hh);
+      }
+    }
+    flush();
+    if (!pages.length) pages = [[]];
     _pagedPages = pages;
     document.body.removeChild(meas);
+    document.body.removeChild(meas2);
   }
 
   function _renderPaged() {
@@ -1263,12 +1243,11 @@
     var pageParas = _pagedPages[_pagedIdx] || [];
     var html = "";
     for (var i = 0; i < pageParas.length; i++) {
-      var gi = _readerParas.indexOf(pageParas[i]);
       html +=
         '<p data-pidx="' +
-        gi +
+        pageParas[i].p +
         '" style="margin:0 0 1em;text-indent:2em;word-break:break-all">' +
-        esc(pageParas[i]) +
+        esc(pageParas[i].t) +
         "</p>";
     }
     content.innerHTML = html;
@@ -1330,25 +1309,81 @@
     lsSet(PAGEPROG_PREFIX + _curBook.id, String(_pagedIdx));
   }
 
-  function restorePageProgress() {
-    var content = $("novelReaderContent");
-    if (!content || !_curBook) return;
-    var savedIdx = parseInt(lsGet(PAGEPROG_PREFIX + _curBook.id, "0"), 10) || 0;
-    _pagedIdx = Math.min(savedIdx, Math.max(0, _pagedPages.length - 1));
-    _renderPaged();
-  }
-
   /* ---------- 章节自动解析 ----------
      识别常见章节标题：第1章 / 第一章 / 第001章 / Chapter 1 / 序章 / 前言 / 楔子 / 后记 等 */
   function parseChapters(paras) {
     var chapters = [];
-    var re =
-      /^(?:第\s*[0-9零一二三四五六七八九十百千万]+\s*[章卷回]|chapter\s+\d+|序[章言]?|前言|楔子|引子|尾声|后记|番外|终章)(.*)$/i;
-    for (var i = 0; i < paras.length; i++) {
-      var p = paras[i].trim();
-      if (re.test(p)) {
-        chapters.push({ title: p, pidx: i });
+    /* 章节标题识别（尽量全覆盖）：
+       - 第X章/卷/回/节/集/部/话，数字支持阿拉伯/全角/中文（第12章、第１２章、第一百二十章）
+       - 允许外括号【】〖〗() 与前缀词（正文/正文卷/VIP卷/最新章节）
+       - chapter N / 序章 / 前言 / 楔子 / 引子 / 尾声 / 后记 / 番外 / 终章 / 卷N */
+    var reMain =
+      /^[【\[〖「『(（]?\s*(?:(?:(?:正文|正文卷|VIP卷|最新章节)\s*)?第\s*[0-9０-９零一二三四五六七八九十百千万两]+\s*[章卷回节集部话]|chapter\s+\d+|序[章言曲]?|前言|楔子|引子|尾声|后记|番外[篇记]*|终章|卷\s*[0-9０-９零一二三四五六七八九十百千万两]+).*$/i;
+    /* 兜底：主规则几乎没识别到时，再试 "1、标题" "1. 标题" "001 标题" 这类纯数字编号 */
+    var reNum = /^[【\[〖「『(（]?\s*[0-9０-９]{1,5}\s*[、.．\)）\]】]\s*\S.*$/;
+    function scan(re) {
+      var out = [];
+      for (var i = 0; i < paras.length; i++) {
+        var p = paras[i].trim();
+        if (p && p.length <= 120 && re.test(p)) {
+          /* 排除「（第一卷完）」这类卷结束标记，不是章节 */
+          if (/^[【\[〖「『(（]?\s*第\s*[0-9０-９零一二三四五六七八九十百千万两]+\s*[卷部]\s*完[)）\]】」』]?\s*$/.test(p))
+            continue;
+          out.push({ title: p, pidx: i });
+        }
       }
+      return out;
+    }
+    chapters = scan(reMain);
+    /* 晋江「☆、标题」格式：星标顺序即章节号（第1章、第2章…），与显式「第N章」合并 */
+    var reStar = /^[☆★][、.．]\s*\S.*$/;
+    var stars = scan(reStar).filter(function (s) {
+      for (var j = 0; j < chapters.length; j++) if (chapters[j].pidx === s.pidx) return false;
+      return true;
+    });
+    if (stars.length) {
+      stars.forEach(function (s, i) {
+        chapters.push({
+          title: "第" + (i + 1) + "章 " + s.title.replace(/^[☆★][、.．]\s*/, ""),
+          pidx: s.pidx,
+        });
+      });
+      chapters.sort(function (a, b) {
+        return a.pidx - b.pidx;
+      });
+    }
+    /* 混合格式书（一部分"第X章"、一部分"1、标题"）：主规则已找到章节但编号
+       明显不连续（例如只有第114章起），补扫纯数字编号并合并 */
+    var needNum = chapters.length < 2 && !stars.length;
+    if (!needNum && chapters.length && !stars.length) {
+      var nums = [];
+      chapters.forEach(function (c) {
+        var mm = c.title.match(/第\s*([0-9０-９]+)\s*[章卷回节集部话]/);
+        if (mm)
+          nums.push(
+            parseInt(
+              mm[1].replace(/[０-９]/g, function (ch) {
+                return String.fromCharCode(ch.charCodeAt(0) - 0xfee0);
+              }),
+              10,
+            ),
+          );
+      });
+      if (nums.length) {
+        var mn = Math.min.apply(null, nums),
+          mx = Math.max.apply(null, nums);
+        if (mn > 3 || mx - mn + 1 > nums.length + 10) needNum = true;
+      }
+    }
+    if (needNum) {
+      var alt = scan(reNum).filter(function (c) {
+        for (var j = 0; j < chapters.length; j++) if (chapters[j].pidx === c.pidx) return false;
+        return true;
+      });
+      if (alt.length)
+        chapters = chapters.concat(alt).sort(function (a, b) {
+          return a.pidx - b.pidx;
+        });
     }
     return chapters;
   }
@@ -1416,53 +1451,86 @@
       if (content) content.innerHTML = "";
       if (flipMode() === "page") {
         enterPageMode();
-        restorePageProgress();
+        var savedPg = Math.min(
+          parseInt(lsGet(PAGEPROG_PREFIX + _curBook.id, "0"), 10) || 0,
+          Math.max(0, _pagedPages.length - 1),
+        );
+        if (savedPg > 0)
+          showResumePrompt(
+            "上次读到第 " + (savedPg + 1) + " 页",
+            function () {
+              _pagedIdx = savedPg;
+              _renderPaged();
+            },
+            function () {
+              lsSet(PAGEPROG_PREFIX + _curBook.id, "0");
+            },
+          );
       } else {
         exitPageMode();
         renderMoreParas();
         if (content) content.scrollTop = 0;
         var prog = parseInt(lsGet(PROGRESS_PREFIX + _curBook.id, "0"), 10) || 0;
-        if (content && prog > 5 && prog < _readerParas.length - 1) showResumeTip(prog);
+        if (content && prog > 5 && prog < _readerParas.length - 1)
+          showResumePrompt(
+            "上次读到第 " + (prog + 1) + " 段",
+            function () {
+              jumpToPara(prog);
+            },
+            function () {
+              lsSet(PROGRESS_PREFIX + _curBook.id, "0");
+            },
+          );
       }
     });
   }
 
-  /* 继续上次阅读浮动胶囊（8 秒自动消失，滚动后消失） */
-  function showResumeTip(prog) {
+  /* 跳到指定段落（滚动模式）：先渲染到该段，再精确滚过去 */
+  function jumpToPara(prog) {
     var content = $("novelReaderContent");
-    if (!content || !content.parentElement) return;
-    var old = $("novelResumeTip");
-    if (old) old.remove();
-    var host = content.parentElement;
-    var hs = window.getComputedStyle(host).position;
-    if (hs === "static") host.style.position = "relative";
-    var tip = document.createElement("button");
-    tip.id = "novelResumeTip";
-    tip.type = "button";
-    tip.textContent = "继续上次阅读 · 第" + prog + "段";
-    tip.style.cssText =
-      "position:absolute;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:30;background:rgba(26,26,26,.88);color:#fff;font-size:13px;padding:9px 16px;border:none;border-radius:20px;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer;touch-action:manipulation;white-space:nowrap";
-    tip.addEventListener("click", function () {
-      var target = Math.min(_readerParas.length, Math.round(prog));
-      while (_readerIdx < target) renderMoreParas();
-      requestAnimationFrame(function () {
-        var el = content.querySelector('[data-pidx="' + Math.max(0, target - 1) + '"]');
-        if (el)
-          content.scrollTop = Math.max(
-            0,
-            el.getBoundingClientRect().top - content.getBoundingClientRect().top + content.scrollTop - 12,
-          );
-      });
-      tip.remove();
+    if (!content) return;
+    var target = Math.min(_readerParas.length - 1, Math.max(0, Math.round(prog)));
+    while (_readerIdx <= target) renderMoreParas();
+    requestAnimationFrame(function () {
+      var el = content.querySelector('[data-pidx="' + target + '"]');
+      if (el)
+        content.scrollTop = Math.max(
+          0,
+          el.getBoundingClientRect().top - content.getBoundingClientRect().top + content.scrollTop - 12,
+        );
     });
-    host.appendChild(tip);
-    var kill = function () {
-      try {
-        tip.remove();
-      } catch (e) {}
-    };
-    setTimeout(kill, 8000);
-    content.addEventListener("scroll", kill, { once: true, passive: true });
+  }
+
+  /* 重进书籍的「继续上次阅读」确认弹窗（黑白风格）：是=跳到上次位置，否=从头开始并清掉旧进度 */
+  function showResumePrompt(whereText, onYes, onNo) {
+    var old = $("novelResumeModal");
+    if (old) old.remove();
+    var ov = document.createElement("div");
+    ov.id = "novelResumeModal";
+    ov.style.cssText =
+      "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:6013;display:flex;align-items:center;justify-content:center";
+    ov.innerHTML =
+      '<div style="width:78%;max-width:300px;background:#fff;border-radius:18px;padding:24px 20px 16px;box-sizing:border-box;box-shadow:0 24px 64px rgba(0,0,0,.35)">' +
+      '<div style="font-size:16px;font-weight:800;color:#000;text-align:center">继续上次阅读？</div>' +
+      '<div style="font-size:13px;color:#888;text-align:center;margin-top:8px">' +
+      esc(whereText) +
+      "</div>" +
+      '<div style="display:flex;gap:10px;margin-top:20px">' +
+      '<button id="novelResumeNo" type="button" style="flex:1;height:42px;border:none;border-radius:21px;background:#f0f0f0;color:#000;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation">否，从头开始</button>' +
+      '<button id="novelResumeYes" type="button" style="flex:1;height:42px;border:none;border-radius:21px;background:#000;color:#fff;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation">是，继续阅读</button></div></div>';
+    document.body.appendChild(ov);
+    function done(fn) {
+      return function () {
+        try {
+          ov.remove();
+        } catch (e) {}
+        try {
+          fn && fn();
+        } catch (e) {}
+      };
+    }
+    ov.querySelector("#novelResumeYes").addEventListener("click", done(onYes));
+    ov.querySelector("#novelResumeNo").addEventListener("click", done(onNo));
   }
 
   function renderMoreParas() {
@@ -1498,7 +1566,20 @@
 
   function saveProgress() {
     if (!_curBook) return;
-    lsSet(PROGRESS_PREFIX + _curBook.id, String(_readerIdx));
+    /* 存「当前视口顶部可见的段落号」，而不是已渲染段落数——否则恢复时跑偏 */
+    var content = $("novelReaderContent");
+    var cur = 0;
+    if (content) {
+      var base = content.getBoundingClientRect().top;
+      var ps = content.querySelectorAll("[data-pidx]");
+      for (var i = 0; i < ps.length; i++) {
+        if (ps[i].getBoundingClientRect().top - base <= 12) {
+          var v = parseInt(ps[i].getAttribute("data-pidx"), 10);
+          if (!isNaN(v)) cur = v;
+        } else break;
+      }
+    }
+    lsSet(PROGRESS_PREFIX + _curBook.id, String(cur));
   }
 
   function closeReader() {
@@ -1775,32 +1856,69 @@
     if (flipScroll)
       flipScroll.addEventListener("click", function () {
         var s = readerSettings();
+        if (s.flip === "scroll") return;
         s.flip = "scroll";
         saveReaderSettings(s);
         applyReaderSettings();
         if (_curBook) {
-          savePageProgress();
+          /* 记住当前页首段，切回滚动后停在这一段，不重头再来 */
+          var cur = _pagedPages[_pagedIdx] || [];
+          var pidx = cur.length ? cur[0].p : 0;
           var content2 = $("novelReaderContent");
           if (content2) content2.innerHTML = "";
           _readerIdx = 0;
           exitPageMode();
           renderMoreParas();
+          jumpToPara(pidx);
           updatePageIndicator();
         }
       });
     if (flipPage)
       flipPage.addEventListener("click", function () {
         var s = readerSettings();
+        if (s.flip === "page") return;
         s.flip = "page";
         saveReaderSettings(s);
         applyReaderSettings();
         if (_curBook) {
-          saveProgress();
-          _readerIdx = 0;
+          saveProgress(); /* 先落盘当前滚动位置 */
+          var pidx = parseInt(lsGet(PROGRESS_PREFIX + _curBook.id, "0"), 10) || 0;
           enterPageMode();
-          restorePageProgress();
+          /* 切到包含当前段的那一页 */
+          _pagedIdx = 0;
+          for (var pi = 0; pi < _pagedPages.length; pi++) {
+            var arr = _pagedPages[pi];
+            if (!arr.length) continue;
+            if (arr[0].p <= pidx && arr[arr.length - 1].p >= pidx) {
+              _pagedIdx = pi;
+              break;
+            }
+            if (arr[0].p > pidx) {
+              _pagedIdx = pi - 1 < 0 ? 0 : pi - 1;
+              break;
+            }
+          }
+          _renderPaged();
+          savePageProgress();
         }
       });
+    /* 滚动时实时保存顶部段落（节流），退出/被杀后也能准确续读 */
+    if (content && !content._aknvProgBound) {
+      content._aknvProgBound = true;
+      var _svT = null;
+      content.addEventListener(
+        "scroll",
+        function () {
+          if (flipMode() === "page") return;
+          if (_svT) return;
+          _svT = setTimeout(function () {
+            _svT = null;
+            saveProgress();
+          }, 500);
+        },
+        { passive: true },
+      );
+    }
 
     if (pickerClose)
       pickerClose.addEventListener("click", function () {
@@ -1980,7 +2098,7 @@
         mk.setAttribute("data-pidx", String(pidx));
         /* 小圆圈+数字居中圈内，防全局样式覆盖（min/max-width + flex:0 0 固定 + line-height:1） */
         mk.style.cssText =
-          "display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;min-width:18px;max-width:18px;flex:0 0 18px;border:1.5px solid #b08a4f;color:#b08a4f;border-radius:50%;font-size:" +
+          "display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;min-width:18px;max-width:18px;flex:0 0 18px;border:1.5px solid #1a1a1a;color:#1a1a1a;border-radius:50%;font-size:" +
           (total > 9 ? "8px" : "10px") +
           ";line-height:1;font-weight:600;font-style:normal;text-align:center;text-indent:0;letter-spacing:0;padding:0;margin-left:3px;vertical-align:middle;cursor:pointer;box-sizing:border-box;background:rgba(255,255,255,.75)";
         mk.textContent = String(total);
@@ -2032,28 +2150,25 @@
       var view = document.createElement("div");
       view.id = "aknvCmView";
       view.style.cssText =
-        "display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:6012;align-items:center;justify-content:center";
+        "display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:6012;align-items:flex-end;justify-content:center";
       view.innerHTML =
-        '<div style="width:88%;max-width:360px;max-height:70vh;background:#fff;border-radius:18px;display:flex;flex-direction:column;overflow:hidden">' +
-        '<div style="display:flex;align-items:center;padding:14px 16px 10px;flex-shrink:0">' +
-        '<span style="flex:1;font-size:16px;font-weight:700;color:#1a1a1a">段评</span>' +
-        '<button id="aknvCmMoreBtn" type="button" style="background:none;border:none;font-size:20px;color:#666;cursor:pointer;padding:2px 8px">⋯</button>' +
-        '<button id="aknvCmViewClose" type="button" style="background:none;border:none;font-size:20px;color:#999;cursor:pointer;padding:2px 4px">✕</button></div>' +
+        '<div style="width:100%;max-width:520px;max-height:78vh;background:#fff;border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -12px 48px rgba(0,0,0,.25)">' +
+        '<div style="width:38px;height:4px;border-radius:2px;background:#e0e0e0;margin:10px auto 0;flex-shrink:0"></div>' +
+        '<div style="display:flex;align-items:center;padding:10px 16px 10px;flex-shrink:0">' +
+        '<span style="flex:1;font-size:17px;font-weight:800;color:#000;letter-spacing:1px">段评</span>' +
+        '<button id="aknvCmMoreBtn" type="button" title="回复设置" style="background:none;border:none;font-size:18px;color:#000;cursor:pointer;padding:4px 8px;line-height:1">⋯</button></div>' +
         '<div id="aknvCmReplyCfg" style="display:none;padding:0 16px 10px;flex-shrink:0;align-items:center;gap:8px">' +
         '<span style="font-size:13px;color:#666;flex:1">联系人回复段评时间</span>' +
-        '<input id="aknvCmDelayInput" type="number" min="1" max="600" value="10" style="width:60px;height:32px;border:1px solid #e0e0e0;border-radius:8px;padding:0 8px;font-size:14px;outline:0;text-align:center"/>' +
+        '<input id="aknvCmDelayInput" type="number" min="1" max="600" value="10" style="width:60px;height:32px;border:none;background:#f0f0f0;border-radius:8px;padding:0 8px;font-size:14px;outline:0;text-align:center;color:#000"/>' +
         '<span style="font-size:13px;color:#999">秒</span></div>' +
-        '<div id="aknvCmViewQuote" style="margin:0 16px 10px;font-size:13px;color:#888;background:#f6f6f6;border-radius:8px;padding:8px 10px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-all;flex-shrink:0"></div>' +
+        '<div id="aknvCmViewQuote" style="margin:0 16px 10px;font-size:13px;color:#555;background:#f7f7f7;border-left:3px solid #000;border-radius:8px;padding:9px 12px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-all;flex-shrink:0"></div>' +
         '<div id="aknvCmViewList" style="flex:1;overflow-y:auto;padding:0 16px;min-height:80px"></div>' +
-        '<div style="display:flex;gap:8px;padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid #f0f0f0;flex-shrink:0">' +
-        '<input id="aknvCmViewInput" maxlength="200" placeholder="写段评" style="flex:1;min-width:0;height:40px;border:1px solid #e0e0e0;border-radius:20px;padding:0 14px;font-size:14px;outline:0;color:#1a1a1a"/>' +
-        '<button id="aknvCmViewSend" type="button" style="height:40px;padding:0 18px;border:none;border-radius:20px;background:#1a1a1a;color:#fff;font-size:14px;cursor:pointer;flex-shrink:0">发送</button></div>' +
+        '<div style="display:flex;gap:8px;padding:10px 16px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid #f0f0f0;flex-shrink:0">' +
+        '<input id="aknvCmViewInput" maxlength="200" placeholder="写段评…" style="flex:1;min-width:0;height:42px;border:none;background:#f5f5f5;border-radius:21px;padding:0 16px;font-size:14px;outline:0;color:#000"/>' +
+        '<button id="aknvCmViewSend" type="button" style="height:42px;padding:0 20px;border:none;border-radius:21px;background:#000;color:#fff;font-size:14px;font-weight:600;cursor:pointer;flex-shrink:0">发送</button></div>' +
         "</div>";
       document.body.appendChild(view);
-      $("aknvCmViewClose").addEventListener("click", function () {
-        view.style.display = "none";
-        _cmViewing = null;
-      });
+      /* 右上角不再放叉：点弹窗外空白处即可返回（见下方 view 的委托） */
       view.addEventListener("click", function (e) {
         if (e.target === view) {
           view.style.display = "none";
@@ -2069,6 +2184,44 @@
         var v = Math.min(600, Math.max(1, parseInt(this.value, 10) || 10));
         this.value = v;
         lsSet("akini_nvcm_delay", String(v));
+      });
+      /* 段评删除：线条垃圾桶图标，两段式确认——第一次点图标变黑并出「确认？」，2.5 秒内再点一次才真正删除 */
+      var _cmTrashSvg =
+        '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+      window.__akiniCmTrashSvg = _cmTrashSvg;
+      $("aknvCmViewList").addEventListener("click", function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest(".aknv-cm-del") : null;
+        if (!btn) return;
+        e.preventDefault();
+        if (btn.dataset.arm === "1") {
+          var ts = parseInt(btn.dataset.ts, 10);
+          var who = btn.dataset.who || "";
+          var all = cmLoad();
+          var changed = false;
+          all = all.filter(function (cm) {
+            if (cm.pidx !== _cmViewing) return true;
+            var before = (cm.list || []).length;
+            cm.list = (cm.list || []).filter(function (m) {
+              return !(m.ts === ts && (m.who || "") === who);
+            });
+            if (cm.list.length !== before) changed = true;
+            return cm.list.length > 0;
+          });
+          if (changed) {
+            cmSave(all);
+            window._akiniDecorateCm();
+            openCmView(_cmViewing, true);
+          }
+          return;
+        }
+        btn.dataset.arm = "1";
+        btn.innerHTML = '<span style="font-size:11px;font-weight:700;color:#000">确认？</span>';
+        setTimeout(function () {
+          if (btn.isConnected) {
+            btn.dataset.arm = "";
+            btn.innerHTML = _cmTrashSvg;
+          }
+        }, 2500);
       });
     }
 
@@ -2183,21 +2336,29 @@
             var name = isMe ? "我" : m.name || "联系人";
             var av = isMe ? avatarInner(myAvatar()) : avatarInner(m.avatar || "");
             return (
-              '<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f5f5f5">' +
-              '<div style="width:34px;height:34px;border-radius:50%;background:#e8e8e8;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">' +
+              '<div style="display:flex;gap:10px;padding:12px 0;border-bottom:1px solid #f2f2f2">' +
+              '<div style="width:36px;height:36px;border-radius:50%;background:#f0f0f0;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">' +
               av +
               "</div>" +
               '<div style="flex:1;min-width:0">' +
-              '<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:13px;font-weight:600;color:#555">' +
+              '<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:13px;font-weight:700;color:#000">' +
               esc(name) +
               "</span>" +
-              '<span style="font-size:11px;color:#bbb">' +
+              '<span style="font-size:11px;color:#aaa">' +
               cmFmtTime(m.ts) +
               "</span></div>" +
-              '<div style="font-size:14px;color:#1a1a1a;margin-top:3px;word-break:break-all;line-height:1.5">' +
+              '<div style="font-size:14px;color:#1a1a1a;margin-top:4px;word-break:break-all;line-height:1.6">' +
               esc(m.text) +
               "</div>" +
-              "</div></div>"
+              "</div>" +
+              '<button type="button" class="aknv-cm-del" data-ts="' +
+              m.ts +
+              '" data-who="' +
+              esc(m.who || "") +
+              '" style="background:none;border:none;color:#bbb;cursor:pointer;padding:4px 2px 4px 8px;flex-shrink:0;align-self:flex-start;line-height:1;display:flex;align-items:center;min-width:24px;min-height:24px;justify-content:center">' +
+              (window.__akiniCmTrashSvg || "删除") +
+              "</button>" +
+              "</div>"
             );
           })
           .join("") || '<div style="text-align:center;color:#bbb;font-size:13px;padding:24px 0">暂无段评</div>';

@@ -81,6 +81,8 @@
       var el = ev.target && ev.target.closest ? ev.target.closest("#keepAliveToggle") : null;
       if (!el) return;
       var wasOn = el.classList.contains("on");
+      /* 用户手动点了，标记为手动设置，启动纠偏不再重置 */
+      try { localStorage.setItem("akini_toggle_keepAliveToggle_user", "1"); } catch (e) {}
       setTimeout(function () {
         _applyState(!wasOn);
       }, 0);

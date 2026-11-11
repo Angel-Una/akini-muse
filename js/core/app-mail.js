@@ -79,10 +79,6 @@
       localStorage.setItem("akini_mail_received", n);
     } catch (eLR) {}
   }
-  function latestReadTs() {
-    return parseFloat(localStorage.getItem("akini_mail_latest_read_ts") || "0") || 0;
-  }
-
   // 生成随机来信内容（compat envelope 式合成：字卡库随机 5-12 句，句号连接成段，
   // 并在随机 1-3 个句号后插入换行，形成信件排版）
   function genLetter(count) {
@@ -189,24 +185,6 @@
           if (_lrt2 > _cur2) localStorage.setItem("akini_mail_latest_read_ts", String(_lrt2));
         } catch (eL4) {}
       }
-      // 已读游标兜底：任何"未读但 ts ≤ 游标"的信（旧快照回填的）一律强制已读——
-      // 用户明明读过，绝不允许旧数据让它再变未读
-      try {
-        var _curs = latestReadTs();
-        if (_curs > 0) {
-          var _recv = getReceived();
-          var _recvChanged = false;
-          for (var _ri = 0; _ri < _recv.length; _ri++) {
-            var _rm = _recv[_ri];
-            if (_rm && !(_rm.read || _rm.isRead) && _rm.ts && _rm.ts <= _curs) {
-              _rm.read = true;
-              _rm.isRead = true;
-              _recvChanged = true;
-            }
-          }
-          if (_recvChanged) saveReceived(_recv);
-        }
-      } catch (eCur) {}
       // 通知 UI（回信与其它互动一致：站内弹窗 / 后台系统通知都走 showInAppNotif）
       for (var d = 0; d < delivered.length; d++) {
         var s2 = delivered[d];
