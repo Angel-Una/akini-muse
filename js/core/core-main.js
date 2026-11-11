@@ -21364,39 +21364,51 @@ window.__akiniPatchAvatarCell = function (t, e) {
             })();
           }
           function y() {
-            if (D.lyricsBody) {
-              if (!K.length)
-                return (
-                  (D.lyricsBody.innerHTML =
-                    '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.35);font-size:13px;">暂无歌词</div>'),
-                  void 0
-                );
-              for (var t = 0, e = 0; e < K.length && G >= K[e].time; e++) t = e;
-              D.lyricsBody.style.transform = "none";
-              var n = "";
-              ([t - 2, t - 1, t, t + 1, t + 2].forEach(function (t, e) {
-                var i = 2 === e,
-                  a = t >= 0 && t < K.length ? K[t].text : "",
-                  o = Math.abs(e - 2);
-                n +=
-                  '<div class="lyric-line' +
-                  (i ? " active" : "") +
-                  '" style="text-align:center;padding:5px 0;font-size:' +
-                  (i ? "17px" : 1 === o ? "14.5px" : "13px") +
-                  ";color:" +
-                  (i ? "#ffffff" : 1 === o ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.55)") +
-                  ";font-weight:" +
-                  (i ? "600" : "400") +
-                  ";line-height:1.5;min-height:34px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;opacity:" +
-                  (i ? "1" : 1 === o ? "0.80" : "0.50") +
-                  ";" +
-                  (i ? "text-shadow:0 0 16px rgba(255,255,255,0.45);" : "") +
-                  'transition:color 0.25s ease,font-size 0.25s ease,opacity 0.25s ease,text-shadow 0.25s ease;">' +
-                  Tt(a || " ") +
-                  "</div>";
-              }),
-                (D.lyricsBody.innerHTML = n));
+            if (!D.lyricsBody) return;
+            if (!K.length) {
+              return (
+                (D.lyricsBody.innerHTML =
+                  '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.35);font-size:13px;">暂无歌词</div>'),
+                (D.lyricsBody.style.transform = "none"),
+                (D.lyricsBody.__lyrSrc = null),
+                void 0
+              );
             }
+            for (var a = 0, o = 0; o < K.length && G >= K[o].time; o++) a = o;
+            var s = Math.max(0, Math.min(a - 2, K.length - 5)),
+              l = Math.min(K.length, s + 5),
+              c = l - s;
+            if (
+              D.lyricsBody.__lyrSrc !== K ||
+              D.lyricsBody.__lyrStart !== s ||
+              D.lyricsBody.__lyrLen !== c
+            ) {
+              D.lyricsBody.__lyrSrc = K;
+              D.lyricsBody.__lyrStart = s;
+              D.lyricsBody.__lyrLen = c;
+              for (var n = "", i = s; i < l; i++)
+                n +=
+                  '<div class="lyric-line" style="min-height:28px;line-height:28px;padding:0 10px;font-size:13px;font-weight:400;color:rgba(255,255,255,0.5);text-align:center;white-space:normal;word-break:break-word;box-sizing:border-box;transition:color .25s ease,font-size .25s ease,opacity .25s ease,text-shadow .25s ease;">' +
+                  Tt(K[i].text) +
+                  "</div>";
+              D.lyricsBody.innerHTML = n;
+            }
+            for (var r = D.lyricsBody.children, u = 0; u < r.length; u++) {
+              var v = s + u === a,
+                g = Math.abs(s + u - a);
+              ((r[u].className = "lyric-line" + (v ? " active" : "")),
+                (r[u].style.color = v
+                  ? "#ffffff"
+                  : "rgba(255,255,255," + (1 === g ? "0.62" : "0.36") + ")"),
+                (r[u].style.fontWeight = v ? "600" : "400"),
+                (r[u].style.fontSize = v ? "16px" : "13px"),
+                (r[u].style.opacity = v ? "1" : 1 === g ? "0.85" : "0.55"),
+                (r[u].style.textShadow = v ? "0 0 16px rgba(255,255,255,0.45)" : "none"));
+            }
+            var w = (D.lyricsBox && D.lyricsBox.clientHeight) || 150,
+              k = D.lyricsBody.offsetHeight || 28 * c;
+            D.lyricsBody.style.transform =
+              "translateY(" + Math.max(0, (w - k) / 2) + "px)";
           }
           function p() {
             (D.menuOverlay && (D.menuOverlay.style.display = "block"), (tt.platform = "netease"));
@@ -22462,7 +22474,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                   } catch (t) {}
                   (e(),
                     D.songName && (D.songName.textContent = "一起听"),
-                    D.artist && (D.artist.textContent = "点击右上角导入歌单"),
+                    D.artist && (D.artist.textContent = "网易云音乐"),
                     D.cover && __akiniGuardSrc(D.cover, __akDefaultCover),
                     w(),
                     v(),
@@ -22514,7 +22526,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                             } catch (t) {}
                             (e(),
                               D.songName && (D.songName.textContent = "一起听"),
-                              D.artist && (D.artist.textContent = "点击右上角导入歌单"),
+                              D.artist && (D.artist.textContent = "网易云音乐"),
                               D.cover && __akiniGuardSrc(D.cover, __akDefaultCover),
                               ae("歌单已清空"));
                           } else if (t === O) {
@@ -22648,7 +22660,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
               (se(It, !1), ae("已预加载: " + (It.title || "未知")));
             } else
               ((D.songName.textContent = "一起听"),
-                (D.artist.textContent = "点击右上角导入歌单"),
+                (D.artist.textContent = "网易云音乐"),
                 ae("歌单为空，请先导入歌单"));
           }
           function Ct() {
@@ -23611,7 +23623,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
             if (!t)
               return (
                 D.songName && (D.songName.textContent = "一起听"),
-                D.artist && (D.artist.textContent = "点击右上角导入歌单"),
+                D.artist && (D.artist.textContent = "网易云音乐"),
                 D.cover && __akiniGuardSrc(D.cover, me),
                 void (D.vipHint && (D.vipHint.style.display = "none"))
               );
@@ -23643,7 +23655,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
             if (!t)
               return (
                 (D.songName.textContent = "一起听"),
-                (D.artist.textContent = "点击右上角导入歌单"),
+                (D.artist.textContent = "网易云音乐"),
                 void ae("歌单为空，请先导入")
               );
             (de(), Ft(), Ot(), ae("准备播放: " + (t.title || "未知")), (G = 0));
@@ -23748,11 +23760,13 @@ window.__akiniPatchAvatarCell = function (t, e) {
                           o.split("\n").forEach(function (t) {
                             var e = t.match(/^\[(\d{2}):(\d{2})(?:\.(\d{1,3}))?\](.*)$/);
                             if (e) {
-                              var n = 60 * parseInt(e[1], 10) + parseInt(e[2], 10);
-                              a.push({
-                                time: n,
-                                text: e[4].trim(),
-                              });
+                              var n = 60 * parseInt(e[1], 10) + parseInt(e[2], 10),
+                                r = e[4].trim();
+                              r &&
+                                a.push({
+                                  time: n,
+                                  text: r,
+                                });
                             }
                           }),
                           (K = a.sort(function (t, e) {
