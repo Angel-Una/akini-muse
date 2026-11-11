@@ -21375,38 +21375,37 @@ window.__akiniPatchAvatarCell = function (t, e) {
               );
             }
             for (var a = 0, o = 0; o < K.length && G >= K[o].time; o++) a = o;
-            var s = Math.max(0, Math.min(a - 2, K.length - 5)),
-              l = Math.min(K.length, s + 5),
-              c = l - s;
-            if (
-              D.lyricsBody.__lyrSrc !== K ||
-              D.lyricsBody.__lyrStart !== s ||
-              D.lyricsBody.__lyrLen !== c
-            ) {
+            /* 固定五行窗口：当前行永远落在第 3 行（正中），
+               歌曲开头/结尾不足五行时用空行占位，保证行数恒定、居中不跳动。 */
+            var s = a - 2;
+            if (D.lyricsBody.__lyrSrc !== K || D.lyricsBody.__lyrStart !== s) {
               D.lyricsBody.__lyrSrc = K;
               D.lyricsBody.__lyrStart = s;
-              D.lyricsBody.__lyrLen = c;
-              for (var n = "", i = s; i < l; i++)
+              for (var n = "", i = 0; i < 5; i++) {
+                var x = s + i;
                 n +=
                   '<div class="lyric-line" style="min-height:28px;line-height:28px;padding:0 10px;font-size:13px;font-weight:400;color:rgba(255,255,255,0.5);text-align:center;white-space:normal;word-break:break-word;box-sizing:border-box;transition:color .25s ease,font-size .25s ease,opacity .25s ease,text-shadow .25s ease;">' +
-                  Tt(K[i].text) +
+                  (x >= 0 && x < K.length ? Tt(K[x].text) : "&nbsp;") +
                   "</div>";
+              }
               D.lyricsBody.innerHTML = n;
             }
-            for (var r = D.lyricsBody.children, u = 0; u < r.length; u++) {
-              var v = s + u === a,
-                g = Math.abs(s + u - a);
-              ((r[u].className = "lyric-line" + (v ? " active" : "")),
-                (r[u].style.color = v
-                  ? "#ffffff"
-                  : "rgba(255,255,255," + (1 === g ? "0.62" : "0.36") + ")"),
-                (r[u].style.fontWeight = v ? "600" : "400"),
-                (r[u].style.fontSize = v ? "16px" : "13px"),
-                (r[u].style.opacity = v ? "1" : 1 === g ? "0.85" : "0.55"),
-                (r[u].style.textShadow = v ? "0 0 16px rgba(255,255,255,0.45)" : "none"));
+            var r = D.lyricsBody.children;
+            if (5 === r.length)
+              for (var u = 0; u < 5; u++) {
+                var v = 2 === u,
+                  g = Math.abs(u - 2);
+                ((r[u].className = "lyric-line" + (v ? " active" : "")),
+                  (r[u].style.color = v
+                    ? "#ffffff"
+                    : "rgba(255,255,255," + (1 === g ? "0.62" : "0.36") + ")"),
+                  (r[u].style.fontWeight = v ? "600" : "400"),
+                  (r[u].style.fontSize = v ? "16px" : "13px"),
+                  (r[u].style.opacity = v ? "1" : 1 === g ? "0.85" : "0.55"),
+                  (r[u].style.textShadow = v ? "0 0 16px rgba(255,255,255,0.45)" : "none"));
             }
             var w = (D.lyricsBox && D.lyricsBox.clientHeight) || 150,
-              k = D.lyricsBody.offsetHeight || 28 * c;
+              k = D.lyricsBody.offsetHeight || 140;
             D.lyricsBody.style.transform =
               "translateY(" + Math.max(0, (w - k) / 2) + "px)";
           }
@@ -22594,8 +22593,16 @@ window.__akiniPatchAvatarCell = function (t, e) {
                 })(),
               D.progress &&
                 D.progress.addEventListener("input", function () {
-                  var t = parseFloat(D.progress.value) || 0;
-                  ((G = (t / 100) * U), F && F.duration && (F.currentTime = G), Xt());
+                  var t = parseFloat(D.progress.value) || 0,
+                    e = (F && isFinite(F.duration) && F.duration > 0 ? F.duration : U) || 0;
+                  /* 拖动/点击进度条时同步音频、歌词与平滑进度基准，
+                     否则歌词会停在旧位置，和音频对不上。 */
+                  ((G = e > 0 ? (t / 100) * e : 0),
+                    F && e > 0 && (F.currentTime = G),
+                    (te = performance.now()),
+                    (ee = G),
+                    Xt(),
+                    Qt());
                 }),
               D.backBtn,
               window.addEventListener("storage", function (t) {
@@ -23246,6 +23253,10 @@ window.__akiniPatchAvatarCell = function (t, e) {
                       t.vipHint.style.display = n && i > 0 && i <= 31 ? "block" : "none";
                     }
                     (Xt(), ae("已获取歌曲时长"));
+                  }),
+                  F.addEventListener("seeked", function () {
+                    if (!F) return;
+                    ((G = F.currentTime), (te = performance.now()), (ee = G), Xt(), Qt());
                   }),
                   F.addEventListener("timeupdate", function () {
                     if (F) {
