@@ -1480,7 +1480,7 @@ function j(t, e, n, i) {
                   ((c = parseFloat(a.replyDelay)), (s = Math.max(c, s)))));
             var l = Math.max(0, s - c),
               d = c + Math.random() * l;
-            // 对齐 milk 时序：发出 → 1.5~4s 后已读 → 出现输入动态 → 回复发出
+
             var m = 1500 + 2500 * Math.random(),
               u = Math.max(500, Math.round(m + 1e3 * d));
             "number" == typeof n && n > 0 && (u = n);
@@ -1540,7 +1540,7 @@ function j(t, e, n, i) {
                 try {
                   var e = window.akiniContacts.getChatTarget(t);
                   if (!e) return void z(t);
-                  /* 单聊：一次回复只走一条链路（对齐 milk/zy），没有群聊分支 */
+                  
                   G(t, e, r, !0);
                 } catch (e) {
                   (console.error("[Akini] reply error:", e),
@@ -1659,7 +1659,7 @@ function G(t, e, n, i, a) {
           return;
         }
         if ((e || (e = window.akiniContacts.getChatTarget(t)), !e)) return;
-        /* 单聊：没有群聊，发送者就是联系人本人（对齐 milk/zy 的单通道回复） */
+        
         var l = e;
         var u = (
             window._akiniAv ||
@@ -2314,7 +2314,7 @@ function V(t) {
                     }, 1200);
                   }
                 } else jn.scrollTop > 40 && (jn.__akiniPullArmed = !1);
-                /* 下滑到底部时补回被窗口化裁掉的底部行（对齐 milk/zy 的向下加载） */
+                
                 var _hidden = (window.__akiniBottomHidden && window.__akiniBottomHidden[t]) || 0;
                 if (_hidden > 0 && jn.scrollHeight - jn.scrollTop - jn.clientHeight < 80) {
                   var _log2 = window.__akiniChatLog;
@@ -2375,10 +2375,10 @@ function V(t) {
                     _domRows < _total &&
                       (function (t) {
                         if (!jn) return;
-                        /* 对齐 milk/zy：只把「这一批新露出的旧消息」插到顶部，
-                           不再把已渲染的整段历史重新 innerHTML 一遍。
-                           老历史越长，旧写法每次上拉都要重新解析整段 HTML，
-                           是越滑越卡、最终把渲染进程拖崩的来源。 */
+                        
+
+
+
                         var _domN = jn.querySelectorAll(".msg-row").length;
                         if (_domN >= _total) {
                           window.__akiniShownRows[t] = _total;
@@ -2476,10 +2476,10 @@ function X(t, e) {
                 __akiniCountMsgRowsFast(n),
               _want = (window.__akiniShownRows && window.__akiniShownRows[e]) || AKINI_CHAT_BATCH_SIZE,
               c = r <= _want ? n : Y(n, _want);
-            /* 增量追加（对齐 milk/zy）：同一会话下，只补「DOM 里还没有的消息」。
-               判据按消息自身的 data-ts 严格差量，而不是上次渲染源的长度/结尾锚点——
-               发消息、系统消息、输入中提示等多条路径都会直接往 chatBody 里塞节点，
-               靠字符串锚点一旦失配就会把同一条消息再追加一遍（聊天记录显示两遍的根因）。 */
+            
+
+
+
             var _domMaxTs = 0;
             if (i)
               try {
@@ -2682,8 +2682,8 @@ function tt(t, e, n) {
               } catch (_st) {}
             // o 来自 W[t] 已清洗过，直接拼接；清洗交给 et 内增量缓存处理
             // 完整历史在 __akiniChatLog 的数组里，W[t] 只保留 150 行做工作集
-            /* 对齐 milk/zy：新消息直接作为一条对象追加到聊天数组（O(1)），
-               不再维护完整 HTML 字符串基底、增量缓冲和行数水位。 */
+            
+
             try {
               if (window.__akiniChatLog) window.__akiniChatLog.append(t, i);
             } catch (_eAppend) {}
@@ -2751,7 +2751,7 @@ function et(t, e) {
         __akiniPerfMark && __akiniPerfMark("et·清洗媒体", performance.now() - _e0);
         n = __akiniCapHistory(n, t, 150);
         W[t] = n;
-        // 把增量缓存对齐到 W[t]（截断版），下次 d = W[t] + i 直接命中
+
         try {
           var _c = (window.__akiniIncCache = window.__akiniIncCache || {});
           _c[t] = _c[t] || {};
@@ -4307,9 +4307,9 @@ function Xt() {
                           r +
                           "</button></div></div>";
                       }));
-                    /* 列表原地更新（对齐 milk/zy）：条目顺序/头像不变时只更新
-                       最后一条消息、时间、未读角标，避免整列表 innerHTML 重建
-                       导致头像反复加载闪烁。 */
+                    
+
+
                     var _sig = r
                       .map(function (x) {
                         var _av = String(x.displayAvatar || x.avatar || "");
@@ -4614,9 +4614,9 @@ function Zt(t, e) {
             } catch (e) {}
           we();
           var _q0 = performance.now();
-          /* 对齐 milk/zy：内存里保留完整历史数组，但打开会话只取最近一批渲染。
-             以前这里 join 整段历史（一万条就是几 MB 字符串），再交给 DOM 解析，
-             是越用越卡、重进闪退的根因。 */
+          
+
+
           var d = "";
           var _totalRows = 0;
           try {
@@ -7572,12 +7572,12 @@ function An(t) {
               };
               o(function (t) {
                 if (!t) return void e();
-                /* 对齐 milk/zy：启动只回填「小体积文字配置」，不再把所有
-                   IndexedDB 值无上限塞进内存镜像。
-                   旧逻辑会把这个库里的聊天历史、外置媒体 akini_mref_*、
-                   聊天图片 akini_media_* 全部读出来并 memorySet —— 用户越用图越多，
-                   重进时几百 MB dataURL 直接顶爆渲染进程（白屏/闪退/进不去）。
-                   这些键不读值、只标记 deferred，用到时再按需水合。 */
+                
+
+
+
+
+
                 var _skipRe = /^akini_(mref_|media_|chat_history_|chat_msgs_)/;
                 var _budget = 6 * 1024 * 1024,
                   _used = 0,
@@ -11059,8 +11059,8 @@ Gn = document.getElementById("chatQuoteBar"),
         qn &&
           (window._akMsgGrow = function () {},
           qn.addEventListener("keydown", function (t) {
-            /* 多行输入：回车发送（对齐 milk/zy），Shift+回车换行；
-               中文输入法组词时的回车只是上屏，不能触发发送 */
+            
+
             "Enter" === t.key &&
               !t.shiftKey &&
               !t.isComposing &&
@@ -11880,8 +11880,8 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                 _blk[k] = 1;
               });
             } catch (_eb) {}
-            /* 分页渲染：一次最多 80 张，超出追加「显示更多」（对齐 ZY _CARD_PAGE_SIZE），
-               tab/分组/搜索变化时重置，避免大列表一次 innerHTML 卡死。 */
+            
+
             var _key = (window.__wbTab || t) + "|" + n + "|" + e;
             if (window.__wbLastKey !== _key) ((window.__wbLastKey = _key), (window.__wbLimit = 80));
             var _limit = window.__wbLimit || 80,
@@ -20447,9 +20447,9 @@ window.__akiniPatchAvatarCell = function (t, e) {
           } catch (t) {}
           return e;
         }),
-        /* 对齐 ZY：表情包地址不做协议白名单过滤（ZY 直接 <img src=c.sticker> 原样渲染），
-           任何非空字符串都渲染；只负责解包对象形态。防止旧数据里的 blob:/相对路径/ref
-           被吞掉导致评论只剩空白 */
+        
+
+
         (window.__akiniStickerUrl = function (t) {
           if (!t) return "";
           if ("string" == typeof t) return t.trim();
@@ -24093,9 +24093,9 @@ window.__akiniPatchAvatarCell = function (t, e) {
                         }))
                     : Object.keys(n).length > 0 &&
                       Object.keys(n).forEach(function (t) {
-                        /* 只给「当前会话」预加载历史；其余会话等用户点进去再按需读。
-                           旧代码在这里把每个会话的历史都从 IDB 读进内存并写回，
-                           等于启动即全量水合，会话/消息一多就闪退（milk/zy 不会）。 */
+                        
+
+
                         try {
                           if (!window.akiniContacts.getActiveChatId || window.akiniContacts.getActiveChatId() !== t) return;
                         } catch (_actE) {

@@ -27,9 +27,9 @@
       } catch (e) {}
   }
 
-  /* 对齐 milk/zy：开屏只等「数据恢复完成」一件事，不逐张预热图片。
-     milk/zy 的启动是 initializeSession → loadData → 直接渲染，图片随渲染按需加载；
-     这里保留 6s 强制兜底，数据就绪优先于图片就绪。 */
+  
+
+
   var READY_TIMEOUT_MS = 6000;
 
   /* storage.js 启动恢复完成信号：它异步对账 IDB→内存，完成时置
@@ -68,9 +68,9 @@
       _origHide();
     }
     try {
-      /* 和 milk/zy 一样：撤开屏只等 storage.js 的数据恢复，不排队预热图片。
-         之前同时等头像、壁纸、全部会话聊天背景和外链图，几十个 IDB 读取
-         叠加起来会把开屏拖到 6s 上限，还抢主线程。 */
+      
+
+
       Promise.race([
         storageRestored(),
         new Promise(function (r) { setTimeout(r, READY_TIMEOUT_MS); })

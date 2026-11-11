@@ -1455,7 +1455,7 @@ window._akiniAllowRemove = true;
         backup(false);
       }, 2000); // 回前台 2s 后补跑，避开 UI 恢复高峰
     } });
-  // 对齐 原生：取消「每 150 秒全量 collectAll + stringify 上传」和 30 秒启动备份。
+
   // 这两件事是安卓上最持续的主线程卡顿源；本地 IndexedDB 已是权威，云端只在切后台时补一份。
   restore();
 

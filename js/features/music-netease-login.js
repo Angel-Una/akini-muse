@@ -19,10 +19,10 @@ function neServer(){try{var b=String(window.AKINI_NETEASE_SERVER||"").trim()}cat
 function neServerPost(a,n,ms){var url=neServer()+"?action="+encodeURIComponent(a),payload;try{payload=JSON.stringify(n||{})}catch(e){payload="{}"}var c="undefined"!=typeof AbortController?new AbortController:null,l=c?setTimeout(function(){try{c.abort()}catch(e){}},ms||12e3):null,f=fetch(url,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:payload,signal:c?c.signal:void 0}).then(function(r){return r.ok?r.json():null}).catch(function(){return null});if(l)f.then(function(){clearTimeout(l)},function(){clearTimeout(l)});return f}
 function neProfileOf(d){var p=d&&d.data&&d.data.profile;return p?{nickname:p.nickname||"",avatarUrl:p.avatarUrl||"",userId:p.userId||0}:null}
 function neFallback(a,n,ms){n=n||{};ms=ms||12e3;
-/* v1080 根治扫码登录风控：优先走 Akini 自建后端 akini-netease（服务端持久化 Cookie + 服务端 IP 调中继），
-   公共共享代理 api.mc666.org.cn 已被网易云风控，仅作为后端不可达时的最后兜底。
-   自建后端响应结构已与前端各调用方对齐（qr/new→{key,qrurl}、qr/check→{code,ck,profile}、
-   session→{loggedIn,profile,ck}、song/url→{url,trial,level,code}、logout→{ok}）。 */
+
+
+
+
 var _srv=function(){return neServerPost(a,n,ms).then(function(d){return d&&"undefined"!=typeof d.code?d:null},function(){return null})};
 if("qr/new"===a)return _srv().then(function(d){return d&&d.key&&d.qrurl?d:neGet("/login/qr/key",ms).then(function(x){var k=x&&x.data&&x.data.unikey;if(!k)return null;return neGet("/login/qr/create?key="+encodeURIComponent(k)+"&qrimg=true",ms).then(function(rr){if(!rr||!rr.data||!rr.data.qrurl)return null;return{key:k,qrurl:rr.data.qrurl,qrimg:rr.data.qrimg||""}})})});
 if("qr/check"===a){var qk=n.key||"";if(!qk)return Promise.resolve(null);return _srv().then(function(d){if(d&&"undefined"!=typeof d.code)return d;return neGet("/login/qr/check?key="+encodeURIComponent(qk),ms).then(function(x){if(!x)return null;var o={code:x.code,message:x.message||x.msg||""};if(803===x.code&&x.cookie){o.ck=x.cookie;return neGet("/login/status?cookie="+encodeURIComponent(x.cookie),ms).then(function(s){var pf=neProfileOf(s);pf&&(o.profile=pf);return o},function(){return o})}return o})})}

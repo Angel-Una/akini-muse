@@ -1,10 +1,10 @@
-/*
- * 聊天历史：数组对象模型（对齐 milk/zy）
- * 每条消息是一个 { ts, html } 对象，追加是 O(1) push；
- * 渲染/备份需要字符串时才 join，不再整段拼接、整段正则清洗。
- * 存储仍写回 akini_chat_history_<id>，值为 JSON 数组；旧数据是 HTML 字符串，
- * 首次读取时自动按 msg-row 行边界拆成数组（无损迁移）。
- */
+
+
+
+
+
+
+
 (function () {
   "use strict";
   if (window.__akiniChatLog) return;
@@ -15,9 +15,9 @@
   var _dirty = {};
   var _timers = {};
   var _stale = {}; /* 启动对账完成前读到的空数据，对账后必须重新水合 */
-  /* 内存预算：对齐 milk/zy —— 只把最近看过的会话留在内存里。
-     以前 _rows/_html 一旦填充就永不释放，连着翻十几个一万条的会话
-     进程内存会一路涨到闪退；这里按 LRU 淘汰，看新会话时自动丢掉旧的。 */
+  
+
+
   var _order = [],
     _size = {},
     _htmlSize = {};
@@ -136,10 +136,10 @@
       }
     } catch (e) {}
     try {
-      /* rawLSGet：普通 getItem 会触发存储层的 IndexedDB 水合。
-         启动时逐个 has()/last() 会话就会把所有聊天记录全量拉进内存
-         （milk/zy 不会）。聊天记录由打开会话时的显式异步加载负责，
-         这里只做无副作用的原始读取。 */
+      
+
+
+
       if (window.akiniStore && akiniStore.rawLSGet) return akiniStore.rawLSGet(key(id)) || "";
       return localStorage.getItem(key(id)) || "";
     } catch (e) {}

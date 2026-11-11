@@ -63,7 +63,7 @@
       };
       var img = new Image();
       img.onload = function () {
-        /* 对齐极简 原图直存，不压缩任何画质 */
+        
         fin(d);
       };
       img.onerror = function () {

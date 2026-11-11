@@ -1,7 +1,7 @@
-/* 首屏图片预热层（只读）。
-   唯一数据源是 storage.js 的 akiniStore（localStorage 拦截 + IndexedDB 镜像）。
-   本文件不再安装第二套 localStorage 桥、也不再写第二份 IndexedDB —— 对齐 milk/zy
-   的「一个键一条写入通道」，避免每个键被重复写两三遍造成卡顿与互相覆盖。 */
+
+
+
+
 
 (function (global) {
   "use strict";

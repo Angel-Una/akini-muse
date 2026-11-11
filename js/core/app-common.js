@@ -227,7 +227,7 @@
           ? '<div class="bubble">[图片已清理]</div>'
           : '<div class="bubble">' + esc(m.text || "") + "</div>";
       row.innerHTML = '<div class="msg-content-line">' + bubbleHtml + "</div>";
-      /* 引用：与主聊天一致，气泡下方整宽引用卡（我→右对齐，对方→左对齐） */
+      
       if (m.quote && window.__akiniQuoteCardHtml) {
         row.innerHTML +=
           '<div style="flex-basis:100%;width:100%;box-sizing:border-box;margin-top:2px;text-align:' +

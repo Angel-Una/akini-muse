@@ -436,8 +436,8 @@ window.__akiniPerfMark = function () {};
     } catch (e2) {}
   }
 })();
-/* 设备内存标记：仅用于内部省内存策略（存储预算/后台任务限流），不再参与任何样式分支。
-   milk/zy 没有"低内存模式"这种视觉模式，页面外观对所有机型保持一致。 */
+
+
 try {
   var _ua = navigator.userAgent || "";
   window.__akiniLowMem =

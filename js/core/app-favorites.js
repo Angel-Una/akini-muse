@@ -167,8 +167,8 @@
     }
   }
 
-  /* 通话记录只走 localforage 单通道（对齐 zy/milk 的简单写法）。
-     内存缓存仅用于同步渲染，不参与持久化，不再写 localStorage / akiniStore。 */
+  
+
   var _callCache = {};
 
   function _callKey(contactId) {

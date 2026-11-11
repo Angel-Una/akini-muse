@@ -695,7 +695,7 @@ window.__akiniRestoredDone = true;
     return;
   }
   syncSentMailStatus();
-  /* 对齐 原生：去掉 30 秒常驻轮询，改为页面回到前台时同步一次 */
+  
   window.__akiniOnVisible(function () { 
       try {
         syncSentMailStatus();

@@ -38,9 +38,9 @@
   window.addEventListener("load", __akiniHomeInit);
   window.addEventListener("resize", fit);
   window.addEventListener("orientationchange", fit);
-  /* 对齐极简/极简 流畅度：fit() 读 scrollHeight 是强制重排，无限期每秒跑是
-     持续掉帧+回前台卡顿主源。启动期(前90s内容异步就绪)保持每秒，之后退避4s；
-     回前台延迟300ms错开visibilitychange监听器风暴 */
+  
+
+
   window.__akiniOnVisible(function () { setTimeout(fit, 300); });
 
   /* 弹窗打开/关闭强制重算：弹窗出现时浏览器可能重排（导致 vh/svh 波动），

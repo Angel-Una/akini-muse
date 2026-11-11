@@ -766,13 +766,13 @@
     }
   }
 
-  /* ============ 媒体外置（对齐 原生：媒体存独立 IDB 键，业务 JSON 只存引用） ============
-     朋友圈 / iCity 的动态图片是 base64 内联在整段 JSON 里的：几十条动态就是十几 MB。
-     后果：① 每次点赞/评论都要把整段 JSON 重新序列化写盘（卡顿）；
-           ② 启动要把十几 MB 整段解析进内存（低端机闪退）；
-           ③ 一超 4MB 就被内存预算判为「大键」不驻留，界面读到空 → 看起来"帖子没了"。
-     现在统一在持久化一侧把大 dataURL 换成 akini-ref:<id> 引用，媒体本体写进 IDB；
-     内存里始终是完整 dataURL（渲染、导出、备份代码完全不用改），启动恢复时批量展开。 */
+  
+
+
+
+
+
+
   var MEDIA_REF_PRE = "akini-ref:";
   var MEDIA_KEY_PRE = "akini_mref_";
   var MEDIA_MIN_LEN = 24 * 1024;
@@ -1054,7 +1054,7 @@
     if (m !== null) return m;
     return lsGet(k);
   }
-  /* ===== 聊天记录：一个会话一个键、一份完整 HTML（对齐 milk/zy） ===== */
+  
   var CHAT_PRE = "akini_chat_history_",
     MSGS_PRE = "akini_chat_msgs_";
   /* 旧版把聊天拆成 MSGS_PRE 数组；仅保留 _chatJoin 供读取旧数据，不再新写数组副本 */
@@ -1126,14 +1126,14 @@
       markDirty(k);
       lsRemoveRaw(k);
       if (k.indexOf("akini_chat_history") === 0) {
-        /* 单通道：一个会话 = 一个键 = 一份完整记录（对齐 milk/zy）。
-           不再额外拆成 MSGS_PRE 数组副本，避免同一段聊天落两份、写两次。 */
+        
+
         if (isCriticalKey(k)) {
           if (!_restored) _preRestorePending[k] = v;
           else {
-            /* 只入队，交给 500ms 批量落盘（对齐 milk/zy 的去抖保存）。
-               以前这里见大值就立即 flush，等于每条消息都同步写一次整段历史，
-               聊天越长越卡。 */
+            
+
+
             queueIdbWrite(k, v);
           }
         }
@@ -1426,10 +1426,10 @@
             window.__akiniDeferredKeys[k] = 1;
             return;
           }
-          /* 聊天记录对齐 milk/zy：启动期一条都不水合。
-             以前所有会话的整段历史都在这里被读进内存镜像，会话越多、
-             消息越长，首屏堆内存越大 —— 手机上一万条以上就会闪退。
-             现在只在打开某个会话时由 chat-log 单独从 IndexedDB 读取。 */
+          
+
+
+
           if (_ksf.indexOf(CHAT_PRE) === 0) {
             window.__akiniDeferredKeys[k] = 1;
             return;
@@ -1669,8 +1669,8 @@ window.__akiniRestoreSettled = true;
                     clearDirty(k);
                   } else if (_isEssentialImgKey(k) || _isEssentialTextKey(k) || _keepInLs(k)) {
                     var _lsFull = _lsTotalLen() > 3600 * 1024;
-                    /* 原生 模型对齐：图片一律不回填 localStorage（只进内存 + IndexedDB），
-                       LS 配额全部留给文字/名字/设置/聊天记录。 */
+                    
+
                     var _imgBudgetFull = false;
                     if (isImgKey(k)) {
                       _imgBudgetFull = true;
@@ -2395,7 +2395,7 @@ window.__akiniRestoreSettled = true;
 
   // ---- 包装 _idbStore.set：只拦截 null/undefined 字面写入 ----
   // core.js 有 75+ 处直接 _idbStore.set 调用，这里统一过滤 null/undefined 脏值。
-  // 空串/空数组/空对象一律放行（调用方负责），对齐 原生 不做空值防御。
+
   function _wrapIdbSet() {
     var store = window._idbStore;
     if (!store || typeof store.set !== "function") return false;
@@ -2546,9 +2546,9 @@ window.__akiniRestoreSettled = true;
       return priOf(a) - priOf(b);
     }); // 文本核心优先
     keys.forEach(function (k) {
-      /* 原生 对齐：聊天记录只有一份权威副本 —— IndexedDB 里的全量。
-         快照里放聊天只能放被截断的尾巴（体积预算），而启动时回填尾巴会把
-         IDB 的全量覆盖成「只剩最后几百条」—— 这就是「聊天记录凭空消失」的主因。 */
+      
+
+
       if (k.indexOf("akini_chat_history") === 0) return;
       var v = memGet(k);
       if (typeof v !== "string" || v === "") v = rawGet(k);
@@ -2563,18 +2563,18 @@ window.__akiniRestoreSettled = true;
         return;
       }
       var sv = v;
-      /* 原生 对齐：critical 快照只存核心文字数据，图片一律不进快照。
-         图片的权威副本本来就在 IndexedDB 原键里，再复制一份进快照，
-         会让每次签名变化都重新 stringify 十几 MB 并同步写 LS —— 切后台重进必卡。 */
+      
+
+
       if (isImg(k)) return;
       /* 带图朋友圈/iCity/邮件这类大文本，原始副本已经在 IndexedDB 里，
          再复制一份进 20s 周期快照只会让每次 stringify 多背几 MB（低端机卡顿/闪退主因）。
          超过 900KB 的直接不参与快照，交付权威副本仍由 IDB 原键承担。 */
       if (HOT_SKIP_RE.test(k) && sv.length > 900 * 1024) return;
       if (!sv || sv.length > 512 * 1024) return;
-      /* 总量预算：对齐 原生 的 critical 小快照，避免多会话超大聊天记录把
-         JSON.stringify 撑爆低端机内存。快照只是启动快恢复 + 墓碑仲裁的兜底，
-         全量数据已由 akiniSet 逐键落 IndexedDB，这里不需要几 MB 的大快照。 */
+      
+
+
       if (total + sv.length > 1024 * 1024) return;
       total += sv.length;
       d[k] = sv;
@@ -2713,8 +2713,8 @@ window.__akiniRestoreSettled = true;
     if (!snap || !snap.d) return 0;
     var filled = 0;
     Object.keys(snap.d).forEach(function (k) {
-      /* 原生 对齐：聊天记录的权威副本只有 IndexedDB 一份，快照永不参与回填/写回。
-         旧版本残留的快照里可能还有截断的聊天尾巴，这里必须忽略，绝不能再写进 IDB。 */
+      
+
       if (k.indexOf("akini_chat_history") === 0) return;
       var sv = snap.d[k];
       if (k.indexOf("akini_") !== 0 || !isReal(sv)) return;
@@ -2799,7 +2799,7 @@ window.__akiniRestoreSettled = true;
     };
   } catch (eHook) {}
 
-  // ---- 运行期快照：对齐 原生，取消前台周期性全量快照 ----
+
   function flushStore() {
     try {
       var s = store();
@@ -2819,7 +2819,7 @@ window.__akiniRestoreSettled = true;
       flushStore();
       try {
         takeSnapshot(false);
-      } catch (e) {} // 关闭/被回收前同步落一份关键快照（对齐 原生 的 pagehide 备份）
+      } catch (e) {}
     });
   } catch (eT2) {}
 

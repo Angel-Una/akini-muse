@@ -1147,8 +1147,8 @@ window.__akiniIncCache = {};
   init();
 })();
 
-/* ---- moved from index.html: 飞机票文本编辑：对齐单人模块局内弹窗（半透明遮罩+圆角卡片+ ---- */
-/* 飞机票文本编辑：对齐单人模块局内弹窗（半透明遮罩+圆角卡片+输入框+确定/取消） */
+
+
 (function () {
   var TXT_KEY = "akini_ticket_texts";
   function loadTxt() {

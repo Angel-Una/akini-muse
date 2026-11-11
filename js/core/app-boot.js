@@ -698,7 +698,7 @@ window._akiniActiveMsgAction = null;
             e +
             '" style="max-width:120px;max-height:120px;border-radius:8px;display:block;" alt=""/ data-preserve-inline="1"></div>'
           : '<div class="bubble">' + m(t) + "</div>";
-        /* 引用：与主聊天一致，气泡下方整宽引用卡（右对齐，留出头像位 46px） */
+        
         var qh = "";
         if (q && window.__akiniQuoteCardHtml)
           qh =

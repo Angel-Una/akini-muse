@@ -1,6 +1,6 @@
 var AKINI_CHAT_BATCH_SIZE = 25;
-/* 对齐 milk/zy 的窗口化渲染：聊天 DOM 里最多保留这么多行，往上滑加载旧消息时
-   从底部裁掉等批量，避免长聊天把整段历史（含图片 data URL）全堆进 DOM 把渲染进程撑爆。 */
+
+
 var AKINI_MAX_DOM_ROWS = 200;
 function __akiniStripTypingRows(t) {
   if (!t || "string" != typeof t) return t || "";
@@ -109,9 +109,9 @@ function __akiniCapHistory(html, t, maxRows) {
     return html;
   }
 }
-/* 对齐 milk/zy 的分批渲染：DOM 里只放最近一批消息（HISTORY_BATCH_SIZE），
-   往上滑再往前加载一批，完整历史始终在 __akiniChatLog 数组里。
-   milk 用 messages 数组 slice，我们用 msg-row 边界切字符串。 */
+
+
+
 
 (window.addEventListener("akini-img-ready", function () {
   try {

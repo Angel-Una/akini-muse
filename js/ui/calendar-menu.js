@@ -199,9 +199,9 @@ document.addEventListener("click", function (e) {
 
 window.compressImageDataUrl = function (dataUrl, callback, opts) {
   try {
-    /* 对齐 milk/zy：大图一律压缩，且压缩标准激进（默认 maxSide 1280 / JPEG 0.82），
-       否则用户手机相册一张壁纸就是几 MB base64，启动解码位图几十 MB，
-       iPhone Safari 内存上限低，"用过一段时间"必反复崩溃——全新能进、有数据崩的根源。 */
+    
+
+
     /* opts.forceJpeg：壁纸/封面/拍立得等背景不需要透明通道，强制转 JPEG。
        随机噪点/复杂照片压成 PNG 依旧好几 MB，必须 JPEG 才能把体积砍下来。 */
     var forceJpeg = !!(opts && opts.forceJpeg);

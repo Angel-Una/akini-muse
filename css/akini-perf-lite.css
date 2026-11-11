@@ -454,8 +454,8 @@ html body .settings-area [role="button"] {
   -webkit-overflow-scrolling: touch;
 }
 
-/* 18) 长列表窗口化：屏幕外的行跳过布局与绘制（对齐 milk/zy 的按需渲染）。
-   只对可能累积几百条的列表生效。friendsBody 是整个朋友圈页容器（内含探出式头像和 fixed 评论弹窗），不在此列。 */
+
+
 #postList > *,
 #icityDiaryList > *,
 #icityMyProfileDiaries > *,

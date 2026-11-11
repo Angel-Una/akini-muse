@@ -84,9 +84,9 @@
         if ("string" == typeof e && e.length > 1572864) {
         } else {
           window.__akiniImgCache[t] = e;
-          /* 内存缓存总量兜底 8MB（对齐 milk/zy 的轻量模型：图片随用随取，
-             不在内存里囤整份壁纸库）。超了就按写入顺序淘汰最旧的键，
-             首屏必需的头像/首页背景永不淘汰，避免冷启动后背景闪空白。 */
+          
+
+
           try {
             var _c = window.__akiniImgCache,
               _ks = Object.keys(_c),
@@ -531,9 +531,9 @@
     };
   })()));
 
-/* 图片懒加载统一收口（对齐 milk/zy）：所有列表里新插入的 <img> 默认 loading=lazy +
-   decoding=async，屏幕外的图不参与解码/解码延后，避免一次渲染几千张图把内存顶爆。
-   聊天里的图片同样适用：视口内的图会立即加载，不受影响。 */
+
+
+
 (function () {
   /* 聊天/陪伴气泡里的图最大只显示 160px，但浏览器默认按原图像素解码：
      一张 2000x1500 的照片解码后约 12MB，聊天里放十几张就是 200MB+。
@@ -638,9 +638,9 @@
   );
 })();
 
-/* 聊天背景自愈（对齐 milk/zy 的做法：系统回收大图解码后，回到前台时强制重绘）。
-   iOS/Android 在内存压力下会丢弃 dataURL 背景的已解码位图 —— CSS 还在、图没了，
-   重进聊天才恢复。回到前台时把 background-image 清掉再设回，强制浏览器重新解码。 */
+
+
+
 (function () {
   function healChatBg() {
     try {

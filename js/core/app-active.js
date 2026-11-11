@@ -63,9 +63,9 @@
 
   function _arm(delay) {
     if (msgTimer) clearTimeout(msgTimer);
-    /* 持久化下次触发时间（对齐信箱引擎的 _readNext/catchUp 模型）：
-       手机切后台 setTimeout 会被系统冻结，到期不跑；回前台时读这个时间戳补发到点的消息，
-       否则切一次后台这段时间的主动消息就整段蒸发（用户反馈"切后台回去消息就没了"的根因）。 */
+    
+
+
     try {
       localStorage.setItem("akini_active_msg_next", String(Date.now() + Math.max(2000, delay)));
     } catch (e) {}
@@ -120,8 +120,8 @@
     _arm(_randomIntervalMs());
   }
 
-  /* 回前台补发（对齐 milk/zy 的 visible 恢复与信箱引擎 catchUpActiveLetter）：
-     后台被冻结期间到点的主动消息，回前台由 manage() 补一条。 */
+  
+
   window.__akiniOnVisible(function () { manage(true); });
 
   /* 设置页改间隔时 core 会调这里 */

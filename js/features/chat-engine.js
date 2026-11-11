@@ -58,9 +58,9 @@
     var now = Date.now();
     if (bankCache && now - bankAt < 1000) return bankCache;
 
-    /* 对齐 milk/zy：字卡只有一个来源（akini_wordbank），读不到时直接用
-       localStorage 兜底。之前还叠了 memoryGet / getSync / 任意前缀键三层，
-       同一份数据要读四遍，既慢又容易读到不同版本。 */
+    
+
+
     var bank = [];
     try {
       var v = window.__wbRead ? window.__wbRead("akini_wordbank", []) : null;
