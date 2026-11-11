@@ -28,10 +28,11 @@
           var file = this.files && this.files[0];
           this.value = "";
           if (!file) return;
-          var reader = new FileReader();
-          reader.onload = function (ev) {
-            var dataUrl = ev.target && ev.target.result;
-            if (!dataUrl) return;
+          window.__akiniOptimizeImage(file, function (dataUrl) {
+            if (!dataUrl) {
+              if (window.__akiniCenterModal) window.__akiniCenterModal("提示", "壁纸读取失败，请换一张试试");
+              return;
+            }
             try {
               localStorage.setItem("akini_music_wallpaper", dataUrl);
             } catch (e) {
@@ -40,11 +41,7 @@
             }
             var bg = document.getElementById("musicBgLayer");
             if (bg) bg.style.backgroundImage = "url(" + dataUrl + ")";
-          };
-          reader.onerror = function () {
-            if (window.__akiniCenterModal) window.__akiniCenterModal("提示", "壁纸读取失败，请换一张试试");
-          };
-          reader.readAsDataURL(file);
+          });
         });
       }
       var clearMusicBgBtn = document.getElementById("clearMusicBgBtnBeautify");

@@ -107,8 +107,7 @@
       } catch (e) {
         filtered = null;
       }
-      /* 原生：过滤后仍有可用内容才换池；过滤后为空 → 保留未过滤池，绝不因此不回消息 */
-      if (filtered && filtered.length) list = filtered;
+      if (filtered) list = filtered;
     }
     return list;
   }
@@ -128,35 +127,15 @@
 
   /* --------------------- 从源头替换取词函数 ---------------------
      core 的 G / J / 转账回复 / 朋友圈等全部走 window.pickWordCards，
-     换掉它以后，所有链路都获得「重试 + 过滤兜底」的保障。 */
-  var inheritedPick = window.pickWordCards; /* 原始实现只捕获一次，避免递归 */
+     换掉它以后，所有链路都获得「重试 + 禁用过滤」的保障。 */
   var enginePick = function (count, cid) {
     count = Math.max(1, parseInt(count, 10) || 1);
     var pool = replyPool(cid);
-    if (!pool.length) {
-      if (typeof inheritedPick === "function") {
-        try {
-          return inheritedPick(count, cid) || "";
-        } catch (e) {
-          return "";
-        }
-      }
-      return "";
-    }
+    if (!pool.length) return "";
     var out = [];
     for (var i = 0; i < count; i++) {
       var t = pickReplyText(cid);
       if (t) out.push(t);
-    }
-    if (!out.length) {
-      if (typeof inheritedPick === "function") {
-        try {
-          return inheritedPick(count, cid) || "";
-        } catch (e2) {
-          return "";
-        }
-      }
-      return "";
     }
     return out.join("\n");
   };
@@ -174,6 +153,10 @@
       return void window.__akiniNotify(EMPTY_TIP);
     } catch (e) {}
   }
+  window.__akiniNotifyEmptyReply = notifyEmpty;
+  window.__akiniHasReplyPool = function (cid) {
+    return replyPool(cid).length > 0;
+  };
 
   function typingEl() {
     return document.getElementById("typingIndicator");
@@ -320,10 +303,15 @@
         cid = cid || activeId();
         if (!cid || !contacts) return orig.apply(this, args);
         target = target || getTarget(cid);
+        if (!behavior) {
+          try {
+            behavior = window.AKR && window.AKR.pickReplyBehavior ? window.AKR.pickReplyBehavior() : null;
+          } catch (e) {}
+        }
         var isNone = !!(behavior && behavior.type === "none");
+        var isPoke = !!(behavior && behavior.extra && behavior.extra.poke);
 
-        /* 原生 第 1/2 步：池为空直接提示，不给「正在输入」空转 */
-        if (!isNone && !replyPool(cid).length) {
+        if (!isNone && !isPoke && !replyPool(cid).length) {
           clearTyping(cid);
           notifyEmpty();
           return;
@@ -343,8 +331,8 @@
           }
         }
 
-        /* 原生 第 5 步：一条都没发出来（渲染失败或静默返回）→ 用保证可用的文本补一条 */
-        if (!isNone) {
+        /* 渲染失败或静默返回时，用保证可用的文本补一条；拍一拍不追加文字。 */
+        if (!isNone && !isPoke) {
           var after = otherCount(cid);
           if (after < 0 || after <= before) {
             var text = pickReplyText(cid);
@@ -386,23 +374,21 @@
       var target = getTarget(cid);
       if (!target) return;
 
-      /* ① 先确认池非空 */
-      if (!replyPool(cid).length) {
-        clearTyping(cid);
-        notifyEmpty();
-        return;
-      }
-
-      /* ② 行为；强制补发时忽略「已读不回」 */
       var behavior = null;
       try {
         behavior = window.AKR && window.AKR.pickReplyBehavior ? window.AKR.pickReplyBehavior() : null;
       } catch (e) {}
       if (!behavior || !behavior.type) behavior = { type: "text", extra: {} };
       if (force && behavior.type === "none") behavior = { type: "text", extra: {} };
-      if (behavior.type === "none") return; /* 用户主动开了「已读不回」，尊重设置 */
+      if (behavior.type === "none") return;
+      var isPoke = !!(behavior.extra && behavior.extra.poke);
 
-      /* ③ 确认有可用回复之后才显示输入中（原生 关键差异） */
+      if (!isPoke && !replyPool(cid).length) {
+        clearTyping(cid);
+        notifyEmpty();
+        return;
+      }
+
       var active = activeId();
       if (active === cid) showTyping(cid, target);
 
@@ -414,8 +400,7 @@
 
       setTimeout(function () {
         try {
-          /* ④ 到点再验一次池（用户可能刚清空字卡） */
-          if (!replyPool(cid).length) {
+          if (!isPoke && !replyPool(cid).length) {
             clearTyping(cid);
             notifyEmpty();
             return;
@@ -426,8 +411,8 @@
           var text = pickReplyText(cid);
           if (text) fallbackAppend(cid, target, text);
           else notifyEmpty();
+          clearTyping(cid);
         }
-        clearTyping(cid);
       }, delay);
     } catch (e) {
       reportErr("autoReply", e);
@@ -530,8 +515,8 @@
           var text = pickReplyText(cid);
           if (text) fallbackAppend(cid, target, text);
           else notifyEmpty();
+          clearTyping(cid);
         }
-        clearTyping(cid);
       }, delay);
     } catch (e) {
       reportErr("triggerTaReplyOnce", e);

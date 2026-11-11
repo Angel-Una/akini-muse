@@ -198,70 +198,37 @@ document.addEventListener("click", function (e) {
 });
 
 window.compressImageDataUrl = function (dataUrl, callback, opts) {
-  try {
-    
-
-
-    /* opts.forceJpeg：壁纸/封面/拍立得等背景不需要透明通道，强制转 JPEG。
-       随机噪点/复杂照片压成 PNG 依旧好几 MB，必须 JPEG 才能把体积砍下来。 */
-    var forceJpeg = !!(opts && opts.forceJpeg);
-    var isPng = !forceJpeg && /^data:image\/png/i.test(dataUrl || "");
-    /* PNG 通常含透明通道（头像/表情包），保留 PNG 但限制尺寸；
-       非 PNG（照片/壁纸）统一转 JPEG 大幅降体积。小图(<120KB)才原样跳过。 */
-    if (dataUrl && typeof dataUrl === "string" && dataUrl.length < 160000) {
-      if (typeof callback === "function") callback(dataUrl);
-      return;
-    }
-    var img = new Image();
-    img.onload = function () {
-      try {
-        var maxSide = (opts && opts.maxSide) || (isPng ? 640 : 1280);
-        var q = (opts && opts.quality) || 0.82;
-        var w = img.width,
-          hh = img.height;
-        if (w > 0 && hh > 0 && Math.max(w, hh) > maxSide) {
-          var r = maxSide / Math.max(w, hh);
-          w = Math.round(w * r);
-          hh = Math.round(hh * r);
-        }
-        var cv = document.createElement("canvas");
-        cv.width = w;
-        cv.height = hh;
-        var ctx = cv.getContext("2d");
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
-        /* PNG 保留透明底；JPEG 填白底避免黑边 */
-        if (!isPng) {
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, w, hh);
-        }
-        ctx.drawImage(img, 0, 0, w, hh);
-        var out = isPng ? cv.toDataURL("image/png") : cv.toDataURL("image/jpeg", q);
-        /* 仍超阈值则继续降质量（JPEG），确保体积真正砍下来、且低于
-           背景应用处的 300KB 触发线，避免下次启动重复压缩。 */
-        if (!isPng && out && out.length > 280000) {
-          var q2 = q;
-          while (q2 > 0.3 && out.length > 280000) {
-            q2 -= 0.1;
-            out = cv.toDataURL("image/jpeg", Math.max(0.3, q2));
-          }
-        }
-        if (out && out.length < String(dataUrl).length) {
-          if (typeof callback === "function") callback(out);
-          return;
-        }
-        if (typeof callback === "function") callback(dataUrl);
-      } catch (err) {
-        if (typeof callback === "function") callback(dataUrl);
-      }
-    };
-    img.onerror = function () {
-      if (typeof callback === "function") callback(dataUrl);
-    };
-    img.src = dataUrl;
-  } catch (e) {
+  if (!dataUrl || typeof dataUrl !== "string" || dataUrl.length < 400000) {
     if (typeof callback === "function") callback(dataUrl);
+    return;
   }
+  var img = new Image();
+  img.onload = function () {
+    try {
+      var maxWidth = (opts && opts.maxSide) || 800;
+      var quality = (opts && opts.quality) || 0.7;
+      var width = img.naturalWidth || img.width;
+      var height = img.naturalHeight || img.height;
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      var canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      var ctx = canvas.getContext("2d");
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, width, height);
+      callback(canvas.toDataURL("image/jpeg", quality));
+    } catch (e) {
+      callback(dataUrl);
+    }
+  };
+  img.onerror = function () {
+    callback(dataUrl);
+  };
+  img.src = dataUrl;
 };
 
 window.triggerPickImage = function (targetKey, callback) {
@@ -276,23 +243,22 @@ window.triggerPickImage = function (targetKey, callback) {
   }
   input.onchange = function (e) {
     var file = e.target.files && e.target.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function (evt) {
-      window.compressImageDataUrl(evt.target.result, function (compressed) {
-        if (targetKey) {
-          if (window.__akiniSaveImageKey) window.__akiniSaveImageKey(targetKey, compressed);
-          else {
-            try {
-              localStorage.setItem(targetKey, compressed);
-            } catch (ex) {}
-          }
-        }
-        if (callback) callback(compressed);
-      });
-    };
-    reader.readAsDataURL(file);
     input.value = "";
+    if (!file) return;
+    var done = function (dataUrl) {
+      if (!dataUrl) return;
+      if (targetKey) {
+        if (window.__akiniSaveImageKey) window.__akiniSaveImageKey(targetKey, dataUrl);
+        else {
+          try {
+            localStorage.setItem(targetKey, dataUrl);
+          } catch (ex) {}
+        }
+      }
+      if (callback) callback(dataUrl);
+    };
+    if (/avatar/i.test(targetKey || "")) window.__akiniCropImageSquare(file, done, 300);
+    else window.__akiniOptimizeImage(file, done);
   };
   input.click();
 };

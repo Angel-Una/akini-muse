@@ -929,35 +929,19 @@ window.__akiniIncCache = {};
     return null;
   }
 
-  // 压缩（如果有压缩函数），否则原样回调
-  function compress(dataUrl, cb) {
-    if (typeof window.compressImageDataUrl === "function") {
-      window.compressImageDataUrl(dataUrl, function (c) {
-        cb(c || dataUrl);
-      });
-    } else {
-      cb(dataUrl);
-    }
-  }
-
   /* ---------- 核心：处理选中的图片文件 ---------- */
   function processFile(type, file) {
     if (!file) return;
     var area = AREAS[type];
     if (!area) return;
-
-    var reader = new FileReader();
-    reader.onload = function (ev) {
-      var dataUrl = ev.target.result;
-      compress(dataUrl, function (finalUrl) {
-        applyBg(area.elId, finalUrl);
-        persist(area.keys, finalUrl);
-      });
-    };
-    reader.onerror = function () {
-      if (window.akiniToast) window.akiniToast("图片读取失败，请重试");
-    };
-    reader.readAsDataURL(file);
+    window.__akiniOptimizeImage(file, function (finalUrl) {
+      if (!finalUrl) {
+        if (window.akiniToast) window.akiniToast("图片读取失败，请重试");
+        return;
+      }
+      applyBg(area.elId, finalUrl);
+      persist(area.keys, finalUrl);
+    });
   }
 
   /* ---------- 绑定 input 的 change 事件（幂等） ---------- */

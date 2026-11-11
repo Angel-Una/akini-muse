@@ -28,11 +28,7 @@
   }
   restoreAvatar();
   function compress(file, cb) {
-    var reader = new FileReader();
-    reader.onload = function (e) {
-      cb(e.target.result);
-    };
-    reader.readAsDataURL(file);
+    window.__akiniCropImageSquare(file, cb, 300);
   }
   document.addEventListener(
     "change",
@@ -186,26 +182,6 @@
        十几张 MB 级壁纸并发解码直接 OOM —— 这是 iPhone「重复出现问题」崩溃的根源。 */
     var pf0 = document.getElementById("phoneFrame");
     if (pf0 && pf0.getAttribute("data-applied-home-bg") === url) return;
-    /* 存量大图（用户早期未压缩或压缩不够的壁纸，可能几 MB base64）直接上墙会让 Safari
-       解码几十 MB 位图而崩溃。超过阈值先异步压缩成小图，压缩完成再上墙并回写存储，
-       之后启动就只读到小图——这是"用过一段时间必崩、全新能进"的根治。 */
-    if (url.length > 500000 && typeof window.compressImageDataUrl === "function" && !pf0.__akiniBgCompressing) {
-      pf0.__akiniBgCompressing = true;
-      window.compressImageDataUrl(url, function (compressed) {
-        try { pf0.__akiniBgCompressing = false; } catch (e) {}
-        var v = (compressed && compressed.length < url.length) ? compressed : url;
-        /* 回写压缩后的小图，下次启动不再触发压缩 */
-        try { localStorage.setItem("akini_home_bg", v); } catch (e) {}
-        try { if (window.__akiniSaveImageKey) window.__akiniSaveImageKey("akini_home_bg", v); } catch (e) {}
-        try { if (window._idbStore && window._idbStore.set) window._idbStore.set("akini_home_bg", v); } catch (e) {}
-        pf0.setAttribute("data-applied-home-bg", v);
-        try {
-          document.documentElement.style.setProperty("--akini-home-bg", 'url("' + v + '")');
-        } catch (e) {}
-        pf0.classList.add("has-custom-bg");
-      }, { maxSide: 1280, quality: 0.82, forceJpeg: true });
-      return;
-    }
     if (pf0) pf0.setAttribute("data-applied-home-bg", url);
     try {
       document.documentElement.style.setProperty("--akini-home-bg", 'url("' + url + '")');
@@ -303,33 +279,10 @@
     return "";
   }
 
-  /* 超大 base64 图片统一"先压缩再上屏"：存量用户早期存的壁纸/封面/拍立得可能是几 MB，
-     直接塞进 backgroundImage 会让 Safari 解码几十 MB 位图而 OOM（用过必崩的根源）。
-     所有背景位共用同一守卫：超过 300KB 先压缩到 1280px JPEG，压缩后回写存储再上屏。 */
   function __applyLargeBg(el, url, keys, attrName) {
     if (!el || !url || typeof url !== "string" || url.length <= 10) return;
     attrName = attrName || "data-applied-bg";
     if (el.getAttribute(attrName) === url) return;
-    if (url.length > 500000 && typeof window.compressImageDataUrl === "function" && !el.__akiniBgCompressing) {
-      el.__akiniBgCompressing = true;
-      window.compressImageDataUrl(url, function (compressed) {
-        try { el.__akiniBgCompressing = false; } catch (e) {}
-        var v = (compressed && compressed.length < url.length) ? compressed : url;
-        try {
-          (keys || []).forEach(function (k) {
-            try { localStorage.setItem(k, v); } catch (e) {}
-            try { if (window.__akiniSaveImageKey) window.__akiniSaveImageKey(k, v); } catch (e) {}
-            try { if (window._idbStore && window._idbStore.set) window._idbStore.set(k, v); } catch (e) {}
-          });
-        } catch (e) {}
-        el.setAttribute(attrName, v);
-        el.style.setProperty("background-image", 'url("' + v + '")', "important");
-        el.style.setProperty("background-size", "cover", "important");
-        el.style.setProperty("background-position", "center", "important");
-        el.style.setProperty("background-repeat", "no-repeat", "important");
-      }, { maxSide: 1280, quality: 0.82, forceJpeg: true });
-      return;
-    }
     el.setAttribute(attrName, url);
     el.style.setProperty("background-image", 'url("' + url + '")', "important");
     el.style.setProperty("background-size", "cover", "important");
@@ -1205,7 +1158,7 @@ window.__akiniRestoredDone = true;
 /* 图片弹窗与持久化 */
 
 // 弹窗更换与图片持久化引擎
-/* 统一持久化：压缩 → 写 localStorage（可能因配额失败）→ __akiniImgSet 负责内存 + IndexedDB 镜像。
+/* 统一持久化：原样写入 localStorage，并由 __akiniImgSet 保存内存与 IndexedDB 镜像。
    存储层已拦截 localStorage.setItem 并做 IDB 落盘，不再额外直写 _idbStore / 默认 localforage。 */
 window.__akiniSaveImageKey = function (key, url) {
   if (!key || !url) return;

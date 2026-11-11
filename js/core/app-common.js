@@ -691,15 +691,11 @@
         var f = this.files && this.files[0];
         this.value = "";
         if (!f) return;
-        var fr = new FileReader();
-        fr.onload = function () {
-          shrinkImage(fr.result, 750, 1334, function (url) {
-            _companionBg = url;
-            idbSet(COMPANION_BG_KEY, url);
-            applyCompanionBg();
-          });
-        };
-        fr.readAsDataURL(f);
+        window.__akiniOptimizeImage(f, function (url) {
+          _companionBg = url;
+          idbSet(COMPANION_BG_KEY, url);
+          applyCompanionBg();
+        });
       });
 
     if (msgInput)
@@ -1840,16 +1836,12 @@
         var f = this.files && this.files[0];
         this.value = "";
         if (!f) return;
-        var fr = new FileReader();
-        fr.onload = function () {
-          shrinkImage(fr.result, 750, 1334, function (url) {
-            var s = readerSettings();
-            s.bg = url;
-            saveReaderSettings(s);
-            applyReaderSettings();
-          });
-        };
-        fr.readAsDataURL(f);
+        window.__akiniOptimizeImage(f, function (url) {
+          var s = readerSettings();
+          s.bg = url;
+          saveReaderSettings(s);
+          applyReaderSettings();
+        });
       });
 
     /* 翻页方式切换 */
@@ -1956,15 +1948,11 @@
         var f = this.files && this.files[0];
         this.value = "";
         if (!f || !_curBook) return;
-        var fr = new FileReader();
-        fr.onload = function () {
-          shrinkImage(fr.result, 240, 320, function (url) {
-            _curBook.cover = url;
-            saveBooks();
-            window.__renderNovelShelf();
-          });
-        };
-        fr.readAsDataURL(f);
+        window.__akiniOptimizeImage(f, function (url) {
+          _curBook.cover = url;
+          saveBooks();
+          window.__renderNovelShelf();
+        }, 300, 0.8);
       });
     if (actRename)
       actRename.addEventListener("click", function () {
@@ -2507,14 +2495,10 @@
       $("aknvEditCoverInput").addEventListener("change", function () {
         var f = this.files && this.files[0];
         if (!f || !_editBook) return;
-        var fr = new FileReader();
-        fr.onload = function () {
-          shrinkImage(fr.result, 300, 400, function (url) {
-            _editBook.cover = url;
-            renderEditCover();
-          });
-        };
-        fr.readAsDataURL(f);
+        window.__akiniOptimizeImage(f, function (url) {
+          _editBook.cover = url;
+          renderEditCover();
+        }, 300, 0.8);
         this.value = "";
       });
       $("aknvEditOk").addEventListener("click", function () {

@@ -45,15 +45,12 @@
     return (f.name || "") + "|" + (f.size || 0) + "|" + (f.lastModified || 0);
   }
   function __process(f, cfg, entry) {
-    var r = new FileReader();
-    r.onload = function (ev) {
-      var d = ev.target.result;
+    window.__akiniOptimizeImage(f, function (d) {
+      if (!d) return;
       var fin = function (url) {
         try {
           if (window[cfg.apply]) window[cfg.apply](url);
         } catch (e1) {}
-        var st = document.getElementById(cfg.style);
-        var okCss = !!(st && st.textContent && st.textContent.indexOf(String(url).slice(0, 40)) >= 0);
         for (var i = 0; i < cfg.keys.length; i++) {
           try {
             localStorage.setItem(cfg.keys[i], url);
@@ -63,15 +60,13 @@
       };
       var img = new Image();
       img.onload = function () {
-        
         fin(d);
       };
       img.onerror = function () {
         AK('这张图片的格式当前浏览器显示不了（多为 HEIC/原图），请改选 JPG/PNG，或选图时不要勾选"原图"');
       };
       img.src = d;
-    };
-    r.readAsDataURL(f);
+    });
   }
   function __route(t, entry) {
     try {

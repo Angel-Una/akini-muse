@@ -242,7 +242,6 @@ window.__akiniResolvePostImgs = function (root) {
             extra: {
               poke: !1,
               quote: !1,
-              sticker: !1,
               transfer: !1,
               emojiMix: !1,
             },
@@ -263,14 +262,16 @@ window.__akiniResolvePostImgs = function (root) {
         } catch (t) {}
         var c = !1;
         try {
-          c = "1" === localStorage.getItem("akini_toggle_emojiMixToggle");
-        } catch (t) {}
+          var emojiMixSetting = localStorage.getItem("akini_toggle_emojiMixToggle");
+          c = null === emojiMixSetting || "1" === emojiMixSetting;
+        } catch (t) {
+          c = !0;
+        }
         return {
           type: "text",
           extra: {
             poke: Math.random() < e("poke"),
             quote: r && Math.random() < e("quote"),
-            sticker: Math.random() < e("replySticker"),
             transfer: Math.random() < e("taTransfer"),
             call: Math.random() < e("incomingCall"),
             emojiMix: c,
@@ -289,26 +290,6 @@ window.__akiniResolvePostImgs = function (root) {
       },
     };
   })()),
-  /* 一次性最多三条：所有「联系人往外发消息」的入口（自动回复、主动发消息、
-     看门狗补发、群聊多人回复）共用同一条 12 秒预算，超出的直接不发。
-     之前每个入口各自 1~3 条，叠加起来就会出现「回了我四条」。 */
-  (function () {
-    var WIN = 12000,
-      MAX = 3,
-      map = {};
-    window.__akiniReplyBudget = function (cid, take) {
-      var id = String(cid || "__active"),
-        now = Date.now(),
-        rec = map[id];
-      if (!rec || now - rec.t > WIN) rec = map[id] = { t: now, n: 0 };
-      var left = MAX - rec.n;
-      if (take === undefined) return left;
-      if (left <= 0) return 0;
-      var use = take < left ? take : left;
-      rec.n += use;
-      return use;
-    };
-      })(),
   (window.__akiniFileProtocol = "undefined" != typeof location && "file:" === location.protocol),
   (function () {
   var k, U, W, nt, it, at, dt, ut, yt, At, Tt, Mt, Dt, Ht, Ft, Wt, ue, ge, ye, pe, _e, he, ve, be, Se, Ie, Ce, Ee, Ae, ze, Ke, fn, kn, In, xn, Cn;
@@ -1463,6 +1444,17 @@ function j(t, e, n, i) {
                 (window.__akiniPendingReplyMap[t] = o)),
               (o.ts = Date.now()));
             var r = i || P();
+            if (
+              "none" !== r.type &&
+              !(r.extra && r.extra.poke) &&
+              window.__akiniHasReplyPool &&
+              !window.__akiniHasReplyPool(a.id || t)
+            ) {
+              try {
+                window.__akiniNotifyEmptyReply && window.__akiniNotifyEmptyReply();
+              } catch (t) {}
+              return void z(t);
+            }
             ((o.behavior = r),
               H(),
               o.timer && (clearTimeout(o.timer), (o.timer = null)),
@@ -1482,9 +1474,8 @@ function j(t, e, n, i) {
               d = c + Math.random() * l;
 
             var m = 1500 + 2500 * Math.random(),
-              u = Math.max(500, Math.round(m + 1e3 * d));
+              u = Math.max(500, Math.round(1e3 * d));
             "number" == typeof n && n > 0 && (u = n);
-            u - 800 < m && (m = Math.max(300, u - 800));
             var g = o.memberId || null;
             if (
               ((o.readTimer = setTimeout(function () {
@@ -1509,13 +1500,6 @@ function j(t, e, n, i) {
                     }
                   })();
                 } catch (t) {}
-                // 已读后联系人才开始出现输入动态
-                try {
-                  "none" !== r.type &&
-                    t === window.akiniContacts.getActiveChatId() &&
-                    !document.hidden &&
-                    O(t, g);
-                } catch (t) {}
                 if ("none" !== r.type);
                 else {
                   try {
@@ -1535,6 +1519,9 @@ function j(t, e, n, i) {
               }, m)),
               "none" !== r.type)
             ) {
+              try {
+                t === window.akiniContacts.getActiveChatId() && !document.hidden && O(t, g);
+              } catch (t) {}
               o.timer = setTimeout(function () {
                 o.timer = null;
                 try {
@@ -1601,6 +1588,16 @@ function J(t) {
             (r && !r.classList.contains("on")) || !window.__akiniMarkLastRead || window.__akiniMarkLastRead(t);
           } catch (a) {}
           return;
+        }
+        if (
+          !(o.extra && o.extra.poke) &&
+          window.__akiniHasReplyPool &&
+          !window.__akiniHasReplyPool(a.id || t)
+        ) {
+          try {
+            window.__akiniNotifyEmptyReply && window.__akiniNotifyEmptyReply();
+          } catch (t) {}
+          return void z(t);
         }
         t === window.akiniContacts.getActiveChatId() && O(t, null);
         var c = parseFloat(localStorage.getItem("akini_num_replyDelayMin") || "3"),
@@ -1678,6 +1675,19 @@ function G(t, e, n, i, a) {
           w = localStorage.getItem("akini_my_name") || "我",
           g = "contact" === e.type ? e.id : l.id || null,
           f = n.extra || {};
+        if (f.poke) {
+          f.poke = !1;
+          try {
+            v();
+          } catch (pokeErr) {
+            console.error("[I] poke error:", pokeErr);
+          }
+          try {
+            var pokePending = (window.__akiniPendingReplyMap || {})[t];
+            pokePending && ((pokePending.count = 0), H());
+          } catch (t) {}
+          return void (i ? z(t) : R(t));
+        }
         function y() {
           L();
           var n = window._akiniTransferAmount(),
@@ -1942,16 +1952,9 @@ function G(t, e, n, i, a) {
         }
         var A = [];
         if (b && b.length) {
-          /* 拼音字卡也是一次多条，同样受 3 条预算约束 */
-          var _pb = window.__akiniReplyBudget ? window.__akiniReplyBudget(t, b.length) : b.length;
-          A = _pb > 0 ? b.slice(0, _pb) : [];
+          A = b.slice();
         } else {
           var T = window.AKR.getReplyCount();
-          /* 一次性最多三条：本条回复也走同一个预算，防止「自动回复 + 主动消息 +
-             看门狗」叠在一起时一次冒出 4 条以上。 */
-          try {
-            if (window.__akiniReplyBudget) T = window.__akiniReplyBudget(t, T);
-          } catch (eB) {}
           for (var M = 0; M < T; M++) {
             var B = window.pickWordCards ? window.pickWordCards(1, e && e.id) : "";
             if (B && B.trim()) {
@@ -1961,7 +1964,9 @@ function G(t, e, n, i, a) {
           }
         }
         if (0 === A.length) {
-          
+          try {
+            window.__akiniNotifyEmptyReply && window.__akiniNotifyEmptyReply();
+          } catch (t) {}
           return void (i ? z(t) : R(t));
         }
         let N = "";
@@ -1982,7 +1987,7 @@ function G(t, e, n, i, a) {
                   if (!n) return null;
                   var i = document.createElement("div");
                   i.innerHTML = n;
-                  for (var a = Array.from(i.querySelectorAll(".msg-row.me")), o = [], r = a.length - 1; r >= 0; r--) {
+                  for (var a = Array.from(i.querySelectorAll(".msg-row.me")).slice(-10), o = [], r = a.length - 1; r >= 0; r--) {
                     var c = a[r].querySelector(".bubble");
                     if (c && !__akiniIsCardBubble(c)) {
                       var s = c.querySelector("img:not(.quote-sticker-thumb)"),
@@ -2038,7 +2043,7 @@ function G(t, e, n, i, a) {
               if (!n) return "";
               var i = document.createElement("div");
               i.innerHTML = n;
-              for (var a = Array.from(i.querySelectorAll(".msg-row.me")), o = [], r = a.length - 1; r >= 0; r--) {
+              for (var a = Array.from(i.querySelectorAll(".msg-row.me")).slice(-10), o = [], r = a.length - 1; r >= 0; r--) {
                 var c = a[r].querySelector(".bubble");
                 if (c && !__akiniIsCardBubble(c) && !c.querySelector("img:not(.quote-sticker-thumb)")) {
                   var s = c.querySelector(".quote-bubble"),
@@ -2054,16 +2059,11 @@ function G(t, e, n, i, a) {
           var t = [];
           if (
             (f.transfer && t.push(y),
-            f.sticker && t.push(p),
-            f.poke && t.push(v),
             f.call && t.push(h),
             0 !== t.length)
           ) {
-            /* G 里 J() 会被调用两次（文字前 5006、文字后 5135），
-               入队后立即把附加开关置 false，避免第二次 J() 重复入队
-               导致 拍一拍/转账/表情包/来电 各发两条。不依赖 shop.js
-               的 onceFlag（shop 晚加载，DOMContentLoaded 早已触发）。 */
-            (f.transfer = !1), (f.sticker = !1), (f.poke = !1), (f.call = !1);
+            /* 文字前后共用一次附加动作队列，入队后立即关闭开关，避免重复执行。 */
+            (f.transfer = !1), (f.call = !1);
             var n = 0;
             !(function e() {
               if (!(n >= t.length)) {
@@ -2085,6 +2085,15 @@ function G(t, e, n, i, a) {
           }
         }
         J();
+        var replyMin = parseFloat(localStorage.getItem("akini_num_replyDelayMin") || "3"),
+          replyMax = parseFloat(localStorage.getItem("akini_num_replyDelayMax") || "7"),
+          sendReplySticker = p;
+        (replyMin > 0 || (replyMin = 3),
+          replyMax >= replyMin || (replyMax = Math.max(replyMin, 7)),
+          e &&
+            (e.replyDelayMin && parseFloat(e.replyDelayMin) > 0 && (replyMin = parseFloat(e.replyDelayMin)),
+            e.replyDelayMax && parseFloat(e.replyDelayMax) > 0 && (replyMax = parseFloat(e.replyDelayMax)),
+            replyMax >= replyMin || (replyMax = replyMin)));
         function nn(a) {
           if (a >= A.length) return void (i ? z(t) : R(t));
           let o = A[a];
@@ -2147,7 +2156,7 @@ function G(t, e, n, i, a) {
             Qt(o) +
             "</div>" +
             "</div>" +
-            (N
+            (0 === a && N
               ? '<div style="flex-basis:100%;width:100%;padding-left:46px;box-sizing:border-box;margin-top:2px;">' +
                 N +
                 "</div>"
@@ -2196,14 +2205,21 @@ function G(t, e, n, i, a) {
             };
             window.showInAppNotif(p);
           }
+          Math.random() < (window.AKR ? window.AKR.getProb("replySticker") : 0.2) &&
+            setTimeout(function () {
+              try {
+                sendReplySticker();
+              } catch (stickerErr) {
+                console.error("[I] sticker error:", stickerErr);
+              }
+            }, 400 + 600 * Math.random());
           a < A.length - 1
-            ? (O(t, null),
-              setTimeout(
+            ? setTimeout(
                 function () {
                   nn(a + 1);
                 },
-                1500 + 1e3 * Math.random(),
-              ))
+                1e3 * (replyMin + Math.random() * Math.max(0, replyMax - replyMin)),
+              )
             : ((i ? z(t) : R(t),
               /* 一轮回复结束后消费掉 pending 计数：count 只增不减会让 J() 再次触发，
                  表现为「回复结束 typing 消失后又突然 typing 又继续回复」 */
@@ -3530,25 +3546,7 @@ function bt() {
         return e ? ("group" !== e.type ? e.id || t : null) : t;
       }
 function St(t, e) {
-        var n = new FileReader();
-        ((n.onload = function (t) {
-          var n = t.target.result || "";
-          if (n && window.compressImageDataUrl)
-            try {
-              return void window.compressImageDataUrl(n, function (t) {
-                e(t && t.length && t.length < n.length ? t : n);
-              });
-            } catch (t) {}
-          e(n);
-        }),
-          (n.onerror = function () {
-            e("");
-          }));
-        try {
-          n.readAsDataURL(t);
-        } catch (t) {
-          e("");
-        }
+        window.__akiniCropImageSquare(t, e, 300);
       }
 function It() {
         var t = [],
@@ -9657,7 +9655,7 @@ window.__akiniCleanGhostBubbles = function (root) {
               var o = parseFloat(localStorage.getItem("akini_num_typingDelayMin") || "3"),
                 r = parseFloat(localStorage.getItem("akini_num_typingDelayMax") || "5");
               (o > 0 || (o = 3), r >= o || (r = Math.max(o, 5)));
-              var c = n + 1e3 * (i + Math.random() * (a - i)),
+              var c = 1e3 * (i + Math.random() * (a - i)),
                 s = null,
                 _frCid = t;
               return (
@@ -9717,16 +9715,22 @@ window.__akiniCleanGhostBubbles = function (root) {
                   } catch (t) {}
                 }, i);
               } else if (n) {
+                if (
+                  !(n.extra && n.extra.poke) &&
+                  window.__akiniHasReplyPool &&
+                  !window.__akiniHasReplyPool(e.id || t)
+                ) {
+                  try {
+                    window.__akiniNotifyEmptyReply && window.__akiniNotifyEmptyReply();
+                  } catch (t) {}
+                  return void R(t);
+                }
                 var a = t === window.akiniContacts.getActiveChatId(),
                   o = 1500 + 2500 * Math.random(),
                   r = parseFloat(localStorage.getItem("akini_num_replyDelayMin") || "3"),
                   c = parseFloat(localStorage.getItem("akini_num_replyDelayMax") || "7");
                 (r > 0 || (r = 3), c >= r || (c = Math.max(r, 7)));
-                var s = parseFloat(localStorage.getItem("akini_num_typingDelayMin") || "3"),
-                  l = parseFloat(localStorage.getItem("akini_num_typingDelayMax") || "5");
-                (s > 0 || (s = 3), l >= s || (l = Math.max(s, 5)));
-                var d = o + 1e3 * (r + Math.random() * (c - r)),
-                  u = Math.max(o + 400, d - 1e3 * (s + Math.random() * (l - s)));
+                var d = 1e3 * (r + Math.random() * (c - r));
                 (setTimeout(function () {
                   var t = document.getElementById("chatBody");
                   t &&
@@ -9737,7 +9741,7 @@ window.__akiniCleanGhostBubbles = function (root) {
                         } catch (t) {}
                     });
                 }, o),
-                  setTimeout(function () {
+                  (function () {
                     if (a && (!window.__akiniTypingMap || !window.__akiniTypingMap[t])) {
                       var n = document.getElementById("typingIndicator");
                       n && (n.style.display = "block");
@@ -9745,13 +9749,10 @@ window.__akiniCleanGhostBubbles = function (root) {
                         O(t, null);
                       } catch (t) {}
                     }
-                  }, u),
+                  })(),
                   setTimeout(function () {
                     var i = document.getElementById("typingIndicator");
                     i && (i.style.display = "none");
-                    try {
-                      R(t);
-                    } catch (t) {}
                     window.I(t, e, n, !0);
                   }, d));
               }
@@ -10976,13 +10977,10 @@ be = "",
         Ie.addEventListener("change", function () {
           var t = this.files[0];
           if (t) {
-            var e = new FileReader();
-            ((e.onload = function (t) {
-              var e = t.target.result || "";
+            St(t, function (e) {
               ((be = e), Se && (setHtmlKeepInput(Se, zt(e, 80)), Se.setAttribute("data-avatar", e)));
-            }),
-              e.readAsDataURL(t),
-              (this.value = ""));
+            });
+            this.value = "";
           }
         })));
 Ce = document.getElementById("addContactConfirmBtn");
@@ -11110,11 +11108,9 @@ Wn =
           const t = Array.from(this.files);
           t.length &&
             (t.forEach(function (t) {
-              const e = new FileReader();
-              ((e.onload = function (t) {
-                (L(), window.__akiniSendImageDataUrl && window.__akiniSendImageDataUrl(t.target.result));
-              }),
-                e.readAsDataURL(t));
+              window.__akiniOptimizeImage(t, function (dataUrl) {
+                if (dataUrl) (L(), window.__akiniSendImageDataUrl && window.__akiniSendImageDataUrl(dataUrl));
+              });
             }),
             (this.value = ""));
         }),
@@ -11215,15 +11211,13 @@ Ae = [];
                     e = t.length;
                   e &&
                     (t.forEach(function (t) {
-                      var n = new FileReader();
-                      ((n.onload = function (t) {
+                      window.__akiniOptimizeImage(t, function (dataUrl) {
                         (Ae.push({
                           type: "image",
-                          dataUrl: t.target.result,
+                          dataUrl: dataUrl,
                         }),
                           0 === --e && Te());
-                      }),
-                        n.readAsDataURL(t));
+                      }, 600, 0.8);
                     }),
                     (this.value = ""));
                 }),
@@ -11637,22 +11631,20 @@ ki = document.getElementById("changeChatWallpaperBtn"),
         bi.addEventListener("change", function () {
           const t = this.files[0];
           if (!t) return;
-          const e = window.akiniContacts ? window.akiniContacts.getActiveChatId() : null,
-            n = new FileReader();
-          ((n.onload = function (t) {
+          const e = window.akiniContacts ? window.akiniContacts.getActiveChatId() : null;
+          window.__akiniOptimizeImage(t, function (dataUrl) {
             const n = document.getElementById("chatBody");
             (n &&
-              (__akiniGuardBg(n, t.target.result),
+              (__akiniGuardBg(n, dataUrl),
               (n.style.backgroundSize = "cover"),
               (n.style.backgroundPosition = "center"),
               (n.style.backgroundRepeat = "no-repeat"),
               /* 记录当前壁纸：回到前台/重进聊天时的自愈要以它为准 */
-              n.setAttribute("data-current-bg", t.target.result)),
-              e && rt("akini_chat_bg_" + e, t.target.result),
+              n.setAttribute("data-current-bg", dataUrl)),
+              e && rt("akini_chat_bg_" + e, dataUrl),
               At && ((At.style.display = "none"), (At.style.pointerEvents = "none")));
-          }),
-            n.readAsDataURL(t),
-            (this.value = ""));
+          });
+          this.value = "";
         }),
         (window.__akiniUpdateChatBackBadge = function () {
           try {
@@ -14617,16 +14609,14 @@ ki = document.getElementById("changeChatWallpaperBtn"),
             m.addEventListener("change", function () {
               const t = this.files[0];
               if (!t) return;
-              const e = new FileReader();
-              ((e.onload = function (t) {
-                ((w = t.target.result),
+              window.__akiniOptimizeImage(t, function (dataUrl) {
+                ((w = dataUrl),
                   u &&
                     setHtmlKeepInput(
                       u,
                       `<img src="${w}" style="height:60px;border-radius:8px;object-fit:cover;"> <span style="font-size:12px;color:#999;margin-left:8px;">已选择</span>`,
                     ));
-              }),
-                e.readAsDataURL(t));
+              });
             }),
             c(o, function () {
               r &&
@@ -17967,51 +17957,42 @@ Vi = document.getElementById("transferBtn"),
               S.addEventListener("change", function () {
                 var t = this.files[0];
                 if (((this.value = ""), t)) {
-                  var e = new FileReader();
-                  ((e.onload = function (t) {
+                  window.__akiniOptimizeImage(t, function (dataUrl) {
+                    if (!dataUrl) {
+                      alert("图片读取失败，请换一张试试");
+                      return;
+                    }
                     try {
-                      (window._icityBgCache = window._icityBgCache || {})[k] = t.target.result;
+                      (window._icityBgCache = window._icityBgCache || {})[k] = dataUrl;
                     } catch (t) {}
                     try {
-                      window.akiniStore &&
-                        window.akiniStore.memorySet &&
-                        window.akiniStore.memorySet(k, t.target.result);
+                      window.akiniStore && window.akiniStore.memorySet && window.akiniStore.memorySet(k, dataUrl);
                     } catch (t) {}
-                    _idbStore.set(k, t.target.result, function () {
+                    _idbStore.set(k, dataUrl, function () {
                       try {
                         localStorage.removeItem(k);
                       } catch (t) {}
                       try {
-                        window.akiniStore &&
-                          window.akiniStore.memorySet &&
-                          window.akiniStore.memorySet(k, t.target.result);
+                        window.akiniStore && window.akiniStore.memorySet && window.akiniStore.memorySet(k, dataUrl);
                       } catch (t) {}
                       try {
-                        (window._icityBgCache = window._icityBgCache || {})[k] = t.target.result;
+                        (window._icityBgCache = window._icityBgCache || {})[k] = dataUrl;
                       } catch (t) {}
                     });
                     var e = document.getElementById("icityEditMyBgPreview");
                     e &&
                       (k.indexOf("_bg") >= 0
-                        ? (__akiniGuardBg(e, t.target.result), (e.style.backgroundSize = "cover"))
+                        ? (__akiniGuardBg(e, dataUrl), (e.style.backgroundSize = "cover"))
                         : __akiniGuardHtml(
                             e,
-                            '<img src="' +
-                              t.target.result +
-                              '" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">',
+                            '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">',
                           ));
                     var n = document.getElementById("icityMyBgArea");
                     n &&
-                      (__akiniGuardBg(n, t.target.result),
+                      (__akiniGuardBg(n, dataUrl),
                       (n.style.backgroundSize = "cover"),
                       (n.style.backgroundPosition = "center"));
-                  }),
-                    (e.onerror = function () {
-                      try {
-                        alert("图片读取失败，请换一张试试");
-                      } catch (t) {}
-                    }),
-                    e.readAsDataURL(t));
+                  });
                 }
               }));
           var T = document.getElementById("icityEditTaBgBtn"),
@@ -18021,20 +18002,18 @@ Vi = document.getElementById("transferBtn"),
             M.addEventListener("change", function () {
               var t = this.files[0];
               if (t && window._icityEditContactId) {
-                var e = new FileReader();
-                ((e.onload = function (t) {
+                window.__akiniOptimizeImage(t, function (dataUrl) {
                   var e = "akini_icity_ta_bg_" + window._icityEditContactId;
                   try {
-                    (window._icityBgCache = window._icityBgCache || {})[e] = t.target.result;
+                    (window._icityBgCache = window._icityBgCache || {})[e] = dataUrl;
                   } catch (t) {}
                   try {
-                    window.akiniStore && window.akiniStore.memorySet && window.akiniStore.memorySet(e, t.target.result);
+                    window.akiniStore && window.akiniStore.memorySet && window.akiniStore.memorySet(e, dataUrl);
                   } catch (t) {}
-                  _idbStore.set(e, t.target.result);
+                  _idbStore.set(e, dataUrl);
                   var n = document.getElementById("icityEditTaBgPreview");
-                  n && (__akiniGuardBg(n, t.target.result), (n.style.backgroundSize = "cover"));
-                }),
-                  e.readAsDataURL(t));
+                  n && (__akiniGuardBg(n, dataUrl), (n.style.backgroundSize = "cover"));
+                });
               }
             });
           var B = document.getElementById("icityEditTaAvatarBtn"),
@@ -18629,18 +18608,16 @@ window.__akiniPatchAvatarCell = function (t, e) {
             (l.addEventListener("change", function () {
               const t = this.files[0];
               if (!t) return;
-              const e = new FileReader();
-              ((e.onload = function (t) {
+              window.__akiniOptimizeImage(t, function (dataUrl) {
                 const e = document.getElementById("phoneFrame");
                 (e &&
-                  (__akiniGuardBg(e, t.target.result),
+                  (__akiniGuardBg(e, dataUrl),
                   (e.style.backgroundSize = "cover"),
                   (e.style.backgroundPosition = "center"),
                   (e.style.backgroundRepeat = "no-repeat"),
                   e.classList.add("has-custom-bg")),
-                  rt("akini_home_bg", t.target.result));
-              }),
-                e.readAsDataURL(t));
+                  rt("akini_home_bg", dataUrl));
+              });
             }),
             ct("akini_home_bg", function (t) {
               if (t) {
@@ -18727,9 +18704,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
             (d.addEventListener("change", function () {
               const t = this.files[0];
               if (!t) return;
-              const e = new FileReader();
-              ((e.onload = function (t) {
-                var e = t.target.result;
+              window.__akiniOptimizeImage(t, function (e) {
                 function n(t) {
                   window.__akiniCurrentMusicBg = t;
                   try {
@@ -18781,9 +18756,8 @@ window.__akiniPatchAvatarCell = function (t, e) {
                     n(e);
                   }),
                   __akiniGuardSrc(i, e));
-              }),
-                e.readAsDataURL(t),
-                (this.value = ""));
+              });
+              this.value = "";
             }),
             (u = function (t) {
               if (!t) return;
@@ -18817,10 +18791,8 @@ window.__akiniPatchAvatarCell = function (t, e) {
                 } catch (t) {}
                 return;
               }
-              const e = new FileReader();
-              ((e.onload = function (t) {
-                const e = t.target.result,
-                  n = document.getElementById("bgArea");
+              window.__akiniOptimizeImage(t, function (e) {
+                const n = document.getElementById("bgArea");
                 (n &&
                   (__akiniGuardBg(n, e), (n.style.backgroundSize = "cover"), (n.style.backgroundPosition = "center")),
                   rt("akini_bg_img", e));
@@ -18836,41 +18808,34 @@ window.__akiniPatchAvatarCell = function (t, e) {
                       window.akiniStore.set("akini_bg_img", e),
                       window.akiniStore.flushIdb && window.akiniStore.flushIdb()));
                 } catch (t) {}
-              }),
-                e.readAsDataURL(t),
-                (this.value = ""));
+              });
+              this.value = "";
             });
           const w = document.getElementById("fileInputCoverBg");
           w &&
             w.addEventListener("change", function () {
               const t = this.files[0];
               if (!t) return;
-              const e = new FileReader();
-              ((e.onload = function (t) {
-                const e = t.target.result,
-                  n = document.getElementById("coverAreaMain");
+              window.__akiniOptimizeImage(t, function (e) {
+                const n = document.getElementById("coverAreaMain");
                 (n &&
                   (__akiniGuardBg(n, e), (n.style.backgroundSize = "cover"), (n.style.backgroundPosition = "center")),
                   rt("akini_cover_img", e));
-              }),
-                e.readAsDataURL(t),
-                (this.value = ""));
+              });
+              this.value = "";
             });
           const g = document.getElementById("fileInputFriendsBgBeautify");
           g &&
             g.addEventListener("change", function () {
               const t = this.files[0];
               if (!t) return;
-              const e = new FileReader();
-              ((e.onload = function (t) {
-                const e = t.target.result,
-                  n = document.getElementById("friendsHeader");
+              window.__akiniOptimizeImage(t, function (e) {
+                const n = document.getElementById("friendsHeader");
                 (n &&
                   (__akiniGuardBg(n, e), (n.style.backgroundSize = "cover"), (n.style.backgroundPosition = "center")),
                   rt("akini_friends_bg", e));
-              }),
-                e.readAsDataURL(t),
-                (this.value = ""));
+              });
+              this.value = "";
             });
           /* 通话背景换图由内联 onchange（call-background.js）统一处理，这里不再重复读文件/落盘 */
 
@@ -19634,7 +19599,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                   t("akini_toggle_contactFriendsToggle", "0"),
                   t("akini_toggle_contactIcityToggle", "0"),
                   t("akini_toggle_contactMailToggle", "0"),
-                  t("akini_toggle_emojiMixToggle", "0"));
+                  t("akini_toggle_emojiMixToggle", "1"));
                 var e = function (t, e, n, i, a) {
                   var o = parseFloat(localStorage.getItem(t) || ""),
                     r = parseFloat(localStorage.getItem(e) || "");
@@ -19955,7 +19920,13 @@ window.__akiniPatchAvatarCell = function (t, e) {
             t("readReceiptToggle", !1),
             t("readNoReplyToggle", !1),
             t("pinyinCardToggle", !1),
-            t("emojiMixToggle", !1),
+            (function () {
+              try {
+                "1" === localStorage.getItem("akini_toggle_emojiMixToggle_user") ||
+                  localStorage.setItem("akini_toggle_emojiMixToggle", "1");
+              } catch (t) {}
+            })(),
+            t("emojiMixToggle", !0),
             t("contactPokeToggle", !1),
             (function () {
               try {
@@ -20375,9 +20346,6 @@ window.__akiniPatchAvatarCell = function (t, e) {
           var a = Math.random() < 0.75 ? 1 : Math.random() < 0.95 ? 2 : 3,
             o = parseFloat(localStorage.getItem("akini_num_replyDelayMin") || "3"),
             r = parseFloat(localStorage.getItem("akini_num_replyDelayMax") || "7");
-          /* 主动发消息也走同一条 3 条预算，和自动回复叠加时绝不超三条 */
-          if (window.__akiniReplyBudget) a = window.__akiniReplyBudget(t, a);
-          if (!a) return;
           (o > 0 || (o = 3), r >= o || (r = Math.max(o, 7)));
           var c = 600 + 900 * Math.random();
           ("number" == typeof e && e > 0 && (c = Math.max(c, e)),
@@ -22101,29 +22069,13 @@ window.__akiniPatchAvatarCell = function (t, e) {
               yt.addEventListener("change", function () {
                 !(function (t) {
                   var e = t && t.files && t.files[0];
-                  if (e) {
-                    var n = new Image(),
-                      i = URL.createObjectURL(e);
-                    ((n.onload = function () {
-                      URL.revokeObjectURL(i);
-                      var t = 500,
-                        e = n.width,
-                        a = n.height;
-                      (e > t || a > t) &&
-                        (e >= a ? ((a = Math.round((a * t) / e)), (e = t)) : ((e = Math.round((e * t) / a)), (a = t)));
-                      var o = document.createElement("canvas");
-                      ((o.width = e), (o.height = a), o.getContext("2d").drawImage(n, 0, 0, e, a));
-                      try {
-                        ((_t = o.toDataURL("image/jpeg", 0.8)), ae("封面已导入"));
-                      } catch (t) {
-                        ae("封面导入失败，请重试");
-                      }
-                    }),
-                      (n.onerror = function () {
-                        (URL.revokeObjectURL(i), ae("封面图片读取失败"));
-                      }),
-                      __akiniGuardSrc(n, i));
-                  }
+                  if (e)
+                    window.__akiniOptimizeImage(e, function (dataUrl) {
+                      if (dataUrl) {
+                        _t = dataUrl;
+                        ae("封面已导入");
+                      } else ae("封面图片读取失败");
+                    }, 500, 0.8);
                 })(yt);
               });
             var ht = function () {

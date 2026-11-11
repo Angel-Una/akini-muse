@@ -179,110 +179,114 @@ window.__akiniPerfMark = function () {};
   }
 })();
 (function () {
-  try {
-    if (!window.FileReader || !window.HTMLCanvasElement) return;
-    var MAX_SIDE = 1080;
-    var MAX_BYTES = 300 * 1024;
-    var nativeRead = FileReader.prototype.readAsDataURL;
+  if (!window.FileReader || !window.HTMLCanvasElement) return;
+  var MAX_BYTES = 300 * 1024;
 
-    function emit(fr, dataUrl) {
+  function readOriginal(file, callback) {
+    if (!file) {
+      callback("");
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function (event) {
+      callback((event.target && event.target.result) || "");
+    };
+    reader.onerror = function () {
+      callback("");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function optimizeImage(file, callback, maxWidth, quality) {
+    maxWidth = Number(maxWidth) > 0 ? Number(maxWidth) : 800;
+    quality = Number(quality) > 0 ? Number(quality) : 0.7;
+    if (!file || !file.size || file.size < MAX_BYTES) {
+      readOriginal(file, callback);
+      return;
+    }
+    var url;
+    try {
+      url = URL.createObjectURL(file);
+    } catch (e) {
+      readOriginal(file, callback);
+      return;
+    }
+    var img = new Image();
+    var finished = false;
+    function release() {
       try {
-        Object.defineProperty(fr, "result", { value: dataUrl, configurable: true });
-      } catch (e) {}
-      try {
-        Object.defineProperty(fr, "readyState", { value: 2, configurable: true });
-      } catch (e) {}
-      try {
-        fr.dispatchEvent(
-          new ProgressEvent("load", { lengthComputable: true, loaded: dataUrl.length, total: dataUrl.length }),
-        );
-      } catch (e) {}
-      try {
-        fr.dispatchEvent(
-          new ProgressEvent("loadend", { lengthComputable: true, loaded: dataUrl.length, total: dataUrl.length }),
-        );
+        URL.revokeObjectURL(url);
       } catch (e) {}
     }
-
-    FileReader.prototype.readAsDataURL = function (blob) {
-      var fr = this;
-      var type = (blob && blob.type) || "";
-      if (
-        !blob ||
-        !/^image\//.test(type) ||
-        type === "image/svg+xml" ||
-        type === "image/gif" ||
-        !blob.size ||
-        blob.size <= MAX_BYTES
-      ) {
-        return nativeRead.call(fr, blob);
-      }
-      var url;
+    function fallback() {
+      if (finished) return;
+      finished = true;
+      release();
+      readOriginal(file, callback);
+    }
+    img.onload = function () {
+      if (finished) return;
+      finished = true;
       try {
-        url = URL.createObjectURL(blob);
-      } catch (e) {
-        return nativeRead.call(fr, blob);
-      }
-      var img = new Image();
-      var done = false;
-      function release() {
-        try {
-          URL.revokeObjectURL(url);
-        } catch (e) {}
-      }
-      function retryNative() {
-        if (done) return;
-        done = true;
-        release();
-        nativeRead.call(fr, blob);
-      }
-      img.onload = function () {
-        if (done) return;
-        done = true;
-        try {
-          var w = img.naturalWidth || img.width;
-          var h = img.naturalHeight || img.height;
-          var scale = Math.min(1, MAX_SIDE / Math.max(w, h));
-          var cw = Math.max(1, Math.round(w * scale));
-          var ch = Math.max(1, Math.round(h * scale));
-          var canvas = document.createElement("canvas");
-          canvas.width = cw;
-          canvas.height = ch;
-          canvas.getContext("2d").drawImage(img, 0, 0, cw, ch);
-          var out = canvas.toDataURL(type === "image/png" ? "image/png" : "image/jpeg", 0.75);
-          /* 二次压缩：极少数纹理复杂的图（截图/噪点照片）即便缩放后仍很大，
-             再缩到 900px / 0.6 编码一次，避免单张图就把 localStorage 配额吃掉。 */
-          try {
-            if (out && type !== "image/png" && out.length > 700 * 1024) {
-              var s2 = Math.min(1, 900 / Math.max(cw, ch));
-              var c2 = document.createElement("canvas");
-              c2.width = Math.max(1, Math.round(cw * s2));
-              c2.height = Math.max(1, Math.round(ch * s2));
-              c2.getContext("2d").drawImage(canvas, 0, 0, c2.width, c2.height);
-              var out2 = c2.toDataURL("image/jpeg", 0.6);
-              if (out2 && out2.length > 32 && out2.length < out.length) out = out2;
-            }
-          } catch (e2c) {}
-          release();
-          if (!out || out.length < 32) {
-            done = false;
-            retryNative();
-            return;
-          }
-          emit(fr, out);
-        } catch (e) {
-          done = false;
-          retryNative();
+        var width = img.naturalWidth || img.width;
+        var height = img.naturalHeight || img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
         }
-      };
-      img.onerror = retryNative;
-      try {
-        img.src = url;
+        var canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        var ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, width, height);
+        var out = canvas.toDataURL("image/jpeg", quality);
+        release();
+        callback(out);
       } catch (e) {
-        retryNative();
+        finished = false;
+        fallback();
       }
     };
-  } catch (e) {}
+    img.onerror = fallback;
+    img.src = url;
+  }
+
+  function cropImageToSquare(file, callback, maxSize) {
+    maxSize = Number(maxSize) > 0 ? Number(maxSize) : 640;
+    readOriginal(file, function (dataUrl) {
+      if (!dataUrl) {
+        callback("");
+        return;
+      }
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var side = Math.min(img.naturalWidth || img.width, img.naturalHeight || img.height);
+          var sx = ((img.naturalWidth || img.width) - side) / 2;
+          var sy = ((img.naturalHeight || img.height) - side) / 2;
+          var canvas = document.createElement("canvas");
+          canvas.width = maxSize;
+          canvas.height = maxSize;
+          var ctx = canvas.getContext("2d");
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, sx, sy, side, side, 0, 0, maxSize, maxSize);
+          callback(canvas.toDataURL("image/jpeg", 0.95));
+        } catch (e) {
+          callback(dataUrl);
+        }
+      };
+      img.onerror = function () {
+        callback("");
+      };
+      img.src = dataUrl;
+    });
+  }
+
+  window.__akiniOptimizeImage = optimizeImage;
+  window.__akiniCropImageSquare = cropImageToSquare;
 })();
 (function () {
   try {
