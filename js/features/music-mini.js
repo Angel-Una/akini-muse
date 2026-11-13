@@ -8,6 +8,10 @@
   var coverEl = null;
   var iconEl = null;
   var timer = null;
+  var lastShow = null;
+  var lastPlaying = null;
+  var lastCover = null;
+  var lastOpacity = null;
 
   var PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
   var PAUSE_SVG =
@@ -193,22 +197,36 @@
       "1" === localStorage.getItem("akini_music_listening_active") &&
       !isPageVisible("app-music") &&
       !playlistOpen;
-    root.style.display = show ? "flex" : "none";
+    if (show !== lastShow) {
+      root.style.display = show ? "flex" : "none";
+      lastShow = show;
+    }
     if (!show) {
-      root.classList.remove("open");
+      if (root.classList.contains("open")) root.classList.remove("open");
+      lastPlaying = null;
       return;
     }
     var playing = isPlaying();
-    root.classList.toggle("playing", playing);
-    if (iconEl) iconEl.innerHTML = playing ? PAUSE_SVG : PLAY_SVG;
+    if (playing !== lastPlaying) {
+      root.classList.toggle("playing", playing);
+      if (iconEl) iconEl.innerHTML = playing ? PAUSE_SVG : PLAY_SVG;
+      lastPlaying = playing;
+    }
     var coverSrc = document.getElementById("musicCover");
     if (coverEl) {
       var cover = "";
       try {
         cover = (coverSrc && (coverSrc.currentSrc || coverSrc.src)) || "";
       } catch (e) {}
-      if (cover && coverEl.getAttribute("src") !== cover) coverEl.setAttribute("src", cover);
-      coverEl.style.opacity = cover ? "1" : "0";
+      if (cover !== lastCover) {
+        if (cover && coverEl.getAttribute("src") !== cover) coverEl.setAttribute("src", cover);
+        lastCover = cover;
+      }
+      var opacity = cover ? "1" : "0";
+      if (opacity !== lastOpacity) {
+        coverEl.style.opacity = opacity;
+        lastOpacity = opacity;
+      }
     }
   }
 

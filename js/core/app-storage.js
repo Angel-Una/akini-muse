@@ -498,7 +498,6 @@
         var quotaBytes = est.quota > 0 ? est.quota : 0;
         _renderCatRows(mergedCats);
         if (totalLine) {
-          var totalTxt = quotaBytes > 0 ? fmtSize(usedBytes) + " / " + fmtSize(quotaBytes) : fmtSize(usedBytes);
           totalLine.innerHTML =
             "已用 <b>" +
             fmtSize(usedBytes) +
@@ -1389,10 +1388,6 @@ window._akiniAllowRemove = true;
               var late = [],
                 newer = [];
               pendingImgs.forEach(function (k) {
-                var local = null;
-                try {
-                  local = localStorage.getItem(k);
-                } catch (e) {}
                 var mem = null;
                 try {
                   if (window.akiniStore && window.akiniStore.memoryGet) mem = window.akiniStore.memoryGet(k);
@@ -1455,7 +1450,6 @@ window._akiniAllowRemove = true;
         backup(false);
       }, 2000); // 回前台 2s 后补跑，避开 UI 恢复高峰
     } });
-
   // 这两件事是安卓上最持续的主线程卡顿源；本地 IndexedDB 已是权威，云端只在切后台时补一份。
   restore();
 

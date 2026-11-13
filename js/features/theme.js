@@ -654,9 +654,6 @@
   function G(id) {
     return document.getElementById(id);
   }
-  function isDark() {
-    return document.body.classList.contains("dark-mode");
-  }
   function removeWhiteBg(dataUrl, cb) {
     var img = new Image();
     img.onload = function () {

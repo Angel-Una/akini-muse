@@ -292,10 +292,6 @@
     var contacts = getContacts();
     if (!contacts.length) return;
 
-    var myName =
-      app === "icity"
-        ? localStorage.getItem("akini_icity_my_nick") || localStorage.getItem("akini_my_name") || "我"
-        : localStorage.getItem("akini_my_name") || "我";
     var didAnything = false;
 
     contacts.forEach(function (contact) {

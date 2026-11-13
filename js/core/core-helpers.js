@@ -1,6 +1,4 @@
 var AKINI_CHAT_BATCH_SIZE = 25;
-
-
 var AKINI_MAX_DOM_ROWS = 200;
 function __akiniStripTypingRows(t) {
   if (!t || "string" != typeof t) return t || "";
@@ -109,9 +107,6 @@ function __akiniCapHistory(html, t, maxRows) {
     return html;
   }
 }
-
-
-
 
 (window.addEventListener("akini-img-ready", function () {
   try {

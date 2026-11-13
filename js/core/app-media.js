@@ -785,6 +785,9 @@ window._akiniAllowRemove = false;
     function writeAll() {
       var count = 0;
       var finished = false;
+      // 部分数据（TA 手机通话记录等）只走默认 localforage 单通道，
+      // 恢复时必须同步写回 localforage，否则 loadCallRecords 等读取方拿不到数据。
+      var _lfPromises = [];
       function finishOk() {
         if (finished) return;
         finished = true;
@@ -806,11 +809,24 @@ window._akiniAllowRemove = false;
 
           if (done) done(count);
         };
+        // 等待 localforage 写入完成（通话记录等只存在 localforage 的键），
+        // 再继续收尾；若 localforage 不可用或写入异常，不阻塞整体恢复。
+        var _lfDone = function () {
+          try {
+            if (window.akiniStore && window.akiniStore.flushIdb) window.akiniStore.flushIdb(_afterFlush);
+            else _afterFlush();
+          } catch (e) {
+            _afterFlush();
+          }
+        };
         try {
-          if (window.akiniStore && window.akiniStore.flushIdb) window.akiniStore.flushIdb(_afterFlush);
-          else _afterFlush();
+          if (_lfPromises.length && window.Promise && Promise.all) {
+            Promise.all(_lfPromises).then(_lfDone, _lfDone);
+          } else {
+            _lfDone();
+          }
         } catch (e) {
-          _afterFlush();
+          _lfDone();
         }
         /* IDB.set 的回调在个别机型/配额紧张时可能永远不回来（事务 abort、回调丢失），
            导致导入完成回调永不执行：看起来"导入完了但界面还是旧的"，缓存里还留着
@@ -831,6 +847,14 @@ window._akiniAllowRemove = false;
         try {
           localStorage.setItem(key, value);
         } catch (e) {}
+        // 同步写入默认 localforage：通话记录（akini_ta_calls_*）等数据
+        // 只从 localforage 读取，不写回的话恢复后会"消失"。
+        if (key && String(key).indexOf("akini_") === 0 && window.localforage) {
+          try {
+            var p = localforage.setItem(key, value);
+            if (p && typeof p.then === "function") _lfPromises.push(p);
+          } catch (eLf) {}
+        }
       }
 
       // 分批写入：每批 25 键后让出主线程，大备份（含媒体内联）降到每批 8 键，避免页面假死
@@ -888,12 +912,10 @@ window._akiniAllowRemove = false;
       if (window.__akiniChatLog && window.__akiniChatLog.reset) window.__akiniChatLog.reset();
     } catch (e) {}
     try {
-      if (window.__akiniImgCache) {
+      if (window.__akiniImgCacheClear) window.__akiniImgCacheClear();
+      else if (window.__akiniImgCache) {
         for (var _ik in window.__akiniImgCache) delete window.__akiniImgCache[_ik];
       }
-    } catch (e) {}
-    try {
-      if (window.localforage && localforage.clear) localforage.clear().catch(function () {});
     } catch (e) {}
 
     var importFail = function (msg) {
@@ -904,23 +926,32 @@ window._akiniAllowRemove = false;
 
       if (errCb) errCb(msg);
     };
+    // 等默认 localforage 的清空完成再写入，避免 clear 与 setItem 竞态导致
+    // 通话记录等只存在 localforage 的键被清空覆盖。
+    var _startWrite = function () {
+      try {
+        writeAll();
+      } catch (e) {
+        importFail("导入写入失败：" + e.message);
+      }
+    };
     if (window._idbStore && window._idbStore.clearAll) {
       try {
         window._idbStore.clearAll(function () {
-          try {
-            writeAll();
-          } catch (e) {
-            importFail("导入写入失败：" + e.message);
+          if (window.localforage && localforage.clear && typeof Promise !== "undefined") {
+            localforage.clear().then(_startWrite, _startWrite);
+          } else {
+            _startWrite();
           }
         });
       } catch (e) {
         importFail("清空旧数据失败：" + e.message);
       }
     } else {
-      try {
-        writeAll();
-      } catch (e) {
-        importFail("导入写入失败：" + e.message);
+      if (window.localforage && localforage.clear && typeof Promise !== "undefined") {
+        localforage.clear().then(_startWrite, _startWrite);
+      } else {
+        _startWrite();
       }
     }
   }

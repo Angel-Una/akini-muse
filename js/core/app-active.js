@@ -63,9 +63,6 @@
 
   function _arm(delay) {
     if (msgTimer) clearTimeout(msgTimer);
-    
-
-
     try {
       localStorage.setItem("akini_active_msg_next", String(Date.now() + Math.max(2000, delay)));
     } catch (e) {}
@@ -119,8 +116,6 @@
       } catch (e) {}
     _arm(_randomIntervalMs());
   }
-
-  
 
   window.__akiniOnVisible(function () { manage(true); });
 

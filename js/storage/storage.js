@@ -16,7 +16,6 @@
       var migrated = 0;
       var freedBytes = 0;
       var keysToCheck = [];
-      var totalBytes = 0;
       for (var idx = 0; idx < totalKeys; idx++) {
         try {
           var k = origKey ? origKey.call(rawLS, idx) : rawLS.key(idx);
@@ -111,7 +110,6 @@
       try {
         rawLS.setItem(_MIG_FLAG, "1");
       } catch (e) {}
-      _lsImgUsed = -1;
     } catch (e) {}
   }
 
@@ -150,6 +148,13 @@
   } catch (e) {}
 
   var HIGH_FREQ_RE = /^akini_(next_|last_)/; // 高频调度键不镜像，避免事务堆积
+  function _isFullSnapshotKey(k) {
+    return (
+      k === "akini_localstorage_snapshot" ||
+      k === "akini_localstorage_snapshot_backup" ||
+      k === "akini_idb_full_snapshot"
+    );
+  }
 
   // 首页/头像/背景等关键图片必须保留在 localStorage，否则首屏会出现先空白/旧图再闪成新图
   var _ESSENTIAL_IMG_KEYS = {
@@ -537,7 +542,6 @@
     try {
       if (origSet) origSet.call(rawLS, k, v);
       else rawLS.setItem(k, v);
-      if (isImgKey(k)) _lsImgUsed = -1;
       return true;
     } catch (e) {
       // 配额满（QuotaExceededError）：清理大体积图片键后重试，避免关键数据静默丢失
@@ -565,10 +569,12 @@
         backupCount = 0;
       for (var i = 0; i < keys.length; i++) {
         try {
-          var v = lsGet(keys[i]);
+          var scanKey = String(keys[i] || "");
+          if (_isFullSnapshotKey(scanKey)) continue;
+          var v = lsGet(scanKey);
           if (v && typeof v === "string") {
             total += v.length;
-            if (String(keys[i]).indexOf("akini_media_") === 0 && String(keys[i]).indexOf("_backup") > 0) backupCount++;
+            if (scanKey.indexOf("akini_media_") === 0 && scanKey.indexOf("_backup") > 0) backupCount++;
           }
         } catch (e) {}
       }
@@ -579,6 +585,7 @@
         var k = keys[j];
         if (!k) continue;
         var ks = String(k);
+        if (_isFullSnapshotKey(ks)) continue;
         // 清除媒体冗余备份键（主键由 IDB/rawLS 镜像兜底，删冗余副本不影响读取）
         if (ks.indexOf("akini_media_") === 0 && ks.indexOf("_backup") > 0) {
           lsRemoveRaw(k);
@@ -615,7 +622,6 @@
     }
   }
   function lsRemoveRaw(k) {
-    if (isImgKey(k)) _lsImgUsed = -1;
     try {
       if (origRemove) origRemove.call(rawLS, k);
       else rawLS.removeItem(k);
@@ -634,63 +640,122 @@
     } catch (e) {}
     return out;
   }
-  /* LS 里图片键当前占用的字符数。-1 表示未知（写入/删除图片后置为 -1 下次重算）。
-     恢复回填时用它保证 LS 图片总量不超过 1.4MB，剩余配额留给文字/名字/设置，
-     否则图片一多就把配额占满，所有文字类写入失败 → 刷新后"文字、昵称、设置全消失"。 */
-  var _lsImgUsed = -1;
-  /* LS 总字节数：旧代码对「每个需要回填的键」都全量遍历 localStorage 并逐个读值求和，
-     N 个键 × 整个 LS = 启动期 O(N²) 同步读盘，安卓切后台重进时直接把主线程卡死。
-     这里进程内只算一次。 */
-  var _lsTotCache = -1;
-  function _lsTotalLen() {
-    if (_lsTotCache >= 0) return _lsTotCache;
-    var tot = 0;
-    try {
-      for (var i = 0; i < rawLS.length; i++) {
-        var k = origKey ? origKey.call(rawLS, i) : rawLS.key(i);
-        var v = origGet ? origGet.call(rawLS, k) : rawLS.getItem(k);
-        if (v && typeof v === "string") tot += v.length;
-      }
-    } catch (e) {}
-    _lsTotCache = tot;
-    return tot;
-  }
+  /* 媒体驻留预算：essential 只决定后淘汰，不再绕过预算。 */
+  var _bootTight = false;
+  try {
+    if (window.__akiniLowMem) _bootTight = true;
+  } catch (eC3) {}
+  var _safeBoot = false;
+  try {
+    _safeBoot =
+      !!window.__AKINI_SAFE_MODE ||
+      !!window.__AKINI_STANDALONE ||
+      (document.documentElement && document.documentElement.classList.contains("akini-safe-mode"));
+  } catch (eSB) {}
+  var BIG_MEM_BUDGET = _safeBoot
+    ? 4 * 1024 * 1024
+    : _bootTight
+      ? 8 * 1024 * 1024
+      : ((typeof navigator !== "undefined" && navigator.deviceMemory) || 4) <= 4
+        ? 12 * 1024 * 1024
+        : 24 * 1024 * 1024;
   // ---- 内存缓存：同步读取的权威层，IDB 恢复后也会回填到这里 ----
   var memoryCache = {};
+  var _mediaEntries = {},
+    _mediaHead = null,
+    _mediaTail = null,
+    _mediaResidentBytes = 0;
+  function _deferResident(k) {
+    try {
+      window.__akiniDeferredKeys = window.__akiniDeferredKeys || {};
+      window.__akiniDeferredKeys[k] = 1;
+    } catch (e) {}
+  }
+  function _isMediaResident(k, v) {
+    if (typeof v !== "string") return false;
+    if (v.indexOf("data:") === 0) return true;
+    if (v.indexOf("data:image/") < 0 && v.indexOf("data:video/") < 0 && v.indexOf("data:audio/") < 0)
+      return false;
+    return /^(?:akini_(?:stickers_|favs_|media_|chat_history_)|akini_posts|akini_icity_diaries)/.test(String(k));
+  }
+  function _mediaUnlink(entry) {
+    if (entry.prev) entry.prev.next = entry.next;
+    else _mediaHead = entry.next;
+    if (entry.next) entry.next.prev = entry.prev;
+    else _mediaTail = entry.prev;
+    entry.prev = entry.next = null;
+  }
+  function _mediaLink(k, size) {
+    var entry = { key: k, size: size, essential: _isEssentialImgKey(k), prev: _mediaTail, next: null };
+    if (_mediaTail) _mediaTail.next = entry;
+    else _mediaHead = entry;
+    _mediaTail = entry;
+    _mediaEntries[k] = entry;
+    _mediaResidentBytes += size;
+  }
+  function _mediaDrop(k, deferred) {
+    var entry = _mediaEntries[k];
+    if (entry) {
+      _mediaUnlink(entry);
+      _mediaResidentBytes = Math.max(0, _mediaResidentBytes - entry.size);
+      delete _mediaEntries[k];
+    }
+    delete memoryCache[k];
+    if (deferred) _deferResident(k);
+  }
+  function _mediaTrim() {
+    while (_mediaResidentBytes > BIG_MEM_BUDGET && _mediaHead) {
+      var victim = _mediaHead;
+      while (victim && victim.essential) victim = victim.next;
+      if (!victim) victim = _mediaHead;
+      _mediaDrop(victim.key, true);
+    }
+  }
   function memGet(k) {
-    return memoryCache.hasOwnProperty(k) ? memoryCache[k] : null;
+    if (!memoryCache.hasOwnProperty(k)) return null;
+    var entry = _mediaEntries[k];
+    if (entry && _mediaTail !== entry) {
+      _mediaUnlink(entry);
+      entry.prev = _mediaTail;
+      entry.next = null;
+      if (_mediaTail) _mediaTail.next = entry;
+      else _mediaHead = entry;
+      _mediaTail = entry;
+    }
+    return memoryCache[k];
   }
   function memSet(k, v) {
-    /* 大 base64（图片/音频/视频）不驻留内存：JS 堆里同时压着几十上百 MB 的
-       base64 字符串，移动端会持续 GC，表现就是「不管点什么都卡」。
-       这类大值已有 IndexedDB 持久化 + store.js 的 objectURL 缓存兜底。
-       例外：首页/纪念日/封面/头像等关键 UI 图片键必须驻留内存——否则设置后内存里
-       仍是旧图，启动快照带着旧值，刷新后新图就被旧图顶掉（表现为「底图总是消失」）。
-       这类键总共十几个，驻留代价可忽略。 */
-    if (
-      typeof v === "string" &&
-      v.length > 400 * 1024 &&
-      v.indexOf("data:") === 0 &&
-      !_isEssentialImgKey(k)
-    )
-      return;
-    /* 超长聊天记录（尤其导入的备份里图片是内联 base64，单条会话可到几十 MB）
-       绝不整段驻留内存：打开会话时 chat-log / openChat 会按需从 IndexedDB 取。 */
+    /* 超长聊天记录仍交给 chat-log 按需读取。 */
     if (
       typeof v === "string" &&
       v.length > 2 * 1024 * 1024 &&
       String(k).indexOf("akini_chat_history") === 0
     ) {
-      try {
-        window.__akiniDeferredKeys = window.__akiniDeferredKeys || {};
-        window.__akiniDeferredKeys[k] = 1;
-      } catch (eDS) {}
-      return;
+      _mediaDrop(k, false);
+      _deferResident(k);
+      return false;
+    }
+    if (_mediaEntries[k]) _mediaDrop(k, false);
+    if (!_isMediaResident(k, v)) {
+      memoryCache[k] = v;
+      return true;
+    }
+    if (v.length > BIG_MEM_BUDGET) {
+      delete memoryCache[k];
+      _deferResident(k);
+      return false;
     }
     memoryCache[k] = v;
+    _mediaLink(k, v.length);
+    _mediaTrim();
+    if (!memoryCache.hasOwnProperty(k)) return false;
+    try {
+      if (window.__akiniDeferredKeys) delete window.__akiniDeferredKeys[k];
+    } catch (e) {}
+    return true;
   }
   function memRemove(k) {
-    delete memoryCache[k];
+    _mediaDrop(k, false);
   }
 
   // 大键（图片/壁纸 dataURL）不进 localStorage，只进内存缓存与 IndexedDB
@@ -734,11 +799,11 @@
       if (IDB && IDB.set && !IDB.__akiniMediaPatched) {
         IDB.__akiniMediaPatched = 1;
         var _origIdbSet = IDB.set;
-        IDB.set = function (k, v) {
+        IDB.set = function (k, v, cb) {
           try {
             if (v != null) v = _externalizeForPersist(k, v);
           } catch (eP) {}
-          return _origIdbSet.apply(IDB, [k, v]);
+          return _origIdbSet.call(IDB, k, v, cb);
         };
       }
     } catch (ePatch) {}
@@ -766,13 +831,6 @@
     }
   }
 
-  
-
-
-
-
-
-
   var MEDIA_REF_PRE = "akini-ref:";
   var MEDIA_KEY_PRE = "akini_mref_";
   var MEDIA_MIN_LEN = 24 * 1024;
@@ -780,7 +838,14 @@
   var _mediaMemQ = [];
   var _mediaMemBytes = 0;
   var _mediaRev = {};
+  var _mediaRevQ = [];
   var _mediaSeq = 0;
+  function _mediaRevPut(fp, id) {
+    if (_mediaRev[fp]) return;
+    _mediaRev[fp] = id;
+    _mediaRevQ.push(fp);
+    while (_mediaRevQ.length > 512) delete _mediaRev[_mediaRevQ.shift()];
+  }
   var _MEDIA_KEYS = { akini_posts: 1, akini_posts_backup: 1, akini_icity_diaries: 1, akini_icity_diaries_backup: 1 };
   var _DATAURL_RE = /^data:(?:image|video)\//;
   function _mediaRemember(id, d) {
@@ -804,7 +869,7 @@
     var fp = _mediaFp(d);
     if (_mediaRev[fp]) return _mediaRev[fp];
     var id = Date.now().toString(36) + "-" + _mediaSeq++;
-    _mediaRev[fp] = id;
+    _mediaRevPut(fp, id);
     _mediaRemember(id, d);
     try {
       var IDBm = getIDB();
@@ -928,7 +993,7 @@
                 _mediaRemember(id2, d);
                 /* 记住指纹→id：本次会话再落盘时复用同一个 id，不会生成重复媒体键 */
                 try {
-                  _mediaRev[_mediaFp(d)] = id2;
+                  _mediaRevPut(_mediaFp(d), id2);
                 } catch (eF) {}
                 map[id2] = d;
               }
@@ -956,6 +1021,9 @@
   function flushIdbQueue(cb) {
     _idbFlushTimer = null;
     var _fin = function () {
+      Object.keys(_mediaMemo).forEach(function (k) {
+        if (_mediaMemo[k]) _mediaMemo[k].expanded = null;
+      });
       if (typeof cb === "function") {
         var f = cb;
         cb = null;
@@ -1054,7 +1122,6 @@
     if (m !== null) return m;
     return lsGet(k);
   }
-  
   var CHAT_PRE = "akini_chat_history_",
     MSGS_PRE = "akini_chat_msgs_";
   /* 旧版把聊天拆成 MSGS_PRE 数组；仅保留 _chatJoin 供读取旧数据，不再新写数组副本 */
@@ -1126,14 +1193,9 @@
       markDirty(k);
       lsRemoveRaw(k);
       if (k.indexOf("akini_chat_history") === 0) {
-        
-
         if (isCriticalKey(k)) {
           if (!_restored) _preRestorePending[k] = v;
           else {
-            
-
-
             queueIdbWrite(k, v);
           }
         }
@@ -1260,26 +1322,18 @@
   //     不驻留内存（记入 __akiniDeferredKeys），读取时按需从 IDB 异步水合。
   var _restored = false;
   var _restoring = false;
-  /* 仅低内存设备（deviceMemory<=1）收紧预算 */
-  var _bootTight = false;
-  try {
-    if (window.__akiniLowMem) _bootTight = true;
-  } catch (eC3) {}
-  /* 连续闪退触发的轻量模式：进一步压低图片驻留预算，把内存让给首屏 */
-  var _safeBoot = false;
-  try {
-    _safeBoot =
-      !!window.__AKINI_SAFE_MODE ||
-      !!window.__AKINI_STANDALONE ||
-      (document.documentElement && document.documentElement.classList.contains("akini-safe-mode"));
-  } catch (eSB) {}
-  var BIG_MEM_BUDGET = _safeBoot
-    ? 4 * 1024 * 1024
-    : _bootTight
-      ? 8 * 1024 * 1024
-      : ((typeof navigator !== "undefined" && navigator.deviceMemory) || 4) <= 4
-        ? 12 * 1024 * 1024
-        : 24 * 1024 * 1024;
+  var _restoreCallbacks = [];
+  function _flushRestoreCallbacks() {
+    var list = _restoreCallbacks;
+    _restoreCallbacks = [];
+    list.forEach(function (cb) {
+      setTimeout(function () {
+        try {
+          cb();
+        } catch (e) {}
+      }, 0);
+    });
+  }
   /* 启动对账批大小与间隔 */
   var _BOOT_BATCH = 24;
   var _BOOT_BATCH_DELAY = 10;
@@ -1294,7 +1348,13 @@
         if (!Array.isArray(keys)) return;
         var targets = keys.filter(function (k) {
           var ks = String(k || "");
-          return k && ks.indexOf("akini_") === 0 && ks.indexOf("_backup") < 0 && !HIGH_FREQ_RE.test(ks);
+          return (
+            k &&
+            ks.indexOf("akini_") === 0 &&
+            ks.indexOf("_backup") < 0 &&
+            !_isFullSnapshotKey(ks) &&
+            !HIGH_FREQ_RE.test(ks)
+          );
         });
         targets.forEach(function (k) {
           /* 按条数组副本只用于重建聊天 HTML，不单独占内存 */
@@ -1320,20 +1380,7 @@
             }
             idbGet(k, function (v) {
               if (v != null && v !== "" && v !== "[]" && v !== "{}" && v !== "null") {
-                /* 大图片不驻留内存（读取时按需从 IDB 水合），避免回前台时几百张图一次性灌进堆里造成卡顿/闪退；
-                   文本类数据必须驻留 —— 否则朋友圈/日记/邮件的首帧会是空的，看着就像“数据丢了”。 */
-                if (isImgKey(k) && typeof v === "string" && v.length > 1024 * 1024) {
-                  window.__akiniDeferredKeys[k] = 1;
-                  return;
-                }
-                if (isImgKey(k) && typeof v === "string") {
-                  if (_bigMemUsed + v.length > BIG_MEM_BUDGET) {
-                    window.__akiniDeferredKeys[k] = 1;
-                    return;
-                  }
-                  _bigMemUsed += v.length;
-                }
-                memSet(k, v);
+                if (!memSet(k, v)) window.__akiniDeferredKeys[k] = 1;
               }
             });
           }
@@ -1379,13 +1426,14 @@
     } catch (e) {}
     return false;
   }
-  function restoreAll() {
-    /* 已恢复过则只做轻量对账；首次执行全量对账 */
+  function restoreAll(cb) {
+    /* 正常启动只允许一条全量恢复链；完成后的重复调用仅执行回调。 */
     if (_restored) {
-      _reconcileAfterRestored();
+      if (typeof cb === "function") setTimeout(cb, 0);
       return;
     }
-    if (_restoring) return; // 防止 setTimeout 与轮询同时触发两次全量对账
+    if (typeof cb === "function") _restoreCallbacks.push(cb);
+    if (_restoring) return;
     _restoring = true;
     var IDB = getIDB();
     if (!IDB || !IDB.keys) {
@@ -1396,11 +1444,19 @@
       IDB.keys(function (keys) {
         if (!Array.isArray(keys)) {
           _restoring = false;
+          _markRestoredNoIdb();
+          _flushRestoreCallbacks();
           return;
         }
         var targets = keys.filter(function (k) {
           var ks = String(k || "");
-          return k && ks.indexOf("akini_") === 0 && ks.indexOf("_backup") < 0 && !HIGH_FREQ_RE.test(ks);
+          return (
+            k &&
+            ks.indexOf("akini_") === 0 &&
+            ks.indexOf("_backup") < 0 &&
+            !_isFullSnapshotKey(ks) &&
+            !HIGH_FREQ_RE.test(ks)
+          );
         });
         var i = 0;
         var _chatArrIds = {};
@@ -1426,10 +1482,6 @@
             window.__akiniDeferredKeys[k] = 1;
             return;
           }
-          
-
-
-
           if (_ksf.indexOf(CHAT_PRE) === 0) {
             window.__akiniDeferredKeys[k] = 1;
             return;
@@ -1444,7 +1496,8 @@
         var _imgRestoreStarted = false;
         /* 图片空闲水合：只进内存（受预算）+ 清 LS 残留，不参与对账仲裁 */
         function restoreImagesIdle() {
-          var j = 0;
+          var j = 0,
+            loaded = 0;
           (function step() {
             if (j >= imgTargets.length) return;
             var ibatch = imgTargets.slice(j, j + 2);
@@ -1452,7 +1505,7 @@
             ibatch.forEach(function (k) {
               /* 预算用尽后不再逐张读值：聊天图片/表情包/收藏会无限增长，
                  全量读出来会把启动拖到几十秒，移动端还会被系统直接杀进程。 */
-              if (_bigMemUsed >= BIG_MEM_BUDGET) {
+              if (loaded >= BIG_MEM_BUDGET) {
                 window.__akiniDeferredKeys[k] = 1;
                 return;
               }
@@ -1462,9 +1515,9 @@
                   _reconciledKeys[k] = 1;
                   var cur = memGet(k);
                   if (typeof cur === "string" && typeof v === "string" && cur.length > v.length) return;
-                  if (typeof v === "string" && _bigMemUsed + v.length <= BIG_MEM_BUDGET) {
-                    memSet(k, v);
-                    _bigMemUsed += v.length;
+                  if (typeof v === "string" && loaded + v.length <= BIG_MEM_BUDGET) {
+                    loaded += v.length;
+                    if (!memSet(k, v)) window.__akiniDeferredKeys[k] = 1;
                   } else window.__akiniDeferredKeys[k] = 1;
                   lsRemoveRaw(k);
                 } catch (eI) {}
@@ -1519,7 +1572,7 @@ window.__akiniRestoreSettled = true;
                 "[存储] 启动恢复完成，共同步",
                 textTargets.length,
                 "个键，大键驻留",
-                Math.round(_bigMemUsed / 1024),
+                Math.round(_mediaResidentBytes / 1024),
                 "KB",
               );
               /* 图片放到首屏渲染之后慢慢来，不阻塞任何门闩 */
@@ -1540,6 +1593,7 @@ window.__akiniRestoreSettled = true;
                 }
               }
             }
+            _flushRestoreCallbacks();
             return;
           }
           var batch = textTargets.slice(i, i + _BOOT_BATCH);
@@ -1640,11 +1694,15 @@ window.__akiniRestoreSettled = true;
                 /* 聊天媒体只在打开对应页面/聊天时按需从 IDB 水合，
                    不在冷启动时把整份媒体库塞进内存镜像（与 __akiniMedia 缓存重复）。 */
                 var _isMediaKey = _ks2.indexOf("akini_media_") === 0 || _ks2.indexOf("akini_mref_") === 0;
-                if (_isMediaKey || (!_isCritKey && big && (_refLen > 4194304 || _bigMemUsed + _refLen > BIG_MEM_BUDGET))) {
-                  window.__akiniDeferredKeys[k] = 1; // 超预算：不驻留，按需水合
+                var _isMediaValue = _isMediaResident(k, _ref);
+                if (
+                  _isMediaKey ||
+                  (!_isCritKey && big && !_isMediaValue && (_refLen > 4194304 || _bigMemUsed + _refLen > BIG_MEM_BUDGET))
+                ) {
+                  window.__akiniDeferredKeys[k] = 1;
                 } else {
-                  memSet(k, _ref);
-                  if (big && !_isCritKey) _bigMemUsed += _refLen;
+                  if (!memSet(k, _ref)) window.__akiniDeferredKeys[k] = 1;
+                  else if (big && !_isCritKey && !_isMediaValue) _bigMemUsed += _refLen;
                 }
                 if (_memChatWins) {
                   queueIdbWrite(k, _ref); // 更完整的聊天记录写回 IDB
@@ -1668,9 +1726,6 @@ window.__akiniRestoreSettled = true;
                     queueIdbWrite(k, v);
                     clearDirty(k);
                   } else if (_isEssentialImgKey(k) || _isEssentialTextKey(k) || _keepInLs(k)) {
-                    var _lsFull = _lsTotalLen() > 3600 * 1024;
-                    
-
                     var _imgBudgetFull = false;
                     if (isImgKey(k)) {
                       _imgBudgetFull = true;
@@ -1700,13 +1755,20 @@ window.__akiniRestoreSettled = true;
       });
     } catch (e) {
       _restoring = false;
+      _markRestoredNoIdb();
+      _flushRestoreCallbacks();
     }
   }
-  function restoreCriticalFromIdb() {
-    restoreAll();
+  function restoreCriticalFromIdb(cb) {
+    if (_restored) {
+      _reconcileAfterRestored();
+      if (typeof cb === "function") setTimeout(cb, 0);
+      return;
+    }
+    restoreAll(cb);
   }
-  function restoreChatHistoryFromIdb() {
-    restoreAll();
+  function restoreChatHistoryFromIdb(cb) {
+    restoreCriticalFromIdb(cb);
   }
 
   window.akiniStore = {
@@ -1719,6 +1781,7 @@ window.__akiniRestoreSettled = true;
     getJson: akiniGetJson,
     setJson: akiniSetJson,
     isCritical: isCriticalKey,
+    restoreAll: restoreAll,
     restoreCriticalFromIdb: restoreCriticalFromIdb,
     restoreChatHistoryFromIdb: restoreChatHistoryFromIdb,
     memoryGet: memGet,
@@ -1726,6 +1789,19 @@ window.__akiniRestoreSettled = true;
     memoryRemove: memRemove,
     memoryKeys: function () {
       return Object.keys(memoryCache);
+    },
+    memoryMediaStats: function () {
+      var expanded = 0;
+      Object.keys(_mediaMemo).forEach(function (k) {
+        if (_mediaMemo[k] && _mediaMemo[k].expanded) expanded++;
+      });
+      return {
+        bytes: _mediaResidentBytes,
+        budget: BIG_MEM_BUDGET,
+        entries: Object.keys(_mediaEntries).length,
+        rev: Object.keys(_mediaRev).length,
+        memoExpanded: expanded,
+      };
     },
     /* 外置媒体按需读取：朋友圈等页面渲染到哪张图才取哪张，避免启动时全量展开 */
     mediaGet: function (id, cb) {
@@ -1764,6 +1840,12 @@ window.__akiniRestoreSettled = true;
     wipeMemory: function () {
       
 memoryCache = {};
+      _mediaEntries = {};
+      _mediaHead = _mediaTail = null;
+      _mediaResidentBytes = 0;
+      _mediaMemo = {};
+      _mediaRev = {};
+      _mediaRevQ = [];
 
       
 _idbQueue = {};
@@ -1937,7 +2019,6 @@ _reconciledKeys = {};
             }
           }
         }
-        if (isImgKey(k)) _lsImgUsed = -1;
         // 2) 镜像层失败无所谓，绝不影响数据本体
         try {
           if (self.isCritical(k)) {
@@ -2162,7 +2243,10 @@ _reconciledKeys = {};
   } catch (eS) {}
   // 无 IDB 或 IDB 不支持 keys 时立即标记恢复完成，避免写入一直暂存 _preRestorePending
   function _markRestoredNoIdb() {
-    if (_restored) return;
+    if (_restored) {
+      _flushRestoreCallbacks();
+      return;
+    }
     _restored = true;
     
 window.__akiniStorageRestored = true;
@@ -2173,6 +2257,7 @@ window.__akiniRestoreSettled = true;
     try {
       window.__akiniOnCriticalRestored();
     } catch (e) {}
+    _flushRestoreCallbacks();
   }
   var _restoreTimer = null;
   function tryRestore() {
@@ -2197,14 +2282,6 @@ window.__akiniRestoreSettled = true;
       if (!getIDB() || !getIDB().keys) _markRestoredNoIdb();
     }, 5000);
   }
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () {
-      setTimeout(restoreAll, 300);
-    });
-  } else {
-    setTimeout(restoreAll, 300);
-  }
-
   // ---- 生命周期守护：后台挂起切回立即落盘，切离也立即落盘 ----
   // 重复对账反而会在 IDB 镜像滞后的情况下用旧值覆盖 LS 真实数据（导致设置/纪念日被重置）。
   // 仅做落盘（把内存里的最新值写回 IDB），保证数据不丢。
@@ -2233,11 +2310,6 @@ window.__akiniRestoreSettled = true;
   window.__akiniOnHidden(function () { flushIdbQueue(); });
 
   // ---- 去重清理：同一份数据只保留主键，删除旧版本留下的多层重复副本 ----
-  function _isDerivedDupKey(k) {
-    if (!k) return false;
-    var ks = String(k);
-    return false;
-  }
   function _primaryOfBackup(k) {
     var ks = String(k);
     /* 快照类键即使以 _backup 结尾也不能当成可删副本 */
@@ -2267,22 +2339,18 @@ window.__akiniRestoreSettled = true;
       }
       lsk.forEach(function (key) {
         var drop = false;
-        if (_isDerivedDupKey(key)) {
-          drop = true;
-        } else {
-          var pk = _primaryOfBackup(key);
-          if (pk) {
-            var pv = null;
+        var pk = _primaryOfBackup(key);
+        if (pk) {
+          var pv = null;
+          try {
+            pv = memGet(pk);
+          } catch (e) {}
+          if (!_isRealVal(pv)) {
             try {
-              pv = memGet(pk);
+              pv = localStorage.getItem(pk);
             } catch (e) {}
-            if (!_isRealVal(pv)) {
-              try {
-                pv = localStorage.getItem(pk);
-              } catch (e) {}
-            }
-            drop = _isRealVal(pv);
           }
+          drop = _isRealVal(pv);
         }
         if (!drop) return;
         try {
@@ -2313,7 +2381,7 @@ window.__akiniRestoreSettled = true;
     try {
       IDB.keys(function (keys) {
         var list = (keys || []).filter(function (key) {
-          return _isDerivedDupKey(key) || !!_primaryOfBackup(key);
+          return !!_primaryOfBackup(key);
         });
         if (!list.length) {
           finish();
@@ -2395,7 +2463,6 @@ window.__akiniRestoreSettled = true;
 
   // ---- 包装 _idbStore.set：只拦截 null/undefined 字面写入 ----
   // core.js 有 75+ 处直接 _idbStore.set 调用，这里统一过滤 null/undefined 脏值。
-
   function _wrapIdbSet() {
     var store = window._idbStore;
     if (!store || typeof store.set !== "function") return false;
@@ -2534,7 +2601,6 @@ window.__akiniRestoreSettled = true;
 
   // ---- 构造快照 ----
   var _cur = null; // 当前已知的最近快照（LS 启动快照 + 运行期更新）
-  var _lastSig = "";
   function buildSnap(prev, now, recordDel) {
     var keys = collectKeys();
     var deferred = window.__akiniDeferredKeys || {};
@@ -2546,9 +2612,6 @@ window.__akiniRestoreSettled = true;
       return priOf(a) - priOf(b);
     }); // 文本核心优先
     keys.forEach(function (k) {
-      
-
-
       if (k.indexOf("akini_chat_history") === 0) return;
       var v = memGet(k);
       if (typeof v !== "string" || v === "") v = rawGet(k);
@@ -2563,18 +2626,12 @@ window.__akiniRestoreSettled = true;
         return;
       }
       var sv = v;
-      
-
-
       if (isImg(k)) return;
       /* 带图朋友圈/iCity/邮件这类大文本，原始副本已经在 IndexedDB 里，
          再复制一份进 20s 周期快照只会让每次 stringify 多背几 MB（低端机卡顿/闪退主因）。
          超过 900KB 的直接不参与快照，交付权威副本仍由 IDB 原键承担。 */
       if (HOT_SKIP_RE.test(k) && sv.length > 900 * 1024) return;
       if (!sv || sv.length > 512 * 1024) return;
-      
-
-
       if (total + sv.length > 1024 * 1024) return;
       total += sv.length;
       d[k] = sv;
@@ -2631,21 +2688,7 @@ window.__akiniRestoreSettled = true;
     }
   }
 
-  function sigOf() {
-    var keys = collectKeys();
-    var total = 0,
-      sig = keys.length + ":";
-    for (var i = 0; i < keys.length; i++) {
-      var k = keys[i];
-      var v = memGet(k);
-      if (typeof v !== "string" || v === "") v = rawGet(k);
-      total += typeof v === "string" ? v.length : 0;
-      sig += k.length + ",";
-    }
-    return sig + "#" + total;
-  }
-
-  function takeSnapshot(force, sig) {
+  function takeSnapshot(force) {
     if (!store()) return;
     if (window.__akiniWiping) return;
     if (!force && !window.__akiniRestoreSettled) return; // 启动对账完成前不写快照，防止用默认值覆盖
@@ -2654,9 +2697,6 @@ window.__akiniRestoreSettled = true;
       var snap = buildSnap(_cur, now, !!force);
       _cur = snap;
       persistSnap(snap);
-      _lastSig = typeof sig === "string" ? sig : sigOf();
-      
-
     } catch (e) {}
   }
 
@@ -2713,8 +2753,6 @@ window.__akiniRestoreSettled = true;
     if (!snap || !snap.d) return 0;
     var filled = 0;
     Object.keys(snap.d).forEach(function (k) {
-      
-
       if (k.indexOf("akini_chat_history") === 0) return;
       var sv = snap.d[k];
       if (k.indexOf("akini_") !== 0 || !isReal(sv)) return;
@@ -2798,7 +2836,6 @@ window.__akiniRestoreSettled = true;
       }
     };
   } catch (eHook) {}
-
 
   function flushStore() {
     try {

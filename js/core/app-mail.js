@@ -2,16 +2,6 @@
   "use strict";
   if (window.akiniMailEngine) return;
 
-  function fmtDate() {
-    return new Date().toLocaleString("zh-CN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  }
   function fmtDateAt(ts) {
     return new Date(ts).toLocaleString("zh-CN", {
       year: "numeric",
@@ -60,24 +50,10 @@
     return _rawFirst("akini_mail_received");
   }
   function saveSent(arr) {
-    var n = JSON.stringify(arr || []);
-    {
-      window.saveMailSent(arr);
-      return;
-    }
-    try {
-      localStorage.setItem("akini_mail_sent", n);
-    } catch (eLS) {}
+    window.saveMailSent(arr);
   }
   function saveReceived(arr) {
-    var n = JSON.stringify(arr || []);
-    {
-      window.saveMailReceived(arr);
-      return;
-    }
-    try {
-      localStorage.setItem("akini_mail_received", n);
-    } catch (eLR) {}
+    window.saveMailReceived(arr);
   }
   // 生成随机来信内容（compat envelope 式合成：字卡库随机 5-12 句，句号连接成段，
   // 并在随机 1-3 个句号后插入换行，形成信件排版）

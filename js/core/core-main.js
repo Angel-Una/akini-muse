@@ -42,18 +42,13 @@ window.__akiniResolvePostImgs = function (root) {
       try {
         console.warn("[Akini][watchdog] 主启动链未完成，自动补跑关键恢复");
       } catch (t) {}
-      (window.__akiniSafeCall(function () {
-        window._akiniCacheStore && window._akiniCacheStore.restoreAll && window._akiniCacheStore.restoreAll();
-      }, "wd-cacheStore"),
-        window.__akiniSafeCall(function () {
-          window._idbStore && window._idbStore.restoreAll && window._idbStore.restoreAll();
-        }, "wd-idbStore"),
-        window.__akiniSafeCall(function () {
-          window._akiniRestoreFromSnapshot && window._akiniRestoreFromSnapshot();
-        }, "wd-snapshot"),
-        window.__akiniSafeCall(function () {
-          window.__akiniRestoreSettled = !0;
-        }, "wd-settle"));
+      window.__akiniSafeCall(function () {
+        if (window._idbStore && window._idbStore.restoreAll)
+          window._idbStore.restoreAll(function () {
+            window.__akiniRestoreSettled = !0;
+          });
+        else window.__akiniRestoreSettled = !0;
+      }, "wd-idbStore");
     } catch (t) {}
   }, 12e3),
   (function () {
@@ -294,43 +289,11 @@ window.__akiniResolvePostImgs = function (root) {
   (function () {
   var k, U, W, nt, it, at, dt, ut, yt, At, Tt, Mt, Dt, Ht, Ft, Wt, ue, ge, ye, pe, _e, he, ve, be, Se, Ie, Ce, Ee, Ae, ze, Ke, fn, kn, In, xn, Cn;
   let jn, qn, Jn, Gn, Un, Wn, Kn, Qn, Zn, ti, ei, ni, ii, ai, oi, ri, si, li, di, ui, mi, wi, gi, fi, yi, pi, _i, hi, vi, ki, bi, Si, Ii, xi, Ci, Ei, Ai, Ti, Mi, Bi, Li, Di, Pi, Ni, Oi, $i, Yi, Vi, Xi, Qi, Zi, ta, ea, na, ia, aa, oa, ca, da;
-function t(t) {
-        try {
-          if (window.navTo) return void window.navTo(t);
-          if (window.openAppPage) return void window.openAppPage(t);
-          if ("icity" === t) return void (window.showArea && window.showArea("icityArea"));
-          (window.showPage && window.showPage(t), "mail" === t && window.__renderMail && window.__renderMail());
-        } catch (t) {
-          console.error("[nav] openAppPage failed", t);
-        }
-      }
 function e(t) {
         try {
           window.showArea && window.showArea(t);
         } catch (t) {
           console.error("[nav] showArea failed", t);
-        }
-      }
-function n(t, e) {
-        var n = document.getElementById(t);
-        if (n) {
-          n.setAttribute("data-bound", "1");
-          var i = 0;
-          n.addEventListener(
-            "click",
-            function (t) {
-              var n = Date.now();
-              if (!(n - i < 120)) {
-                i = n;
-                try {
-                  e();
-                } catch (t) {
-                  console.error("[nav] handler error", t);
-                }
-              }
-            },
-            !0,
-          );
         }
       }
 function i(t, e) {
@@ -1527,7 +1490,6 @@ function j(t, e, n, i) {
                 try {
                   var e = window.akiniContacts.getChatTarget(t);
                   if (!e) return void z(t);
-                  
                   G(t, e, r, !0);
                 } catch (e) {
                   (console.error("[Akini] reply error:", e),
@@ -1543,16 +1505,6 @@ function j(t, e, n, i) {
             }
           }
         }
-      }
-function q(t) {
-        try {
-          var e = (window.__akiniPendingReplyMap || {})[t];
-          if (!e || e.settling) return;
-          ((e.settling = !0), e.timer && (clearTimeout(e.timer), (e.timer = null)));
-          try {
-            J(t);
-          } catch (t) {}
-        } catch (t) {}
       }
 function J(t) {
         if (window.__akiniToggleOn && !window.__akiniToggleOn("contactActiveMsgToggle", !1)) {
@@ -1656,7 +1608,6 @@ function G(t, e, n, i, a) {
           return;
         }
         if ((e || (e = window.akiniContacts.getChatTarget(t)), !e)) return;
-        
         var l = e;
         var u = (
             window._akiniAv ||
@@ -2330,7 +2281,6 @@ function V(t) {
                     }, 1200);
                   }
                 } else jn.scrollTop > 40 && (jn.__akiniPullArmed = !1);
-                
                 var _hidden = (window.__akiniBottomHidden && window.__akiniBottomHidden[t]) || 0;
                 if (_hidden > 0 && jn.scrollHeight - jn.scrollTop - jn.clientHeight < 80) {
                   var _log2 = window.__akiniChatLog;
@@ -2391,10 +2341,6 @@ function V(t) {
                     _domRows < _total &&
                       (function (t) {
                         if (!jn) return;
-                        
-
-
-
                         var _domN = jn.querySelectorAll(".msg-row").length;
                         if (_domN >= _total) {
                           window.__akiniShownRows[t] = _total;
@@ -2492,10 +2438,6 @@ function X(t, e) {
                 __akiniCountMsgRowsFast(n),
               _want = (window.__akiniShownRows && window.__akiniShownRows[e]) || AKINI_CHAT_BATCH_SIZE,
               c = r <= _want ? n : Y(n, _want);
-            
-
-
-
             var _domMaxTs = 0;
             if (i)
               try {
@@ -2698,8 +2640,6 @@ function tt(t, e, n) {
               } catch (_st) {}
             // o 来自 W[t] 已清洗过，直接拼接；清洗交给 et 内增量缓存处理
             // 完整历史在 __akiniChatLog 的数组里，W[t] 只保留 150 行做工作集
-            
-
             try {
               if (window.__akiniChatLog) window.__akiniChatLog.append(t, i);
             } catch (_eAppend) {}
@@ -2767,7 +2707,6 @@ function et(t, e) {
         __akiniPerfMark && __akiniPerfMark("et·清洗媒体", performance.now() - _e0);
         n = __akiniCapHistory(n, t, 150);
         W[t] = n;
-
         try {
           var _c = (window.__akiniIncCache = window.__akiniIncCache || {});
           _c[t] = _c[t] || {};
@@ -2779,14 +2718,6 @@ function et(t, e) {
         try {
           if (window.__akiniChatLog) window.__akiniChatLog.schedule(t);
         } catch (_eLog) {}
-      }
-function ot(t) {
-        return (
-          it.indexOf(t) > -1 ||
-          at.some(function (e) {
-            return 0 === t.indexOf(e);
-          })
-        );
       }
 function rt(t, e, n) {
         var i = /_(bg|img|stickers)$/.test(t),
@@ -4141,12 +4072,6 @@ function $t(t) {
           } catch (t) {}
         window.akiniStore && window.akiniStore.setJson && window.akiniStore.setJson("akini_chat_pins", e);
       }
-function Yt(t) {
-        var e = Kt();
-        if (!e) return !1;
-        var n = e.indexOf(t);
-        return (n >= 0 && (e.splice(n, 1), $t(e)), !1);
-      }
 function Vt() {
         return Kt();
       }
@@ -4305,9 +4230,6 @@ function Xt() {
                           r +
                           "</button></div></div>";
                       }));
-                    
-
-
                     var _sig = r
                       .map(function (x) {
                         var _av = String(x.displayAvatar || x.avatar || "");
@@ -4612,9 +4534,6 @@ function Zt(t, e) {
             } catch (e) {}
           we();
           var _q0 = performance.now();
-          
-
-
           var d = "";
           var _totalRows = 0;
           try {
@@ -7520,17 +7439,7 @@ function An(t) {
                 localStorage.setItem(t, e);
               } catch (t) {}
           }
-          function c(t) {
-            return null == t || "" === t || "null" === t || "undefined" === t || "[]" === t || "{}" === t;
-          }
-          function s(t) {
-            return (
-              "akini_localstorage_snapshot" === t ||
-              "akini_localstorage_snapshot_backup" === t ||
-              "akini_idb_full_snapshot" === t
-            );
-          }
-          var l = 153600;
+                              var l = 153600;
           return {
             set: function (t, e, n) {
               if (window.__akiniWiping) "function" == typeof n && n();
@@ -7565,113 +7474,9 @@ function An(t) {
               "function" == typeof e && e();
             },
             restoreAll: function (t) {
-              var e = function () {
-                "function" == typeof t && t();
-              };
-              o(function (t) {
-                if (!t) return void e();
-                
-
-
-
-
-
-                var _skipRe = /^akini_(mref_|media_|chat_history_|chat_msgs_)/;
-                var _budget = 6 * 1024 * 1024,
-                  _used = 0,
-                  _perKey = 512 * 1024;
-                function _defer(k) {
-                  try {
-                    if (window.__akiniDeferredKeys) window.__akiniDeferredKeys[k] = 1;
-                  } catch (x) {}
-                }
-                function _proc(k, v) {
-                  if (!k || 0 === k.indexOf("akini_app_icon_") || s(k) || c(v)) return;
-                  if (_skipRe.test(k)) return void _defer(k);
-                  var _sv = String(v);
-                  if (_sv.length > _perKey || _used + _sv.length > _budget) return void _defer(k);
-                  _used += _sv.length;
-                  window.akiniStore && window.akiniStore.memorySet && window.akiniStore.memorySet(k, v);
-                  var n = null;
-                  try {
-                    n = localStorage.getItem(k);
-                  } catch (x) {}
-                  if (c(n) && _sv.length <= l)
-                    try {
-                      localStorage.setItem(k, v);
-                    } catch (x) {}
-                }
-                Promise.resolve(t.keys ? t.keys() : [])
-                  .then(function (keys) {
-                    var list = (keys || []).filter(function (k) {
-                      return k && 0 !== String(k).indexOf("akini_app_icon_") && !s(k);
-                    });
-                    var i = 0;
-                    /* 跳过媒体类键时不 read，避免启动期把几百 MB 图片逐张拉进内存 */
-                    return (function next() {
-                      var k;
-                      while (i < list.length) {
-                        k = list[i++];
-                        if (_skipRe.test(k)) {
-                          _defer(k);
-                          continue;
-                        }
-                        return t.get(k).then(
-                          function (v) {
-                            _proc(k, v);
-                          },
-                          function () {},
-                        ).then(next);
-                      }
-                    })();
-                  })
-                  .then(function () {
-                        document.documentElement.classList.contains("akini-deep-safe")
-                          ? e()
-                          : t.getItem("akini_idb_full_snapshot").then(function (t) {
-                              try {
-                                if (!t || t.length < 8) return void e();
-                                var n = !1;
-                                try {
-                                  for (var i = 0; i < 30; i++) {
-                                    var a = localStorage.key(i);
-                                    if (a && 0 === a.indexOf("akini_") && 0 !== a.indexOf("akini_chat_history_")) {
-                                      n = !0;
-                                      break;
-                                    }
-                                  }
-                                } catch (t) {}
-                                if (!n) return void e();
-                                var o = JSON.parse(t);
-                                if (o && "object" == typeof o)
-                                  for (var r in o)
-                                    if (
-                                      o.hasOwnProperty(r) &&
-                                      "__ts" !== r &&
-                                      0 === r.indexOf("akini_") &&
-                                      0 !== r.indexOf("akini_app_icon_") &&
-                                      !c(o[r])
-                                    ) {
-                                      var s = null;
-                                      try {
-                                        s = localStorage.getItem(r);
-                                      } catch (t) {}
-                                      if (
-                                        c(s) &&
-                                        (window.akiniStore &&
-                                          window.akiniStore.memorySet &&
-                                          window.akiniStore.memorySet(r, o[r]),
-                                        String(o[r]).length <= l)
-                                      )
-                                        try {
-                                          localStorage.setItem(r, o[r]);
-                                        } catch (t) {}
-                                    }
-                              } catch (t) {}
-                              e();
-                            }, e);
-                      }, e);
-              });
+              if (window.akiniStore && window.akiniStore.restoreAll)
+                return void window.akiniStore.restoreAll(t);
+              "function" == typeof t && setTimeout(t, 0);
             },
             keys: function (t) {
               "function" == typeof t &&
@@ -7725,83 +7530,190 @@ function An(t) {
           };
         })()),
         (function () {
-          function t(t) {
-            return (
-              "akini_localstorage_snapshot" === t ||
-              "akini_localstorage_snapshot_backup" === t ||
-              "akini_idb_full_snapshot" === t
-            );
+          var attempted = !1,
+            running = !1,
+            waiters = [],
+            coreKeys = [
+              "akini_contacts",
+              "akini_chat_sessions",
+              "akini_wordbank",
+              "akini_posts",
+              "akini_icity_diaries",
+              "akini_mail_received",
+              "akini_mail_sent",
+            ];
+          function empty(v) {
+            return null == v || "" === v || "null" === v || "undefined" === v || "[]" === v || "{}" === v;
           }
-          function e(t) {
-            return null == t || "" === t || "null" === t || "undefined" === t || "[]" === t || "{}" === t;
+          function missing(k, v) {
+            if (empty(v)) return !0;
+            if ("akini_contacts" === k)
+              try {
+                var list = JSON.parse(v);
+                return (
+                  !Array.isArray(list) ||
+                  !list.some(function (c) {
+                    return c && c.id !== "ta_default" && "对方" !== String(c.name || "");
+                  })
+                );
+              } catch (e) {}
+            return !1;
           }
-          try {
-            for (
-              var n = ["akini_localstorage_snapshot", "akini_localstorage_snapshot_backup"], i = 0;
-              i < n.length;
-              i++
-            ) {
-              var a = localStorage.getItem(n[i]);
-              if (a) {
-                var o = JSON.parse(a);
-                if (o && "object" == typeof o) {
-                  for (var r in o)
-                    if (o.hasOwnProperty(r) && 0 === r.indexOf("akini_") && 0 !== r.indexOf("akini_app_icon_") && !t(r))
-                      try {
-                        e(localStorage.getItem(r)) && localStorage.setItem(r, o[r]);
-                      } catch (t) {}
-                  break;
-                }
+          function current(k) {
+            var v = null;
+            try {
+              window.akiniStore && window.akiniStore.memoryGet && (v = window.akiniStore.memoryGet(k));
+            } catch (e) {}
+            if (empty(v))
+              try {
+                v = localStorage.getItem(k);
+              } catch (e) {}
+            return v;
+          }
+          function hasCoreData() {
+            try {
+              if (window.akiniContacts) {
+                var cs = window.akiniContacts.getContacts ? window.akiniContacts.getContacts() : [];
+                if (
+                  Array.isArray(cs) &&
+                  cs.some(function (c) {
+                    return c && c.id !== "ta_default" && "对方" !== String(c.name || "");
+                  })
+                )
+                  return !0;
+                var ss = window.akiniContacts.getSessions ? window.akiniContacts.getSessions() : {};
+                if (ss && Object.keys(ss).length) return !0;
               }
-            }
-          } catch (t) {
-            console.warn("[Akini] sync snapshot restore error", t);
+            } catch (e) {}
+            for (var i = 0; i < coreKeys.length; i++) if (!missing(coreKeys[i], current(coreKeys[i]))) return !0;
+            return !1;
           }
-          window._akiniSyncRestored = !0;
+          window.__akiniHasCoreUserData = hasCoreData;
+          function finish() {
+            running = !1;
+            window._akiniSyncRestored = !0;
+            var list = waiters;
+            waiters = [];
+            list.forEach(function (cb) {
+              setTimeout(function () {
+                try {
+                  cb();
+                } catch (e) {}
+              }, 0);
+            });
+          }
+          function applySnapshot(raw) {
+            if ("string" != typeof raw || raw.length < 2) return !1;
+            var data = null;
+            try {
+              data = JSON.parse(raw);
+            } catch (e) {
+              return !1;
+            }
+            if (!data || "object" != typeof data || Array.isArray(data)) return !1;
+            var rescuedCore = !1,
+              wrote = !1;
+            Object.keys(data).forEach(function (k) {
+              try {
+                if (
+                  "__ts" === k ||
+                  0 !== k.indexOf("akini_") ||
+                  0 === k.indexOf("akini_app_icon_") ||
+                  "akini_localstorage_snapshot" === k ||
+                  "akini_localstorage_snapshot_backup" === k ||
+                  "akini_idb_full_snapshot" === k
+                )
+                  return;
+                var v = data[k];
+                if ("string" != typeof v || empty(v) || !missing(k, current(k))) return;
+                if (window.__akiniDeferredKeys && window.__akiniDeferredKeys[k]) return;
+                if (window.akiniStore && window.akiniStore.set) window.akiniStore.set(k, v);
+                else localStorage.setItem(k, v);
+                wrote = !0;
+                if (coreKeys.indexOf(k) >= 0 || 0 === k.indexOf("akini_chat_history_")) rescuedCore = !0;
+              } catch (e) {}
+            });
+            if (wrote)
+              try {
+                window.akiniStore && window.akiniStore.flushIdb && window.akiniStore.flushIdb();
+              } catch (e) {}
+            data = null;
+            raw = null;
+            return rescuedCore;
+          }
+          window._akiniRestoreFromSnapshot = function (cb) {
+            if (attempted && !running) {
+              "function" == typeof cb && setTimeout(cb, 0);
+              return;
+            }
+            "function" == typeof cb && waiters.push(cb);
+            if (running || attempted) return;
+            attempted = !0;
+            if (hasCoreData()) return void finish();
+            running = !0;
+            var sources = [
+              function (next) {
+                var raw = null;
+                try {
+                  raw = localStorage.getItem("akini_localstorage_snapshot");
+                } catch (e) {}
+                next(raw);
+              },
+              function (next) {
+                var raw = null;
+                try {
+                  raw = localStorage.getItem("akini_localstorage_snapshot_backup");
+                } catch (e) {}
+                next(raw);
+              },
+              function (next) {
+                try {
+                  if ("undefined" == typeof caches || !caches.open) return void next("");
+                  caches
+                    .open("akini-vault-v1")
+                    .then(function (cache) {
+                      return cache.match("akini_localstorage_snapshot");
+                    })
+                    .then(function (res) {
+                      return res ? res.text() : "";
+                    })
+                    .then(next, function () {
+                      next("");
+                    });
+                } catch (e) {
+                  next("");
+                }
+              },
+              function (next) {
+                try {
+                  if (!window._idbStore || !window._idbStore.get) return void next("");
+                  window._idbStore.get("akini_idb_full_snapshot", function (raw) {
+                    next(raw || "");
+                  });
+                } catch (e) {
+                  next("");
+                }
+              },
+            ];
+            var index = 0;
+            function next() {
+              if (index >= sources.length) return void finish();
+              sources[index++](function (raw) {
+                if (applySnapshot(raw)) finish();
+                else next();
+              });
+            }
+            next();
+          };
         })(),
         (function () {
-          SNAPSHOT_KEY = "akini_localstorage_snapshot";
-          var t = "akini-vault-v1";
           window._akiniCacheStore = {
             backupAll: function (e) {
               "function" == typeof e && e();
             },
             restoreAll: function (e) {
-              try {
-                if ("undefined" == typeof caches || !caches.open) return void (e && e());
-                caches
-                  .open(t)
-                  .then(function (t) {
-                    return t.match(SNAPSHOT_KEY);
-                  })
-                  .then(function (t) {
-                    return t ? t.text() : e && e();
-                  })
-                  .then(function (t) {
-                    if (!t) return e && e();
-                    var n = JSON.parse(t),
-                      i = !1;
-                    for (var a in n)
-                      if (n.hasOwnProperty(a) && 0 === a.indexOf("akini_") && 0 !== a.indexOf("akini_app_icon_"))
-                        try {
-                          var o = localStorage.getItem(a);
-                          (o &&
-                            "" !== o &&
-                            "null" !== o &&
-                            "undefined" !== o &&
-                            "[]" !== o &&
-                            "{}" !== o &&
-                            0 !== o.length) ||
-                            (localStorage.setItem(a, n[a]), (i = !0));
-                        } catch (t) {}
-                    e && e(i);
-                  })
-                  .catch(function () {
-                    e && e();
-                  });
-              } catch (t) {
-                e && e();
-              }
+              if (window._akiniRestoreFromSnapshot) return void window._akiniRestoreFromSnapshot(e);
+              "function" == typeof e && setTimeout(e, 0);
             },
           };
         })());
@@ -7815,6 +7727,13 @@ try {
           }
           function a() {
             try {
+              if (
+                !window._akiniDataRestored ||
+                !window.__akiniStorageRestored ||
+                !window.__akiniHasCoreUserData ||
+                !window.__akiniHasCoreUserData()
+              )
+                return;
               try {
                 localStorage.removeItem("akini_localstorage_snapshot");
               } catch (t) {}
@@ -7869,28 +7788,6 @@ try {
             }));
         })();
       } catch (a) {}
-try {
-        ((window._akiniRestoreFromSnapshot = function (t) {
-          if ("function" == typeof t)
-            try {
-              t();
-            } catch (t) {}
-        }),
-          window._akiniCacheStore &&
-            window._akiniCacheStore.restoreAll &&
-            window._akiniCacheStore.restoreAll(function () {
-              window._idbStore &&
-                window._idbStore.restoreAll &&
-                window._idbStore.restoreAll(function () {
-                  window._akiniRestoreFromSnapshot &&
-                    window._akiniRestoreFromSnapshot(function () {
-                      (console.log("[Akini] cache+idb+snapshot restoreAll done"), (window.__akiniRestoreSettled = !0));
-                    });
-                });
-            }));
-      } catch (a) {
-        console.warn("[Akini] restoreAll error", a);
-      }
 ((window.__akiniPostLog = i),
         (On = {}),
         (window._akiniTimer = {
@@ -8004,20 +7901,6 @@ try {
         document.addEventListener("DOMContentLoaded", function () {
           setTimeout(function () {
             window.__akiniBootComplete = !0;
-            try {
-              (window._akiniCacheStore && window._akiniCacheStore.restoreAll && window._akiniCacheStore.restoreAll(),
-                window._idbStore &&
-                  window._idbStore.restoreAll &&
-                  window._idbStore.restoreAll(function () {
-                    try {
-                      window.akiniContacts && window.akiniContacts.resetCache && window.akiniContacts.resetCache();
-                    } catch (e) {}
-                    try {
-                      "function" == typeof Xt && Xt();
-                    } catch (e) {}
-                  }),
-                window._akiniRestoreFromSnapshot && window._akiniRestoreFromSnapshot());
-            } catch (t) {}
           }, 100);
         }),
         (Pn = null),
@@ -10725,10 +10608,23 @@ window.__akiniBindSettingsControls = function () {
         }, 5e3),
         window.__akiniSetSplashProgress && window.__akiniSetSplashProgress(30),
         window._idbStore.restoreAll(function () {
-          (window.__akiniSetSplashProgress && window.__akiniSetSplashProgress(68),
-            window.akiniContacts && window.akiniContacts.tryRestoreFromBackup
-              ? window.akiniContacts.tryRestoreFromBackup(Lt)
-              : Lt());
+          window.__akiniSetSplashProgress && window.__akiniSetSplashProgress(68);
+          var openGate = function () {
+            try {
+              window.akiniContacts && window.akiniContacts.resetCache && window.akiniContacts.resetCache();
+            } catch (e) {}
+            try {
+              "function" == typeof Xt && Xt();
+            } catch (e) {}
+            Lt();
+          };
+          var afterBackup = function () {
+            if (window._akiniRestoreFromSnapshot) window._akiniRestoreFromSnapshot(openGate);
+            else openGate();
+          };
+          if (window.akiniContacts && window.akiniContacts.tryRestoreFromBackup)
+            window.akiniContacts.tryRestoreFromBackup(afterBackup);
+          else afterBackup();
           try {
             ((window.__csCache = window.__csCache || {}),
               window.akiniContacts &&
@@ -10799,24 +10695,6 @@ window.__akiniBindSettingsControls = function () {
                 }
               }
             } catch (t) {} }),
-        window.addEventListener("pageshow", function (t) {
-          t.persisted &&
-            !window.__akiniBooted &&
-            window._akiniCacheStore &&
-            window._akiniCacheStore.restoreAll &&
-            window._akiniCacheStore.restoreAll(function () {
-              window._idbStore &&
-                window._idbStore.restoreAll &&
-                window._idbStore.restoreAll(function () {
-                  window._akiniRestoreFromSnapshot &&
-                    window._akiniRestoreFromSnapshot(function () {
-                      window.akiniContacts &&
-                        window.akiniContacts.tryRestoreFromBackup &&
-                        window.akiniContacts.tryRestoreFromBackup(Lt);
-                    });
-                });
-            });
-        }),
         (window._restoringChatHistory = !0),
         jn && (jn.innerHTML = ""),
         /* 恢复期清空聊天区：重置所有会话的窗口化底部隐藏计数 */
@@ -11057,8 +10935,6 @@ Gn = document.getElementById("chatQuoteBar"),
         qn &&
           (window._akMsgGrow = function () {},
           qn.addEventListener("keydown", function (t) {
-            
-
             "Enter" === t.key &&
               !t.shiftKey &&
               !t.isComposing &&
@@ -11631,20 +11507,22 @@ ki = document.getElementById("changeChatWallpaperBtn"),
         bi.addEventListener("change", function () {
           const t = this.files[0];
           if (!t) return;
-          const e = window.akiniContacts ? window.akiniContacts.getActiveChatId() : null;
-          window.__akiniOptimizeImage(t, function (dataUrl) {
+          const e = window.akiniContacts ? window.akiniContacts.getActiveChatId() : null,
+            n = new FileReader();
+          ((n.onload = function (t) {
             const n = document.getElementById("chatBody");
             (n &&
-              (__akiniGuardBg(n, dataUrl),
+              (__akiniGuardBg(n, t.target.result),
               (n.style.backgroundSize = "cover"),
               (n.style.backgroundPosition = "center"),
               (n.style.backgroundRepeat = "no-repeat"),
               /* 记录当前壁纸：回到前台/重进聊天时的自愈要以它为准 */
-              n.setAttribute("data-current-bg", dataUrl)),
-              e && rt("akini_chat_bg_" + e, dataUrl),
+              n.setAttribute("data-current-bg", t.target.result)),
+              e && rt("akini_chat_bg_" + e, t.target.result),
               At && ((At.style.display = "none"), (At.style.pointerEvents = "none")));
-          });
-          this.value = "";
+          }),
+            n.readAsDataURL(t),
+            (this.value = ""));
         }),
         (window.__akiniUpdateChatBackBadge = function () {
           try {
@@ -11872,8 +11750,6 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                 _blk[k] = 1;
               });
             } catch (_eb) {}
-            
-
             var _key = (window.__wbTab || t) + "|" + n + "|" + e;
             if (window.__wbLastKey !== _key) ((window.__wbLastKey = _key), (window.__wbLimit = 80));
             var _limit = window.__wbLimit || 80,
@@ -13614,11 +13490,6 @@ ki = document.getElementById("changeChatWallpaperBtn"),
                   console.warn("renderExclContacts", t);
                 }
               }),
-              (window.__wbRenderExcl = function () {
-                try {
-                  Y();
-                } catch (t) {}
-              }),
               c(j, function () {
                 window.__wbOpenExclusive();
               })));
@@ -14971,25 +14842,7 @@ Ke = null;
         }),
         window.startCall,
         (function () {
-          function t(t) {
-            try {
-              var e = null;
-              (Ai && !Ai.answered && (e = Ai.isMyCalling ? "cancel" : "me_reject"), Ge(e));
-            } catch (t) {
-              console.error("Hangup Se error:", t);
-            } finally {
-              Ai && ((Ai.active = !1), (Ai.answered = !1), (Ai.isMinimized = !1));
-              var n = document.getElementById("app-call");
-              n && ((n.style.display = "none"), n.classList.remove("call-expanded"));
-              var i = document.getElementById("callMiniWindow");
-              i && (i.style.display = "none");
-              try {
-                var a = document.body;
-                a && "hidden" === a.style.overflow && (a.style.overflow = "");
-              } catch (t) {}
-            }
-          }
-                    // 挂断/接听/最小化按钮的绑定统一在下方 c(...) 里做一次；
+                              // 挂断/接听/最小化按钮的绑定统一在下方 c(...) 里做一次；
           // 这里不再重复绑 click/touchend/pointerup，否则一次点击会触发 3~4 次挂断
         })(),
         c(Ii, tn));
@@ -17532,17 +17385,7 @@ Vi = document.getElementById("transferBtn"),
                     document.body.removeChild(e));
                 }
               }
-              function v(t, e, n, i, a, o, r) {
-                (o &&
-                  o.forEach(function (t, e) {
-                    void 0 !== r[e] && __akiniGuardSrc(t, r[e]);
-                  }),
-                  (t.style.width = e),
-                  t.parentNode && (t.parentNode.style.maxWidth = n),
-                  t.parentNode && (t.parentNode.style.opacity = ""),
-                  p(i, a));
-              }
-            })(),
+                          })(),
             document.querySelectorAll(".icity-nav-btn").forEach(function (t) {
               c(t, function () {
                 window.akiniGoIcityTab(t.getAttribute("data-tab"));
@@ -17957,42 +17800,51 @@ Vi = document.getElementById("transferBtn"),
               S.addEventListener("change", function () {
                 var t = this.files[0];
                 if (((this.value = ""), t)) {
-                  window.__akiniOptimizeImage(t, function (dataUrl) {
-                    if (!dataUrl) {
-                      alert("图片读取失败，请换一张试试");
-                      return;
-                    }
+                  var e = new FileReader();
+                  ((e.onload = function (t) {
                     try {
-                      (window._icityBgCache = window._icityBgCache || {})[k] = dataUrl;
+                      (window._icityBgCache = window._icityBgCache || {})[k] = t.target.result;
                     } catch (t) {}
                     try {
-                      window.akiniStore && window.akiniStore.memorySet && window.akiniStore.memorySet(k, dataUrl);
+                      window.akiniStore &&
+                        window.akiniStore.memorySet &&
+                        window.akiniStore.memorySet(k, t.target.result);
                     } catch (t) {}
-                    _idbStore.set(k, dataUrl, function () {
+                    _idbStore.set(k, t.target.result, function () {
                       try {
                         localStorage.removeItem(k);
                       } catch (t) {}
                       try {
-                        window.akiniStore && window.akiniStore.memorySet && window.akiniStore.memorySet(k, dataUrl);
+                        window.akiniStore &&
+                          window.akiniStore.memorySet &&
+                          window.akiniStore.memorySet(k, t.target.result);
                       } catch (t) {}
                       try {
-                        (window._icityBgCache = window._icityBgCache || {})[k] = dataUrl;
+                        (window._icityBgCache = window._icityBgCache || {})[k] = t.target.result;
                       } catch (t) {}
                     });
                     var e = document.getElementById("icityEditMyBgPreview");
                     e &&
                       (k.indexOf("_bg") >= 0
-                        ? (__akiniGuardBg(e, dataUrl), (e.style.backgroundSize = "cover"))
+                        ? (__akiniGuardBg(e, t.target.result), (e.style.backgroundSize = "cover"))
                         : __akiniGuardHtml(
                             e,
-                            '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">',
+                            '<img src="' +
+                              t.target.result +
+                              '" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">',
                           ));
                     var n = document.getElementById("icityMyBgArea");
                     n &&
-                      (__akiniGuardBg(n, dataUrl),
+                      (__akiniGuardBg(n, t.target.result),
                       (n.style.backgroundSize = "cover"),
                       (n.style.backgroundPosition = "center"));
-                  });
+                  }),
+                    (e.onerror = function () {
+                      try {
+                        alert("图片读取失败，请换一张试试");
+                      } catch (t) {}
+                    }),
+                    e.readAsDataURL(t));
                 }
               }));
           var T = document.getElementById("icityEditTaBgBtn"),
@@ -18002,18 +17854,20 @@ Vi = document.getElementById("transferBtn"),
             M.addEventListener("change", function () {
               var t = this.files[0];
               if (t && window._icityEditContactId) {
-                window.__akiniOptimizeImage(t, function (dataUrl) {
+                var e = new FileReader();
+                ((e.onload = function (t) {
                   var e = "akini_icity_ta_bg_" + window._icityEditContactId;
                   try {
-                    (window._icityBgCache = window._icityBgCache || {})[e] = dataUrl;
+                    (window._icityBgCache = window._icityBgCache || {})[e] = t.target.result;
                   } catch (t) {}
                   try {
-                    window.akiniStore && window.akiniStore.memorySet && window.akiniStore.memorySet(e, dataUrl);
+                    window.akiniStore && window.akiniStore.memorySet && window.akiniStore.memorySet(e, t.target.result);
                   } catch (t) {}
-                  _idbStore.set(e, dataUrl);
+                  _idbStore.set(e, t.target.result);
                   var n = document.getElementById("icityEditTaBgPreview");
-                  n && (__akiniGuardBg(n, dataUrl), (n.style.backgroundSize = "cover"));
-                });
+                  n && (__akiniGuardBg(n, t.target.result), (n.style.backgroundSize = "cover"));
+                }),
+                  e.readAsDataURL(t));
               }
             });
           var B = document.getElementById("icityEditTaAvatarBtn"),
@@ -18608,16 +18462,18 @@ window.__akiniPatchAvatarCell = function (t, e) {
             (l.addEventListener("change", function () {
               const t = this.files[0];
               if (!t) return;
-              window.__akiniOptimizeImage(t, function (dataUrl) {
+              const e = new FileReader();
+              ((e.onload = function (t) {
                 const e = document.getElementById("phoneFrame");
                 (e &&
-                  (__akiniGuardBg(e, dataUrl),
+                  (__akiniGuardBg(e, t.target.result),
                   (e.style.backgroundSize = "cover"),
                   (e.style.backgroundPosition = "center"),
                   (e.style.backgroundRepeat = "no-repeat"),
                   e.classList.add("has-custom-bg")),
-                  rt("akini_home_bg", dataUrl));
-              });
+                  rt("akini_home_bg", t.target.result));
+              }),
+                e.readAsDataURL(t));
             }),
             ct("akini_home_bg", function (t) {
               if (t) {
@@ -18704,7 +18560,9 @@ window.__akiniPatchAvatarCell = function (t, e) {
             (d.addEventListener("change", function () {
               const t = this.files[0];
               if (!t) return;
-              window.__akiniOptimizeImage(t, function (e) {
+              const e = new FileReader();
+              ((e.onload = function (t) {
+                var e = t.target.result;
                 function n(t) {
                   window.__akiniCurrentMusicBg = t;
                   try {
@@ -18756,8 +18614,9 @@ window.__akiniPatchAvatarCell = function (t, e) {
                     n(e);
                   }),
                   __akiniGuardSrc(i, e));
-              });
-              this.value = "";
+              }),
+                e.readAsDataURL(t),
+                (this.value = ""));
             }),
             (u = function (t) {
               if (!t) return;
@@ -18791,8 +18650,10 @@ window.__akiniPatchAvatarCell = function (t, e) {
                 } catch (t) {}
                 return;
               }
-              window.__akiniOptimizeImage(t, function (e) {
-                const n = document.getElementById("bgArea");
+              const e = new FileReader();
+              ((e.onload = function (t) {
+                const e = t.target.result,
+                  n = document.getElementById("bgArea");
                 (n &&
                   (__akiniGuardBg(n, e), (n.style.backgroundSize = "cover"), (n.style.backgroundPosition = "center")),
                   rt("akini_bg_img", e));
@@ -18808,34 +18669,41 @@ window.__akiniPatchAvatarCell = function (t, e) {
                       window.akiniStore.set("akini_bg_img", e),
                       window.akiniStore.flushIdb && window.akiniStore.flushIdb()));
                 } catch (t) {}
-              });
-              this.value = "";
+              }),
+                e.readAsDataURL(t),
+                (this.value = ""));
             });
           const w = document.getElementById("fileInputCoverBg");
           w &&
             w.addEventListener("change", function () {
               const t = this.files[0];
               if (!t) return;
-              window.__akiniOptimizeImage(t, function (e) {
-                const n = document.getElementById("coverAreaMain");
+              const e = new FileReader();
+              ((e.onload = function (t) {
+                const e = t.target.result,
+                  n = document.getElementById("coverAreaMain");
                 (n &&
                   (__akiniGuardBg(n, e), (n.style.backgroundSize = "cover"), (n.style.backgroundPosition = "center")),
                   rt("akini_cover_img", e));
-              });
-              this.value = "";
+              }),
+                e.readAsDataURL(t),
+                (this.value = ""));
             });
           const g = document.getElementById("fileInputFriendsBgBeautify");
           g &&
             g.addEventListener("change", function () {
               const t = this.files[0];
               if (!t) return;
-              window.__akiniOptimizeImage(t, function (e) {
-                const n = document.getElementById("friendsHeader");
+              const e = new FileReader();
+              ((e.onload = function (t) {
+                const e = t.target.result,
+                  n = document.getElementById("friendsHeader");
                 (n &&
                   (__akiniGuardBg(n, e), (n.style.backgroundSize = "cover"), (n.style.backgroundPosition = "center")),
                   rt("akini_friends_bg", e));
-              });
-              this.value = "";
+              }),
+                e.readAsDataURL(t),
+                (this.value = ""));
             });
           /* 通话背景换图由内联 onchange（call-background.js）统一处理，这里不再重复读文件/落盘 */
 
@@ -19599,7 +19467,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                   t("akini_toggle_contactFriendsToggle", "0"),
                   t("akini_toggle_contactIcityToggle", "0"),
                   t("akini_toggle_contactMailToggle", "0"),
-                  t("akini_toggle_emojiMixToggle", "1"));
+                  t("akini_toggle_emojiMixToggle", "0"));
                 var e = function (t, e, n, i, a) {
                   var o = parseFloat(localStorage.getItem(t) || ""),
                     r = parseFloat(localStorage.getItem(e) || "");
@@ -19920,13 +19788,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
             t("readReceiptToggle", !1),
             t("readNoReplyToggle", !1),
             t("pinyinCardToggle", !1),
-            (function () {
-              try {
-                "1" === localStorage.getItem("akini_toggle_emojiMixToggle_user") ||
-                  localStorage.setItem("akini_toggle_emojiMixToggle", "1");
-              } catch (t) {}
-            })(),
-            t("emojiMixToggle", !0),
+            t("emojiMixToggle", !1),
             t("contactPokeToggle", !1),
             (function () {
               try {
@@ -20415,9 +20277,6 @@ window.__akiniPatchAvatarCell = function (t, e) {
           } catch (t) {}
           return e;
         }),
-        
-
-
         (window.__akiniStickerUrl = function (t) {
           if (!t) return "";
           if ("string" == typeof t) return t.trim();
@@ -20599,61 +20458,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                   : a();
               } catch (t) {}
             })());
-          function r() {
-            return localStorage.getItem("akini_icity_my_nick") || "我";
-          }
-          function c(t) {
-            for (
-              var e = (function () {
-                  var t = r(),
-                    e = [];
-                  return (
-                    window.akiniContacts &&
-                      window.akiniContacts.getContacts().forEach(function (t) {
-                        var n = getIcityContactProfile(t.id);
-                        (n && n.name && e.push(n.name), t.name && e.push(t.name));
-                      }),
-                    e.push(localStorage.getItem("akini_icity_ta_nick") || "对方"),
-                    {
-                      myName: t,
-                      taNames: e,
-                    }
-                  );
-                })(),
-                n = e.myName,
-                i = e.taNames,
-                a = t.comments || [],
-                o = -1,
-                c = a.length - 1,
-                s = !1;
-              c >= 0;
-              c--
-            )
-              (i.indexOf(a[c].author) >= 0 && (o = c), a[c].author === n && (s = !0));
-            if (!s) return o < 0;
-            if (o < 0) return !0;
-            var l = a[o].author;
-            for (c = o + 1; c < a.length; c++) if (a[c].author === n && a[c].replyTo === l) return !0;
-            return !1;
-          }
-          function s(t) {
-            return !(!t || !t.authorId) && !!window.akiniContacts && !!window.akiniContacts.getContactById(t.authorId);
-          }
-          function d(t) {
-            if (t && t.authorId) {
-              var e = getIcityContactProfile(t.authorId);
-              if (e && e.name)
-                return {
-                  name: e.name,
-                  avatar: e.avatar || M(),
-                };
-            }
-            return {
-              name: localStorage.getItem("akini_icity_ta_nick") || localStorage.getItem("akini_ta_name") || "对方",
-              avatar: localStorage.getItem("akini_icity_ta_avatar") || localStorage.getItem("akini_ta_avatar") || "",
-            };
-          }
-          ((window.scheduleTaLikeSoon = function (t) {}),
+                                        ((window.scheduleTaLikeSoon = function (t) {}),
             (window.scheduleTaCommentSoon = function (t) {}));
         })(),
         (function () {
@@ -21303,7 +21108,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                 );
               });
           }
-                    function f(t, e) {
+          function f(t, e) {
             e = e || "";
             var n = [],
               i = 0;
@@ -21371,7 +21176,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                   (r[u].style.fontSize = v ? "16px" : "13px"),
                   (r[u].style.opacity = v ? "1" : 1 === g ? "0.85" : "0.55"),
                   (r[u].style.textShadow = v ? "0 0 16px rgba(255,255,255,0.45)" : "none"));
-            }
+              }
             var w = (D.lyricsBox && D.lyricsBox.clientHeight) || 150,
               k = D.lyricsBody.offsetHeight || 140;
             D.lyricsBody.style.transform =
@@ -22045,9 +21850,6 @@ window.__akiniPatchAvatarCell = function (t, e) {
                     a && (a.style.display = "flex");
                   }
                 }
-              }),
-              (window._ensureMusicContactsSelected = function () {
-                return rt.length > 0 || (S(), !1);
               }),
               D.menuOverlay &&
                 D.menuOverlay.addEventListener("click", function (t) {
@@ -23015,21 +22817,6 @@ window.__akiniPatchAvatarCell = function (t, e) {
               }
             }
           }, 1e4),
-            (window.__akiniSetMusicListenTogether = function (t, e) {
-              try {
-                if (!t) return;
-                ((et[t] = parseInt(e, 10) || 0),
-                  localStorage.setItem("akini_music_listen_together", JSON.stringify(et)));
-              } catch (t) {}
-            }),
-            window.addEventListener("akini-data-imported", function () {
-              try {
-                ($ = parseInt(localStorage.getItem("akini_music_listen_seconds") || "0", 10) || 0);
-                var _tg = localStorage.getItem("akini_music_listen_together");
-                et = _tg ? JSON.parse(_tg) || {} : {};
-                H && Y && (Y = Date.now());
-              } catch (e) {}
-            }),
             window.__akiniOnHidden(function () { 
                   if (H && Y) {
                     try {
@@ -23214,10 +23001,6 @@ window.__akiniPatchAvatarCell = function (t, e) {
                     }
                     (Xt(), ae("已获取歌曲时长"));
                   }),
-                  F.addEventListener("seeked", function () {
-                    if (!F) return;
-                    ((G = F.currentTime), (te = performance.now()), (ee = G), Xt(), Qt());
-                  }),
                   F.addEventListener("timeupdate", function () {
                     if (F) {
                       try {
@@ -23238,6 +23021,10 @@ window.__akiniPatchAvatarCell = function (t, e) {
                         !F._ending &&
                         ((F._ending = !0), ie());
                     }
+                  }),
+                  F.addEventListener("seeked", function () {
+                    if (!F) return;
+                    ((G = F.currentTime), (te = performance.now()), (ee = G), Xt(), Qt());
                   }),
                   F.addEventListener("ended", function () {
                     (F && (F._ending = !0), ie());
@@ -23263,7 +23050,6 @@ window.__akiniPatchAvatarCell = function (t, e) {
                               !F.paused &&
                               (!F._stallRecoverAt || t - F._stallRecoverAt > 3e4) &&
                               ((F._stallRecoverAt = t),
-                              (F.currentTime = F.currentTime),
                               F.play().catch(function () {}));
                           } catch (t) {}
                         }, 2500));
@@ -23875,81 +23661,9 @@ window.__akiniPatchAvatarCell = function (t, e) {
         console.log("[Akini] 0825s build - DOMContentLoaded 执行完毕 ✅"));
     } catch (t) {}
   var Mn, Bn, Ln, Dn, Pn, Nn, On, Rn;
-  (!(function () {
-      var t = document.getElementById("musicInviteOverlay"),
-        e = document.getElementById("musicInviteWaitingOverlay");
-      function n() {
-        var t = (window.getContacts && window.getContacts()) || [];
-        return t.length ? t[Math.floor(Math.random() * t.length)] : null;
-      }
-      function i(t, e) {
-        t &&
-          (e
-            ? 0 === String(e).indexOf("data:") || 0 === String(e).indexOf("http")
-              ? __akiniGuardHtml(t, '<img src="' + e + '" style="width:100%;height:100%;object-fit:cover">')
-              : (t.textContent = e)
-            : (t.textContent = ""));
-      }
-      ((window._showMusicInviteWithContact = function (e) {
-          if (e) {
-            var n = window.getMyAvatar ? window.getMyAvatar() : "",
-              a = document.getElementById("musicInviteFromAvatar"),
-              o = document.getElementById("musicInviteMyAvatar"),
-              r = document.getElementById("musicInviteFromName"),
-              c = document.getElementById("musicInviteFromName2");
-            (i(a, e.avatar),
-              i(o, n),
-              r && (r.textContent = e.name),
-              c && (c.textContent = e.name),
-              t && (t.style.display = "flex"));
-          } else console.log("[MusicInvite] no contacts");
-        }),
-        (window._hideMusicInvite = function () {
-          t && (t.style.display = "none");
-        }),
-        (window._hideMusicInviteWaiting = function () {
-          e && (e.style.display = "none");
-        }));
-      var a = document.getElementById("musicInviteRejectBtn");
-      a &&
-        a.addEventListener("click", function () {
-          (window._hideMusicInvite(), window._showMusicContactPicker && window._showMusicContactPicker());
-        });
-      var o = document.getElementById("musicInviteAcceptBtn");
-      (o &&
-        o.addEventListener("click", function () {
-          var t = n();
-          if (t)
-            try {
-              localStorage.setItem("akini_music_selected_contacts", JSON.stringify([t]));
-            } catch (t) {}
-          (window._hideMusicInvite(), window._showMusicContactPicker && window._showMusicContactPicker());
-        }),
-        (window._tryRandomMusicInvite = function () {
-          try {
-            "1" === localStorage.getItem("akini_music_listening_active") ||
-              (document.getElementById("app-music") && "flex" === document.getElementById("app-music").style.display);
-          } catch (t) {}
-        }));
-      try {
-        window._musicInviteTimer && (clearInterval(window._musicInviteTimer), (window._musicInviteTimer = null));
-      } catch (t) {}
-      try {
-        if (!window.__musicInviteHooked) {
-          window.__musicInviteHooked = !0;
-          var r = document.getElementById("sendBtn");
-          r &&
-            r.addEventListener("click", function () {
-              try {
-                window._tryRandomMusicInvite();
-              } catch (t) {}
-            });
-        }
-      } catch (t) {}
-    })(),
+
       (function () {
-        function t(t) {}
-                try {
+                        try {
           [
             "appBtnChat",
             "appBtnFriends",
@@ -23970,7 +23684,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
         } catch (t) {
           t.message;
         }
-      })());
+      })();
   try {
       var Hn = null;
       function Fn() {
@@ -24033,29 +23747,26 @@ window.__akiniPatchAvatarCell = function (t, e) {
                     i = Object.keys(n);
                   e && 0 === i.length
                     ? ((window._restoringData = !0),
-                      window._idbStore &&
-                        window._idbStore.restoreAll &&
-                        window._idbStore.restoreAll(function () {
-                          window.akiniContacts &&
-                            window.akiniContacts.tryRestoreFromBackup &&
-                            window.akiniContacts.tryRestoreFromBackup(function () {
-                              (window.akiniContacts.resetCache && window.akiniContacts.resetCache(),
-                                window._akiniRestoreFromSnapshot &&
-                                  window._akiniRestoreFromSnapshot(function () {
-                                    window._restoringData = !1;
-                                    try {
-                                      Lt();
-                                    } catch (t) {}
-                                    ("function" == typeof window._renderPosts && window._renderPosts(),
-                                      "function" == typeof window._renderIcity && window._renderIcity());
-                                  }));
-                            });
+                      window.akiniContacts &&
+                        window.akiniContacts.tryRestoreFromBackup &&
+                        window.akiniContacts.tryRestoreFromBackup(function () {
+                          window.akiniContacts.resetCache && window.akiniContacts.resetCache();
+                          var done = function () {
+                            window._restoringData = !1;
+                            try {
+                              Lt();
+                            } catch (t) {}
+                            "function" == typeof window._renderPosts && window._renderPosts();
+                            "function" == typeof window._renderIcity && window._renderIcity();
+                          };
+                          if (window._akiniRestoreFromSnapshot) window._akiniRestoreFromSnapshot(done);
+                          else done();
                         }))
                     : Object.keys(n).length > 0 &&
                       Object.keys(n).forEach(function (t) {
-                        
-
-
+                        /* 只给「当前会话」预加载历史；其余会话等用户点进去再按需读。
+                           旧代码在这里把每个会话的历史都从 IDB 读进内存并写回，
+                           等于启动即全量水合，会话/消息一多就闪退（milk/zy 不会）。 */
                         try {
                           if (!window.akiniContacts.getActiveChatId || window.akiniContacts.getActiveChatId() !== t) return;
                         } catch (_actE) {

@@ -2498,10 +2498,6 @@
       }, 0);
     }
   };
-  function _bindPickPanel() {
-    /* 面板内容每次打开时整体重渲染，无需静态绑定 */
-  }
-
   /* ---- 三处输入栏表情包按钮 ---- */
   function _restorePh(input) {
     if (input && input.__stickerHint) {
@@ -2657,7 +2653,6 @@
     _bindTabs();
     _bindAdd();
     _bindDeleteSheet();
-    _bindPickPanel();
     _bindStickerBtns();
     _bindStickerToolbar();
     _syncTab();

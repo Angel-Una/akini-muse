@@ -934,7 +934,7 @@ window.__akiniIncCache = {};
     if (!file) return;
     var area = AREAS[type];
     if (!area) return;
-    window.__akiniOptimizeImage(file, function (finalUrl) {
+    window.__akiniReadImageOriginal(file, function (finalUrl) {
       if (!finalUrl) {
         if (window.akiniToast) window.akiniToast("图片读取失败，请重试");
         return;
@@ -1130,8 +1130,6 @@ window.__akiniIncCache = {};
 
   init();
 })();
-
-
 
 (function () {
   var TXT_KEY = "akini_ticket_texts";

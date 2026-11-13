@@ -77,21 +77,6 @@
     return null;
   }
 
-  // 随机选择一个“创建的联系人”（排除系统 me/my），用于收藏归属
-
-  function avatarHtml(c, size) {
-    size = size || 48;
-    return (
-      '<div style="width:' +
-      size +
-      "px;height:" +
-      size +
-      'px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#f0f0f0;flex-shrink:0;">' +
-      (window.renderAvatarHtml ? window.renderAvatarHtml((c && c.avatar) || "", size) : "") +
-      "</div>"
-    );
-  }
-
   /* ============ 收藏存储（按联系人维度） ============ */
   function storageKey(contactId) {
     return "akini_ta_phone_" + contactId;
@@ -167,45 +152,10 @@
     }
   }
 
-  
-
   var _callCache = {};
 
   function _callKey(contactId) {
     return "akini_ta_calls_" + contactId;
-  }
-
-  /* 通话记录只在 localforage 里，但备份导入时导入流程会清空 localforage、
-     再把备份里的键写进 localStorage/内存镜像。这里做一次跨层兜底读取，
-     读到 LS 版本时顺便回填 localforage，避免“导入后通话记录全没了”。 */
-  function _readCallRaw(contactId, cb) {
-    var key = _callKey(contactId),
-      lsVal = null;
-    try {
-      lsVal = localStorage.getItem(key);
-    } catch (e) {}
-    if ((lsVal == null || lsVal === "") && window.akiniStore && window.akiniStore.memoryGet) {
-      try {
-        lsVal = window.akiniStore.memoryGet(key);
-      } catch (e) {}
-    }
-    if (!window.localforage) return cb(lsVal);
-    localforage
-      .getItem(key)
-      .then(function (raw) {
-        if (raw == null && lsVal != null && lsVal !== "") {
-          _callCache[contactId] = _parseCallList(lsVal);
-          try {
-            localforage.setItem(key, String(lsVal)).catch(function () {});
-          } catch (e) {}
-          cb(lsVal);
-          return;
-        }
-        cb(raw);
-      })
-      .catch(function () {
-        cb(lsVal);
-      });
   }
 
   function _parseCallList(raw) {
@@ -222,22 +172,19 @@
 
   function loadCallRecords(contactId) {
     if (_callCache[contactId]) return _callCache[contactId];
-    // 缓存未命中：异步取一次，回写缓存后重渲染
-    _readCallRaw(contactId, function (raw) {
-      _callCache[contactId] = _parseCallList(raw);
-      if (currentContactId === contactId && currentTab === "calls") renderList();
-    });
+    // 缓存未命中：异步从 localforage 拉取，回写缓存后重渲染
+    if (window.localforage) {
+      localforage.getItem(_callKey(contactId)).then(function (raw) {
+        _callCache[contactId] = _parseCallList(raw);
+        if (currentContactId === contactId && currentTab === "calls") renderList();
+      }).catch(function () { _callCache[contactId] = []; });
+    }
     return [];
   }
 
   function saveCallRecords(contactId, list) {
     list = Array.isArray(list) ? list : [];
     _callCache[contactId] = list;
-    /* 双写：localforage 是读取主通道，同时镜像一份到 localStorage，
-       这样文件备份/导入走标准通道也不会再漏掉通话记录。 */
-    try {
-      localStorage.setItem(_callKey(contactId), JSON.stringify(list));
-    } catch (e) {}
     if (window.localforage) {
       localforage.setItem(_callKey(contactId), JSON.stringify(list)).catch(function () {});
     }
@@ -272,10 +219,12 @@
       // 缓存已有直接加；否则先从 localforage 拉最新列表再追加，避免覆盖旧记录
       if (_callCache[contactId]) {
         write(_callCache[contactId].slice());
-      } else {
-        _readCallRaw(contactId, function (raw) {
+      } else if (window.localforage) {
+        localforage.getItem(_callKey(contactId)).then(function (raw) {
           write(_parseCallList(raw));
-        });
+        }).catch(function () { write([]); });
+      } else {
+        write([]);
       }
       return true;
     } catch (e) {
@@ -1338,14 +1287,6 @@ window._akiniAllowRemove = false;
     addCallRecord: addCallRecord,
     openMailDetail: openMailDetail,
   };
-
-  /* 备份导入后清掉内存缓存：否则界面继续用导入前的通话列表（看起来像“备份漏了通话记录”）。 */
-  window.addEventListener("akini-data-imported", function () {
-    _callCache = {};
-    try {
-      if (currentTab === "calls") renderList();
-    } catch (e) {}
-  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);

@@ -8,7 +8,6 @@
 (function () {
   function fit() {
     try {
-      var pf = document.getElementById("phoneFrame") || document.body;
       var cw = document.querySelector(".content-wrapper");
       if (!cw) return;
 
@@ -38,9 +37,6 @@
   window.addEventListener("load", __akiniHomeInit);
   window.addEventListener("resize", fit);
   window.addEventListener("orientationchange", fit);
-  
-
-
   window.__akiniOnVisible(function () { setTimeout(fit, 300); });
 
   /* 弹窗打开/关闭强制重算：弹窗出现时浏览器可能重排（导致 vh/svh 波动），

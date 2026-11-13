@@ -1,11 +1,10 @@
 
-
-
-
-
-
-
-
+/* ===== 后台保活与后台防挂起系统 =====
+ * 与 zy 一致：一个开关 → 一条静音循环音频（Audio loop + 音量 0.01）→ 防止页面被系统挂起。
+ * 音频源用本地生成的静音 WAV（core-helpers.js 的 __akiniSilentUrl），离线可用，不依赖远程文件。
+ * 本模块只做：开关状态读写（两套 key 同步）、转发 core 的音频启停、可见性恢复、UI 文本。
+ * 之前这里另起一路远程 m4a 音频 + MutationObserver 回滚，与 core 的保活互相打架导致开关失效，已去除。
+ */
 (function () {
   "use strict";
   var KEY = "keepaliveAudioEnabled";

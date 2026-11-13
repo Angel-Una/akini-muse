@@ -1,7 +1,8 @@
 
 
 // 长方圆角日历动态与系统同步更新
-window.updateS1Calendar = function () {
+var _akiniCalDateKey = "";
+window.updateS1Calendar = function (forceDay) {
   var now = new Date();
 
   /* 日历时间格式彻底与设置面板时间戳解绑！
@@ -18,31 +19,28 @@ window.updateS1Calendar = function () {
   var timeStr = _hh + ":" + _mm + ":" + _ss + " " + ampm;
 
   var timeEl = document.getElementById("calLiveTime");
-  if (timeEl) timeEl.textContent = timeStr;
+  if (timeEl && timeEl.textContent !== timeStr) timeEl.textContent = timeStr;
 
-  // 格式化日期 2026/10/3
+  // 日期与星期网格只在跨日或回前台校准时更新
   var year = now.getFullYear();
   var month = now.getMonth() + 1;
   var date = now.getDate();
-  var dateStr = year + "/" + month + "/" + date;
-  var dateEl = document.getElementById("calLiveDate");
-  if (dateEl) dateEl.textContent = dateStr;
-
-  // 星期名称 Saturday
-  var weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   var dayIdx = now.getDay();
-  var weekEl = document.getElementById("calLiveWeekday");
-  if (weekEl) weekEl.textContent = weekdays[dayIdx];
+  var dateKey = year + "/" + month + "/" + date;
+  if (!forceDay && dateKey === _akiniCalDateKey) return;
+  _akiniCalDateKey = dateKey;
 
-  // 星期网格高亮
+  var dateEl = document.getElementById("calLiveDate");
+  if (dateEl && dateEl.textContent !== dateKey) dateEl.textContent = dateKey;
+
+  var weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  var weekEl = document.getElementById("calLiveWeekday");
+  if (weekEl && weekEl.textContent !== weekdays[dayIdx]) weekEl.textContent = weekdays[dayIdx];
+
   var items = document.querySelectorAll("#calWeekGrid .w-item");
   items.forEach(function (item) {
-    var w = parseInt(item.getAttribute("data-w"), 10);
-    if (w === dayIdx) {
-      item.classList.add("today-active");
-    } else {
-      item.classList.remove("today-active");
-    }
+    var active = parseInt(item.getAttribute("data-w"), 10) === dayIdx;
+    if (item.classList.contains("today-active") !== active) item.classList.toggle("today-active", active);
   });
 };
 
@@ -50,39 +48,27 @@ window.editCalCustomText = function () {
   var el = document.getElementById("calCustomCenter");
   if (!el) return;
   var cur = el.textContent || "xxx";
-  {
-    window.__akiniPromptModal(
-      "日历中间自定义文字",
-      "请输入自定义文字",
-      function (val) {
-        if (val !== null && String(val).trim() !== "") {
-          var str = String(val).trim();
-          el.textContent = str;
-          try {
-            localStorage.setItem("akini_cal_custom_center", str);
-          } catch (e) {}
-        }
-      },
-      { value: cur === "xxx" ? "" : cur, maxLength: 30 },
-    );
-    return;
-  }
-  try {
-    var val = prompt("请输入日历中间自定义文字：", cur === "xxx" ? "" : cur);
-    if (val !== null && val.trim() !== "") {
-      el.textContent = val.trim();
-      try {
-        localStorage.setItem("akini_cal_custom_center", val.trim());
-      } catch (e) {}
-    }
-  } catch (e) {}
+  window.__akiniPromptModal(
+    "日历中间自定义文字",
+    "请输入自定义文字",
+    function (val) {
+      if (val !== null && String(val).trim() !== "") {
+        var str = String(val).trim();
+        el.textContent = str;
+        try {
+          localStorage.setItem("akini_cal_custom_center", str);
+        } catch (e) {}
+      }
+    },
+    { value: cur === "xxx" ? "" : cur, maxLength: 30 },
+  );
 };
 
 /* 时间模块每秒刷新，确保永远实时；独立 IIFE 保护，不受其他启动脚本异常影响 */
 (function () {
-  function _tick() {
+  function _tick(forceDay) {
     try {
-      if (window.updateS1Calendar) window.updateS1Calendar();
+      if (window.updateS1Calendar) window.updateS1Calendar(forceDay);
     } catch (e) {}
   }
   /* 自定义日历文字：DOM 就绪后回填，并在异步恢复完成后再应用一次 */
@@ -96,7 +82,7 @@ window.editCalCustomText = function () {
     } catch (e) {}
   };
   function _boot() {
-    _tick();
+    _tick(true);
     window.__akiniApplyCalText();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", _boot);
@@ -106,7 +92,7 @@ window.editCalCustomText = function () {
     if (!document.hidden) _tick();
   }, 1000);
   // 前台可见时立即更新
-  window.__akiniOnVisible(function () { _tick(); });
+  window.__akiniOnVisible(function () { _tick(true); });
   /* 设置里切换时间格式 → 日历立即按新格式刷新 */
   window.addEventListener("storage", function (ev) {
     try {
@@ -197,40 +183,6 @@ document.addEventListener("click", function (e) {
   }
 });
 
-window.compressImageDataUrl = function (dataUrl, callback, opts) {
-  if (!dataUrl || typeof dataUrl !== "string" || dataUrl.length < 400000) {
-    if (typeof callback === "function") callback(dataUrl);
-    return;
-  }
-  var img = new Image();
-  img.onload = function () {
-    try {
-      var maxWidth = (opts && opts.maxSide) || 800;
-      var quality = (opts && opts.quality) || 0.7;
-      var width = img.naturalWidth || img.width;
-      var height = img.naturalHeight || img.height;
-      if (width > maxWidth) {
-        height = Math.round((height * maxWidth) / width);
-        width = maxWidth;
-      }
-      var canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      var ctx = canvas.getContext("2d");
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(img, 0, 0, width, height);
-      callback(canvas.toDataURL("image/jpeg", quality));
-    } catch (e) {
-      callback(dataUrl);
-    }
-  };
-  img.onerror = function () {
-    callback(dataUrl);
-  };
-  img.src = dataUrl;
-};
-
 window.triggerPickImage = function (targetKey, callback) {
   var input = document.getElementById("akini_universal_picker");
   if (!input) {
@@ -258,7 +210,7 @@ window.triggerPickImage = function (targetKey, callback) {
       if (callback) callback(dataUrl);
     };
     if (/avatar/i.test(targetKey || "")) window.__akiniCropImageSquare(file, done, 300);
-    else window.__akiniOptimizeImage(file, done);
+    else window.__akiniReadImageOriginal(file, done);
   };
   input.click();
 };

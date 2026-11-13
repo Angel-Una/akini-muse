@@ -45,7 +45,7 @@
     return (f.name || "") + "|" + (f.size || 0) + "|" + (f.lastModified || 0);
   }
   function __process(f, cfg, entry) {
-    window.__akiniOptimizeImage(f, function (d) {
+    window.__akiniReadImageOriginal(f, function (d) {
       if (!d) return;
       var fin = function (url) {
         try {

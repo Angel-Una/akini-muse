@@ -66,46 +66,76 @@
         "akini_backup_",
         "akini_contacts_backup",
       ];
+    var _imgCacheBytes = 0,
+      _imgCacheQ = [],
+      _imgCacheQueued = {};
     ((window.__akiniIsImgKey = function (n) {
       if (!n) return !1;
       if (t[n]) return !0;
       for (var i = 0; i < e.length; i++) if (0 === n.indexOf(e[i])) return !0;
       return !1;
     }),
-      /* 首屏必需的图片键：内存缓存淘汰时跳过，保证头像/首页背景不会闪空白 */
+      /* essential 只后淘汰；邮件、聊天和备份文本绝不进入首屏图片白名单。 */
       (window.__akiniIsEssentialImg = function (n) {
         if (!n) return !1;
-        if (t[n]) return !0;
-        if (0 === n.indexOf("akini_contact_avatar_")) return !0;
-        if (0 === n.indexOf("akini_avatar_")) return !0;
-        return !1;
+        var exact = {
+          akini_home_bg: 1,
+          akini_s1_cover: 1,
+          akini_s1_photo: 1,
+          akini_cover_bg: 1,
+          akini_cover_img: 1,
+          akini_bg_img: 1,
+          akini_day_bg: 1,
+          akini_avatar_left: 1,
+          akini_avatar_right: 1,
+          akini_my_avatar: 1,
+          akini_ta_avatar: 1,
+          akini_s1_avatar: 1,
+        };
+        if (exact[n]) return !0;
+        return 0 === n.indexOf("akini_contact_avatar_") || 0 === n.indexOf("akini_avatar_");
+      }),
+      (window.__akiniImgCacheRemove = function (k) {
+        if (!window.__akiniImgCache || !Object.prototype.hasOwnProperty.call(window.__akiniImgCache, k)) return;
+        var old = window.__akiniImgCache[k];
+        if ("string" == typeof old) _imgCacheBytes = Math.max(0, _imgCacheBytes - old.length);
+        delete window.__akiniImgCache[k];
+        var at = _imgCacheQ.indexOf(k);
+        if (at >= 0) _imgCacheQ.splice(at, 1);
+        delete _imgCacheQueued[k];
+      }),
+      (window.__akiniImgCacheClear = function () {
+        Object.keys(window.__akiniImgCache || {}).forEach(function (k) {
+          delete window.__akiniImgCache[k];
+        });
+        _imgCacheBytes = 0;
+        _imgCacheQ = [];
+        _imgCacheQueued = {};
+      }),
+      (window.__akiniImgCachePut = function (k, v) {
+        window.__akiniImgCacheRemove(k);
+        if (
+          "string" != typeof v ||
+          !v ||
+          v.length > 8388608 ||
+          (0 !== v.indexOf("data:") && v.length > 4096)
+        )
+          return !1;
+        window.__akiniImgCache[k] = v;
+        _imgCacheBytes += v.length;
+        _imgCacheQ.push(k);
+        _imgCacheQueued[k] = 1;
+        while (_imgCacheBytes > 8388608 && _imgCacheQ.length) {
+          var at = 0;
+          while (at < _imgCacheQ.length && window.__akiniIsEssentialImg(_imgCacheQ[at])) at++;
+          if (at >= _imgCacheQ.length) at = 0;
+          var victim = _imgCacheQ[at];
+          window.__akiniImgCacheRemove(victim);
+        }
+        return Object.prototype.hasOwnProperty.call(window.__akiniImgCache, k);
       }),
       (window.__akiniImgSet = function (t, e) {
-        if ("string" == typeof e && e.length > 1572864) {
-        } else {
-          window.__akiniImgCache[t] = e;
-          
-
-
-          try {
-            var _c = window.__akiniImgCache,
-              _ks = Object.keys(_c),
-              _sum = 0,
-              _arr = [];
-            for (var _i = 0; _i < _ks.length; _i++) {
-              var _v = _c[_ks[_i]],
-                _l = "string" == typeof _v ? _v.length : 0;
-              _arr.push([_ks[_i], _l]);
-              _sum += _l;
-            }
-            while (_sum > 8388608 && _arr.length) {
-              var _ev = _arr.shift();
-              if (window.__akiniIsEssentialImg && window.__akiniIsEssentialImg(_ev[0])) continue;
-              delete _c[_ev[0]];
-              _sum -= _ev[1];
-            }
-          } catch (_e) {}
-        }
+        window.__akiniImgCachePut(t, e);
         function lsFb() {
           try {
             localStorage.setItem(t, e);
@@ -136,7 +166,7 @@
       (window.__akiniImgMigrateLS = function (t) {
         var e = window.__akiniImgGetLS(t);
         if (e) {
-          window.__akiniImgCache[t] = e;
+          window.__akiniImgCachePut(t, e);
           /* 只需迁移一次；之后每次启动重复写 IDB 纯属浪费 I/O */
           try {
             if (localStorage.getItem("akini_img_migrated_v1")) return;
@@ -194,7 +224,7 @@
                     .getItem(k)
                     .then(function (v) {
                       if ("string" == typeof v && v.length <= 1572864 && _b + v.length <= _L) {
-                        window.__akiniImgCache[k] = v;
+                        window.__akiniImgCachePut(k, v);
                         _b += v.length;
                       }
                       return next();
@@ -531,9 +561,6 @@
     };
   })()));
 
-
-
-
 (function () {
   /* 聊天/陪伴气泡里的图最大只显示 160px，但浏览器默认按原图像素解码：
      一张 2000x1500 的照片解码后约 12MB，聊天里放十几张就是 200MB+。
@@ -637,9 +664,6 @@
     true,
   );
 })();
-
-
-
 
 (function () {
   function healChatBg() {

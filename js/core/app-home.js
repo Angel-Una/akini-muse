@@ -953,8 +953,9 @@ function syncDualScreensData() {
       if (localStorage.getItem("akini_app_version") !== t) {
         let e = 0;
         for (let t = 0; t < localStorage.length; t++) {
-          const n = localStorage.key(t),
-            a = localStorage.getItem(n);
+          const n = localStorage.key(t);
+          if (["akini_localstorage_snapshot", "akini_localstorage_snapshot_backup", "akini_idb_full_snapshot"].includes(n)) continue;
+          const a = localStorage.getItem(n);
           a && (e += a.length);
         }
         if (e > 35e5) {

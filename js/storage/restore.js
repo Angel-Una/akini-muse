@@ -76,21 +76,6 @@
     },
     true,
   );
-  function it(t, e) {
-    if (((e = e || ""), !t || "string" != typeof t)) return __akiniAvOrLine(e);
-    t = t.trim();
-    if (!t) return __akiniAvOrLine(e);
-    if (0 === t.indexOf("<img")) {
-      var n = t.match(/src="([^"]*)"/);
-      if (!n || !n[1]) return __akiniAvOrLine(e);
-      t = n[1];
-    }
-    return 0 === t.indexOf("data:") || 0 === t.indexOf("http")
-      ? '<img src="' +
-          t.replace(/"/g, "&quot;") +
-          '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">'
-      : __akiniAvOrLine(t);
-  }
 })();
 
 /* 背景图恢复 */
@@ -211,7 +196,7 @@
         localStorage.setItem("akini_home_bg", v);
       } catch (e) {}
       try {
-        if (window.__akiniImgCache) window.__akiniImgCache["akini_home_bg"] = v;
+        if (window.__akiniImgCachePut) window.__akiniImgCachePut("akini_home_bg", v);
       } catch (e) {}
     }
     try {
@@ -439,15 +424,8 @@
     restoreAllThrottled(800);
   });
   setTimeout(function () {
-    restoreAllThrottled(0);
+    restoreAllThrottled(800);
   }, 1500);
-  /* 从后台切回前台时再补一轮：系统可能在此期间清掉/延迟写入图片，
-     或者 iOS 已把页面重载——重新上屏一次，避免"要再进一次才显示"。 */
-  window.__akiniOnVisible(function () { setTimeout(function () {
-      try {
-        restoreAllImagesAndConfig();
-      } catch (e) {}
-    }, 300); });
 
   /* core 的 ct("akini_home_bg") 会在启动后异步再写一次 background-image，
      而且不带 !important，会把上面恢复的壁纸覆盖成不生效的内联声明。
@@ -537,7 +515,7 @@
         window._akiniAllowRemove = false;
       }
       try {
-        if (window.__akiniImgCache) delete window.__akiniImgCache["akini_home_bg"];
+        if (window.__akiniImgCacheRemove) window.__akiniImgCacheRemove("akini_home_bg");
       } catch (e3) {}
       try {
         if (window.akiniStore && window.akiniStore.memorySet) window.akiniStore.memorySet("akini_home_bg", "");
@@ -627,31 +605,6 @@ window.__akiniRestoredDone = true;
   window.__akiniOnHidden(function () { 
       try {
         mirrorIcons();
-      } catch (e) {}
-     });
-
-  (function () {
-    var modal = document.getElementById("mailDetailModal");
-    if (!modal) return;
-    function visible() {
-      try {
-        return getComputedStyle(modal).display !== "none" && modal.offsetParent !== null;
-      } catch (e) {
-        return false;
-      }
-    }
-    /* 已读语义调整：仅点开某封信才标记该封已读，不再整箱标记 */
-  })();
-
-  function syncSentMailStatus() {
-    /* 寄出的信仅在对方回信真正投递（app.js checkStatus）时才置为已读，不再按时间自动置读 */
-    return;
-  }
-  syncSentMailStatus();
-  
-  window.__akiniOnVisible(function () { 
-      try {
-        syncSentMailStatus();
       } catch (e) {}
      });
 })();

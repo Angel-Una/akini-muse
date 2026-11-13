@@ -27,9 +27,6 @@
       } catch (e) {}
   }
 
-  
-
-
   var READY_TIMEOUT_MS = 6000;
 
   /* storage.js 启动恢复完成信号：它异步对账 IDB→内存，完成时置
@@ -68,9 +65,9 @@
       _origHide();
     }
     try {
-      
-
-
+      /* 和 milk/zy 一样：撤开屏只等 storage.js 的数据恢复，不排队预热图片。
+         之前同时等头像、壁纸、全部会话聊天背景和外链图，几十个 IDB 读取
+         叠加起来会把开屏拖到 6s 上限，还抢主线程。 */
       Promise.race([
         storageRestored(),
         new Promise(function (r) { setTimeout(r, READY_TIMEOUT_MS); })

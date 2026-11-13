@@ -19,15 +19,6 @@
     } catch (e) {}
   }
   window.akiniToast = window.akiniToast || window.__akiniToast || __fallbackToast;
-  function AK(m) {
-    try {
-      (window.akiniToast || __fallbackToast)(m);
-    } catch (e) {
-      try {
-        __fallbackToast(m);
-      } catch (e2) {}
-    }
-  }
 
   /* ===== 全局脚本异常 / Promise 拒绝提示 ===== */
   var __akErrLast = "",

@@ -227,7 +227,6 @@
           ? '<div class="bubble">[图片已清理]</div>'
           : '<div class="bubble">' + esc(m.text || "") + "</div>";
       row.innerHTML = '<div class="msg-content-line">' + bubbleHtml + "</div>";
-      
       if (m.quote && window.__akiniQuoteCardHtml) {
         row.innerHTML +=
           '<div style="flex-basis:100%;width:100%;box-sizing:border-box;margin-top:2px;text-align:' +
@@ -398,7 +397,6 @@
 
   function enterCompanionMain(st) {
     var c = contactById(st.cid);
-    var name = c ? c.name || "未命名" : "对方";
     applyCompanionAvatars(c);
     var dd = $("companionDistance");
     if (dd) {
@@ -638,7 +636,6 @@
     var msgInput = $("companionMsgInput");
     var emojiBtn = $("companionEmojiBtn");
     var emojiSheet = $("companionEmojiSheet");
-    var emojiGrid = $("companionEmojiGrid");
 
     if (back1) back1.addEventListener("click", goHome);
     if (back2) back2.addEventListener("click", goHome);
@@ -691,7 +688,8 @@
         var f = this.files && this.files[0];
         this.value = "";
         if (!f) return;
-        window.__akiniOptimizeImage(f, function (url) {
+        window.__akiniReadImageOriginal(f, function (url) {
+          if (!url) return;
           _companionBg = url;
           idbSet(COMPANION_BG_KEY, url);
           applyCompanionBg();
@@ -732,7 +730,6 @@
   var _books = [];
   var _booksLoaded = false;
   var _curBook = null;
-  var _readerContact = null;
   var _readerContacts = []; /* 共读多选 */
   var _readerParas = [];
   var _readerIdx = 0;
@@ -1009,21 +1006,14 @@
     fr.readAsArrayBuffer(file);
   }
 
-  /* ---------- 封面/背景图压缩 ---------- */
-  function shrinkImage(dataUrl, maxW, maxH, cb) {
-    cb(dataUrl);
-  }
-
   /* ---------- 选人共读弹层 ---------- */
   function openNovelPicker() {
     var d = window.__akiniDefaultContact && window.__akiniDefaultContact();
     if (d) {
-      _readerContact = d.id;
       _readerContacts = [d.id];
       openReader();
       return;
     }
-    _readerContact = null;
     _readerContacts = [];
     renderNovelPickerList();
     openSheet("novelPickerOverlay");
@@ -1068,7 +1058,6 @@
         var ix = _readerContacts.indexOf(cid);
         if (ix >= 0) _readerContacts.splice(ix, 1);
         else _readerContacts.push(cid);
-        _readerContact = _readerContacts[0] || null;
         renderNovelPickerList();
       });
     });
@@ -1693,7 +1682,6 @@
   /* ---------- 绑定 ---------- */
   function bindNovel() {
     var back = $("novelBackBtn");
-    var addBtn = $("novelAddBtn");
     var importInput = $("novelImportInput");
     var readerBack = $("novelReaderBackBtn");
     var chapterMenuBtn = $("novelChapterMenuBtn");
@@ -1836,7 +1824,8 @@
         var f = this.files && this.files[0];
         this.value = "";
         if (!f) return;
-        window.__akiniOptimizeImage(f, function (url) {
+        window.__akiniReadImageOriginal(f, function (url) {
+          if (!url) return;
           var s = readerSettings();
           s.bg = url;
           saveReaderSettings(s);
@@ -1926,7 +1915,6 @@
           alert("先选一位一起看的联系人吧~");
           return;
         }
-        _readerContact = _readerContacts[0];
         openReader();
       });
 
@@ -1949,10 +1937,11 @@
         this.value = "";
         if (!f || !_curBook) return;
         window.__akiniOptimizeImage(f, function (url) {
+          if (!url) return;
           _curBook.cover = url;
           saveBooks();
           window.__renderNovelShelf();
-        }, 300, 0.8);
+        });
       });
     if (actRename)
       actRename.addEventListener("click", function () {
@@ -2496,9 +2485,10 @@
         var f = this.files && this.files[0];
         if (!f || !_editBook) return;
         window.__akiniOptimizeImage(f, function (url) {
+          if (!url) return;
           _editBook.cover = url;
           renderEditCover();
-        }, 300, 0.8);
+        });
         this.value = "";
       });
       $("aknvEditOk").addEventListener("click", function () {
@@ -2550,10 +2540,6 @@
       $("aknvEditModal").style.display = "flex";
     }
     window.openEditBook = openEditBook;
-
-    /* ---------- 包装书架渲染：管理模式加画笔 ---------- */
-
-    var _origRenderShelf = window.__renderNovelShelf;
 
     /* ---------- 绑定加号 → 菜单 ---------- */
     function bindNovelMenu() {

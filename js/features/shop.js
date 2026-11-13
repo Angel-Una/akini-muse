@@ -4,8 +4,7 @@
   var PK = "akini_shop_products",
     OK = "akini_shop_orders";
   var _cur = null,
-    _act = null,
-    _curOrder = null;
+    _act = null;
 
   function _shopLs(k) {
     try {
@@ -259,7 +258,6 @@
       });
       if (!p) return;
       _cur = p;
-      _curOrder = null;
       _setShopDetailMode("product");
       _renderShopDetailContent(p);
       var o = document.getElementById("shopDetailOverlay");
@@ -285,7 +283,6 @@
           price: order.price,
         };
         _cur = p;
-        _curOrder = order;
         _renderShopDetailContent(p);
         _setShopDetailMode("receive", order);
         var o = document.getElementById("shopDetailOverlay");
@@ -377,8 +374,6 @@
     }
   }
 
-  var _shopSelectedContact = null;
-
   window.__shopOpenPicker = function (action) {
     _act = action;
     var dc = null;
@@ -392,7 +387,6 @@
     if (!dc) {
       return;
     }
-    _shopSelectedContact = { id: dc.id, name: dc.name || "联系人", avatar: dc.avatar || "" };
     window.__shopSendCard(dc.id);
   };
 
@@ -747,7 +741,6 @@
       var order = O[idx];
       if (order.status !== "pending") return;
       order.status = "success";
-      var noteEl = document.getElementById("shopDetailNote");
       /* order.note 不被用户篡改 */
       _shopLsSet(OK, O);
       var cardId = "shop-recv-card-" + orderId;
@@ -774,7 +767,6 @@
       var order = O[idx];
       if (order.status !== "pending") return;
       order.status = "reject";
-      var noteEl = document.getElementById("shopDetailNote");
       /* order.note 不被用户篡改 */
       _shopLsSet(OK, O);
       var cardId = "shop-recv-card-" + orderId;

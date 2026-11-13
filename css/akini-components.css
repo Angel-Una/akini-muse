@@ -322,46 +322,6 @@ html.akini-boot-lock body>*:not(#akiniBootSplash){display:none!important}
 /* 组件样式 */
 @keyframes akiniSlideIn{to{opacity:1;transform:translateY(0)}}
 
-
-.akini-splash-logo svg{stroke:#111111 !important}
-.akini-splash-logo svg{width:26px;height:26px}
-
-
-.akini-splash-module-body p{margin:0 0 6px}
-.akini-splash-module-body p:last-child{margin-bottom:0}
-.akini-splash-module-body b{color:#000000;font-weight:700}
-.akini-splash-module-body hr{border:none;border-top:1px solid #eee;margin:10px 0}
-
-
-.akini-splash-enter:active{transform:translateY(-1px)}
-
-/* 白底胶囊搜索框：黑搜索线条+文字，可点击更换内容 */
-.search-pill {
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-  width: 100% !important;
-  max-width: 320px !important;
-  padding: 10px 16px !important;
-  background: #ffffff !important;
-  border-radius: 999px !important;
-  border: 1px solid #e5e5e5 !important;
-  box-sizing: border-box !important;
-  overflow: hidden !important;
-  white-space: nowrap !important;
-}
-.search-pill svg { color: #1a1a1a !important; flex-shrink: 0 !important; }
-.search-pill span {
-  font-size: 14px !important;
-  color: #1a1a1a !important;
-  flex: 1 !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-  display: block !important;
-}
-
 /* 组件样式 */
 /* 角标：白底黑字小圆点 */
 .back-unread-badge, .unread-badge, .badge,

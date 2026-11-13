@@ -90,8 +90,7 @@ body {
   background: var(--pg-paper);
   border-bottom: 1px solid var(--pg-line);
 }
-#settingsArea .settings-row,
-#settingsArea .settings-group {
+#settingsArea .settings-row {
   background: var(--pg-paper);
   border: 0;
   border-radius: 14px;
@@ -112,12 +111,6 @@ body {
 }
 #settingsArea .settings-row .desc {
   color: var(--pg-muted);
-}
-#settingsArea .settings-group-title {
-  color: var(--pg-muted) !important;
-  letter-spacing: 3px;
-  font-size: 12px;
-  text-transform: uppercase;
 }
 /* 开关 */
 #settingsArea .toggle-switch {

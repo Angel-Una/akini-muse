@@ -119,25 +119,16 @@ window.__akiniDefer(function () {
               }) >= 0;
             if (exists) return;
             var isReply = bubble.getAttribute("data-survey-reply") === "1";
-            var memberId = bubble.getAttribute("data-member-id");
-            var titleEl = bubble.querySelector(".survey-bubble-title");
             var qEl = bubble.querySelector(".survey-bubble-q");
             var statusEl = bubble.querySelector(".survey-bubble-status");
-            var countEl = bubble.querySelector(".survey-bubble-count");
-            var title = (titleEl && titleEl.textContent) || "";
             var qText = (qEl && qEl.textContent) || "";
             var status = (statusEl && statusEl.textContent) || "";
-            var qCount = 1;
-            if (countEl) {
-              var cm = (countEl.textContent || "").match(/(\d+)/);
-              if (cm) qCount = parseInt(cm[1], 10) || 1;
-            }
             /* 重建残缺问卷卡片 */
             var q = { text: qText.replace(/^问题：/, "").trim() || "问卷", options: [] };
             var s = {
               id: sid,
               title: isReply ? q.text || "问卷" : "问卷",
-              questions: qCount > 0 ? [q] : [q],
+              questions: [q],
               createdAt: Date.now() - 1000,
               senderName: isReply ? "对方" : "我",
               targetId: ct.id,
@@ -288,17 +279,7 @@ window.__akiniDefer(function () {
       var html = "";
       created.forEach(function (s, idx) {
         var realIdx = surveys.indexOf(s);
-        var qCount = (s.questions && s.questions.length) || 0;
-        var timeStr = s.createdAt
-          ? new Date(s.createdAt).toLocaleString("zh-CN", {
-              month: "2-digit",
-              day: "2-digit",
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "";
         var title = (s.title || "").trim() || "问卷 " + (idx + 1);
-        var replyCount = (s.replies && s.replies.length) || 0;
         var qPreview = (s.questions || [])
           .map(function (q, i) {
             return escapeHtml(i + 1 + ". " + (q.text || "未命名问题"));
@@ -1333,11 +1314,6 @@ window.__akiniDefer(function () {
           window.akiniContacts && window.akiniContacts.getChatTarget
             ? window.akiniContacts.getChatTarget(chatId)
             : null;
-        var member =
-          memberId && window.akiniContacts && window.akiniContacts.getChatTarget
-            ? window.akiniContacts.getChatTarget(memberId)
-            : target;
-
         var isTaSurvey = survey.direction === "receive";
         // 问卷视角严格校准：
         // 1. 联系人主动发我 (receive):

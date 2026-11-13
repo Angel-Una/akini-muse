@@ -42,8 +42,7 @@ html body .s1-frosted-content {
   box-shadow: none;
 }
 
-html body .plus-menu#plusMenu,
-html body .plus-menu-sheet {
+html body .plus-menu#plusMenu {
   -webkit-backdrop-filter: blur(14px) saturate(160%) !important;
   backdrop-filter: blur(14px) saturate(160%) !important;
 }
@@ -59,10 +58,6 @@ html body #watchChatBody .timestamp-row::before {
 
 /* 6) 首页底部渐隐层：整块 200px 高的实时高斯模糊，滚动时每帧重采样；
    它本身已有 95% 白色渐变，去掉模糊肉眼几乎无差别。 */
-html body .s1-overlay {
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-}
 
 /* 7) 滚动容器：命中测试与重绘隔离，避免整页重排；抑制滚动链回弹引发的整页抖动 */
 html body .home-screen,
@@ -453,8 +448,6 @@ html body .settings-area [role="button"] {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
-
-
 
 #postList > *,
 #icityDiaryList > *,

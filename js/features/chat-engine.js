@@ -58,9 +58,6 @@
     var now = Date.now();
     if (bankCache && now - bankAt < 1000) return bankCache;
 
-    
-
-
     var bank = [];
     try {
       var v = window.__wbRead ? window.__wbRead("akini_wordbank", []) : null;
@@ -153,6 +150,7 @@
       return void window.__akiniNotify(EMPTY_TIP);
     } catch (e) {}
   }
+
   window.__akiniNotifyEmptyReply = notifyEmpty;
   window.__akiniHasReplyPool = function (cid) {
     return replyPool(cid).length > 0;
@@ -263,27 +261,14 @@
       var sess = contacts && contacts.getSession ? contacts.getSession(cid) || {} : {};
       var unread = active === cid ? sess.unread || 0 : (sess.unread || 0) + 1;
 
-      {
-        window.__akiniAppendMessageHTML(cid, html, {
-          lastMsg: text,
-          lastTime: Date.now(),
-          unread: unread,
-          lastSenderAvatar: avatar,
-          lastSenderName: name,
-        });
-        return true;
-      }
-      if (contacts && contacts.updateSession) {
-        contacts.updateSession(cid, {
-          messagesHTML: (sess.messagesHTML || "") + html,
-          lastMsg: text,
-          lastTime: Date.now(),
-          unread: unread,
-          lastSenderAvatar: avatar,
-          lastSenderName: name,
-        });
-        return true;
-      }
+      window.__akiniAppendMessageHTML(cid, html, {
+        lastMsg: text,
+        lastTime: Date.now(),
+        unread: unread,
+        lastSenderAvatar: avatar,
+        lastSenderName: name,
+      });
+      return true;
     } catch (e) {
       reportErr("fallbackAppend", e);
     }

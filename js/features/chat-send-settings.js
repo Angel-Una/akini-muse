@@ -3,7 +3,6 @@
 (function () {
   function syncHideSendState() {
     var cb = document.getElementById("hideSendCheckbox");
-    var row = document.getElementById("toggleHideSendBtn");
     if (!cb) return;
 
     var isHidden = localStorage.getItem("akini_hide_send_btn") === "1";
