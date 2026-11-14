@@ -1,24 +1,76 @@
 /* 朋友圈图片按需取：启动时只展开最近的一小部分，其余保留 akini-ref:，
    渲染到当前动态时再从 IndexedDB 取图，避免所有照片常驻内存。 */
-window.__akiniResolvePostImgs = function (root) {
-  try {
-    var imgs = root && root.querySelectorAll ? root.querySelectorAll("img[data-mref]") : [];
-    Array.prototype.forEach.call(imgs, function (img) {
-      var id = img.getAttribute("data-mref");
-      if (!id || img.getAttribute("data-mref-loaded") === id) return;
-      img.setAttribute("data-mref-loaded", id);
-      var set = function (v) {
-        if (v && typeof v === "string" && v.length > 10) img.src = v;
-      };
+(function () {
+  function resolveOne(img) {
+    if (!img || img.tagName !== "IMG") return;
+    var id = img.getAttribute("data-mref");
+    if (!id) {
+      var src = img.getAttribute("src") || "";
+      if (src.indexOf("akini-ref:") !== 0) return;
+      id = src.slice(10);
+    }
+    if (!id || img.getAttribute("data-mref-loaded") === id) return;
+    img.setAttribute("data-mref-loaded", id);
+    var set = function (v) {
+      if (v && typeof v === "string" && v.length > 10) img.src = v;
+    };
+    try {
+      if (window.akiniStore && window.akiniStore.mediaGet) return void window.akiniStore.mediaGet(id, set);
+    } catch (e) {}
+    try {
+      if (window._idbStore && window._idbStore.get) return void window._idbStore.get("akini_mref_" + id, set);
+    } catch (e) {}
+  }
+  window.__akiniResolvePostImgs = function (root) {
+    try {
+      if (!root || !root.querySelectorAll) return;
+      var imgs = root.querySelectorAll('img[data-mref],img[src^="akini-ref:"]');
+      Array.prototype.forEach.call(imgs, resolveOne);
+    } catch (e) {}
+  };
+  /* 全局兜底：通知列表、评论表情、iCity 等渲染路径都会插入
+     src="akini-ref:..." 的图片，这里统一在插入后异步换成真实图片。
+     取不到的引用保持原样，等 IndexedDB 可用时还能再补。 */
+  (function () {
+    if (window.__akiniMediaRefObserverBound) return;
+    window.__akiniMediaRefObserverBound = true;
+    function scanNode(n) {
       try {
-        if (window.akiniStore && window.akiniStore.mediaGet) return void window.akiniStore.mediaGet(id, set);
+        if (!n || n.nodeType !== 1) return;
+        if (n.tagName === "IMG") resolveOne(n);
+        else window.__akiniResolvePostImgs(n);
       } catch (e) {}
-      try {
-        if (window._idbStore && window._idbStore.get) return void window._idbStore.get("akini_mref_" + id, set);
-      } catch (e) {}
-    });
-  } catch (e) {}
-};
+    }
+    try {
+      if (window.MutationObserver) {
+        var mo = new MutationObserver(function (muts) {
+          for (var i = 0; i < muts.length; i++) {
+            var m = muts[i];
+            if (m.type === "attributes") scanNode(m.target);
+            else
+              for (var j = 0; j < m.addedNodes.length; j++) scanNode(m.addedNodes[j]);
+          }
+        });
+        mo.observe(document.documentElement || document, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ["src"],
+        });
+      }
+    } catch (eOb) {}
+    try {
+      if (document.readyState === "loading")
+        document.addEventListener("DOMContentLoaded", function () {
+          scanNode(document.body || document.documentElement);
+        });
+      else scanNode(document.body || document.documentElement);
+      window.addEventListener("load", function () {
+        scanNode(document.body || document.documentElement);
+      });
+    } catch (eInit) {}
+  })();
+})();
 ((window.__akiniBootStep = "start"),
   (window.__akiniSafeCall = function (t, e) {
     try {

@@ -905,7 +905,9 @@
       return v;
     }
   }
-  /* 恢复形态：把引用换回 dataURL；缺失的引用置空（不渲染破图，也不误判为删除） */
+  /* 恢复形态：把引用换回 dataURL；取不到/超预算的引用原样保留，
+     由渲染层的图片解析器按需从 IndexedDB 补图。
+     绝不能置空：展开结果可能被业务层整段回写，置空会把表情包/图片永久删掉。 */
   function _expandMedia(k, v, cb) {
     if (!_MEDIA_KEYS[k] || typeof v !== "string" || v.indexOf(MEDIA_REF_PRE) < 0) {
       cb(v);
@@ -959,7 +961,7 @@
       var out = v;
       try {
         out = v.replace(/akini-ref:([0-9a-z-]+)/g, function (m, id) {
-          return map[id] || (_skipped[id] ? m : "");
+          return map[id] || m;
         });
       } catch (e) {}
       try {
@@ -1637,6 +1639,40 @@ window.__akiniRestoreSettled = true;
                 _reconciledKeys[k] = 1;
                 var _idbEmpty = v === "[]" || v === "{}" || v === "null";
                 var ls = lsGet(k);
+                /* 一起听历史：LS 可能因配额写失败而停留在旧的前几条，
+                   IDB 里才是完整记录。这里按 startTs 合并两边，避免
+                   启动对账把 IDB 的新记录覆盖回 LS 的旧值。 */
+                if (k === "akini_music_history") {
+                  try {
+                    var _mhLs = safeParse(ls, []),
+                      _mhIdb = safeParse(v, []);
+                    if (Array.isArray(_mhLs) && Array.isArray(_mhIdb)) {
+                      var _mhSeen = {},
+                        _mhMerged = [];
+                      _mhLs.concat(_mhIdb).forEach(function (_it) {
+                        if (!_it || !_it.startTs || _mhSeen[_it.startTs]) return;
+                        _mhSeen[_it.startTs] = 1;
+                        _mhMerged.push({
+                          startTs: _it.startTs,
+                          duration: _it.duration || 0,
+                          songCount: _it.songCount || 0,
+                          myMsgs: _it.myMsgs || 0,
+                          taMsgs: _it.taMsgs || 0,
+                          taName: _it.taName || "TA",
+                        });
+                      });
+                      _mhMerged.sort(function (a, b) {
+                        return (b.startTs || 0) - (a.startTs || 0);
+                      });
+                      if (_mhMerged.length > 100) _mhMerged = _mhMerged.slice(0, 100);
+                      v = JSON.stringify(_mhMerged);
+                      ls = v;
+                      _lsDirty[k] = 1;
+                      lsDirtySave();
+                      queueIdbWrite(k, v); // 同步精简后的结果，顺带清掉 IDB 里的旧头像副本
+                    }
+                  } catch (eMH) {}
+                }
                 /* LS 写入失败过的键（配额满等）以 IDB 为准：LS 里可能只是残留旧值，
                    否则会用旧值覆盖 IDB 里更新的真实数据。
                    另外 LS 只剩启动默认值（默认联系人/默认名字/空分组）而 IDB 有真实数据时，

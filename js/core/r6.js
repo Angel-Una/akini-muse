@@ -217,16 +217,49 @@
   }
 
   /* ============ MUSIC HISTORY (一起听记录) - 图三样式黑白 ============ */
+  /* 历史条目只保留统计数据：头像不再逐条存 dataURL。
+     每条记录塞一份头像会让 JSON 膨胀到数 MB，localStorage 写不下时
+     新记录会被静默丢弃，表现为「每次只保留前几条」。头像渲染时
+     统一取当前联系人头像。 */
+  function slimMusicHistoryEntry(it) {
+    if (!it || "object" !== typeof it) return null;
+    return {
+      startTs: it.startTs || 0,
+      duration: it.duration || 0,
+      songCount: it.songCount || 0,
+      myMsgs: it.myMsgs || 0,
+      taMsgs: it.taMsgs || 0,
+      taName: it.taName || "TA",
+    };
+  }
   function getMusicHistory() {
+    var arr;
     try {
-      return JSON.parse(localStorage.getItem("akini_music_history") || "[]");
+      arr = JSON.parse(localStorage.getItem("akini_music_history") || "[]");
     } catch (e) {
-      return [];
+      arr = [];
     }
+    if (!Array.isArray(arr)) return [];
+    var slim = [],
+      dirty = false;
+    arr.forEach(function (it) {
+      var s = slimMusicHistoryEntry(it);
+      if (!s) return;
+      if (it.taAvatar) dirty = true;
+      slim.push(s);
+    });
+    // 老数据迁移：把历史里逐条重复的头像清掉，释放 localStorage 空间
+    if (dirty) saveMusicHistory(slim);
+    return slim;
   }
   function saveMusicHistory(arr) {
+    var slim = [];
+    (arr || []).forEach(function (it) {
+      var s = slimMusicHistoryEntry(it);
+      if (s) slim.push(s);
+    });
     try {
-      localStorage.setItem("akini_music_history", JSON.stringify(arr));
+      localStorage.setItem("akini_music_history", JSON.stringify(slim));
     } catch (e) {}
   }
   function addMusicHistory(entry) {
@@ -322,7 +355,7 @@
       var time = fmtDate(it.startTs).split(" ")[1];
       html +=
         '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;">' +
-        avHTML(it.taAvatar || "", 40) +
+        avHTML(it.taAvatar || taAv, 40) +
         '<div style="flex:1;min-width:0;">' +
         '<div style="font-size:14px;font-weight:600;color:#1a1a1a;">' +
         String(it.taName || "TA").replace(/</g, "&lt;") +
