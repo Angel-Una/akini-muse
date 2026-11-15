@@ -10762,22 +10762,13 @@ window.__akiniBindSettingsControls = function () {
             var t = Date.now();
             if (window.__akiniLastHideFlush && t - window.__akiniLastHideFlush < 6e4) return;
             ((window.__akiniLastHideFlush = t), setTimeout(Ut, 0));
-           }), window.__akiniOnVisible(function () { if (jn && window.akiniContacts)
+           }), window.__akiniOnVisible(function () {
+            /* 回前台只落盘，不按最近 25 条重绘非空聊天；新消息追加时已同步 DOM，
+               空聊天由 openChat/restore 恢复，避免把切前仍在显示的卡片裁掉。 */
             try {
-              var e = window.akiniContacts.getActiveChatId();
-              if (e) {
-                /* 回前台只取当前渲染窗口那一批，不 join 完整历史 */
-                window.__akiniChatLog && window.__akiniChatLog.flush();
-                var _log = window.__akiniChatLog;
-                var _want = (window.__akiniShownRows && window.__akiniShownRows[e]) || AKINI_CHAT_BATCH_SIZE;
-                var i = _log ? _log.tail(e, _want) : "";
-                if (i.trim()) {
-                  window.__akiniChatTotal = window.__akiniChatTotal || {};
-                  window.__akiniChatTotal[e] = _log ? _log.count(e) : __akiniCountMsgRowsFast(i);
-                  X(Ot(i), e);
-                }
-              }
-            } catch (t) {} }),
+              window.__akiniChatLog && window.__akiniChatLog.flush();
+            } catch (t) {}
+           }),
         (window._restoringChatHistory = !0),
         jn && (jn.innerHTML = ""),
         /* 恢复期清空聊天区：重置所有会话的窗口化底部隐藏计数 */
@@ -18878,7 +18869,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
               }
               var n = document.getElementById("msgPopupToggle");
               if (n && !n.classList.contains("on")) return;
-              /* 用户正停留在会触发该通知的界面里时，不再提示（后台仍走系统通知） */
+              /* 用户正停留在会触发该通知的界面里时，不再提示；调用方可用 forceInApp 显式放行 */
               try {
                 if (!document.hidden) {
                   var _appName = e.app || "微信";
@@ -18910,7 +18901,7 @@ window.__akiniPatchAvatarCell = function (t, e) {
                                     : "电话" === _appName
                                       ? _vis("app-call")
                                       : !1;
-                  if (_sameView) return;
+                  if (_sameView && !e.forceInApp) return;
                 }
               } catch (_sameViewErr) {}
               var l = document.getElementById("inAppNotifBanner");

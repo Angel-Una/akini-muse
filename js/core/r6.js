@@ -407,6 +407,21 @@
     if (!title || !ta || !ta.id) return;
     appendMusicSystemMessage(ta.id, "对方切换了歌曲");
     appendMusicSystemMessage(ta.id, "《" + title + "》");
+    if (typeof window.showInAppNotif === "function") {
+      var taName = String(ta.name || "TA").trim() || "TA";
+      window.showInAppNotif({
+        app: "网易云",
+        avatar: ta.avatar || "",
+        name: taName,
+        msg: "对方切换了歌曲《" + title + "》",
+        fullContent: true,
+        forceInApp: true,
+        chatId: ta.id,
+        onTap: function () {
+          if (window.navTo) window.navTo("music");
+        },
+      });
+    }
   }
 
   /* ============ CONTACT AUTO-SKIP SONG (概率) ============ */
@@ -416,7 +431,7 @@
       clearTimeout(_contactSkipTimer);
       _contactSkipTimer = null;
     }
-    // 每隔 30~60 秒摇一次，按设置概率切歌
+    // 每隔 30~60 秒摇一次，按设置概率在当前歌单内随机切歌
     var delay = 30000 + Math.random() * 30000;
     _contactSkipTimer = setTimeout(function () {
       _contactSkipTimer = null;
@@ -425,19 +440,19 @@
         try {
           active = "1" === localStorage.getItem("akini_music_listening_active");
         } catch (e) {}
-        var app = $("app-music");
-        if (active && app && app.style.display !== "none") {
+        if (active) {
           var prob = getSkipProb();
           if (Math.random() * 100 < prob) {
-            var beforeTrack = window.getMusicCurrentTrack ? window.getMusicCurrentTrack() : null;
-            if (typeof window.musicControlNext === "function") {
-              window.musicControlNext();
-            } else {
-              var nb = $("musicNextBtn");
-              if (nb) nb.click();
+            var playlistKey = localStorage.getItem("akini_music_playlist_cur") || "pl_default";
+            var currentIndex = parseInt(localStorage.getItem("akini_music_index"), 10);
+            var picked = pickMusicRecommendation(playlistKey, isNaN(currentIndex) ? -1 : currentIndex);
+            if (
+              picked &&
+              typeof window.__akiniPlayRecommendedTrack === "function" &&
+              window.__akiniPlayRecommendedTrack(picked.playlistKey, picked.trackIndex)
+            ) {
+              sendContactSongChangeMessages(picked.track);
             }
-            var afterTrack = window.getMusicCurrentTrack ? window.getMusicCurrentTrack() : null;
-            if (afterTrack && afterTrack !== beforeTrack) sendContactSongChangeMessages(afterTrack);
           }
         }
       } catch (e) {}
@@ -523,7 +538,7 @@
     return false;
   }
 
-  function pickMusicRecommendation() {
+  function pickMusicRecommendation(onlyPlaylistKey, excludeIndex) {
     var lists = [];
     try {
       var raw =
@@ -548,9 +563,10 @@
     var candidates = [];
     lists.forEach(function (pl) {
       if (!pl || !Array.isArray(pl.tracks)) return;
+      if (onlyPlaylistKey && String(pl.key || "pl_default") !== String(onlyPlaylistKey)) return;
       var indices = [];
       pl.tracks.forEach(function (track, index) {
-        if (track && (track.title || track.name)) indices.push(index);
+        if (index !== excludeIndex && track && (track.title || track.name)) indices.push(index);
       });
       if (indices.length) candidates.push({ playlist: pl, indices: indices });
     });
@@ -1303,6 +1319,10 @@
 
     // 邀请听歌定时器：与联系人主动来电同一套（随机间隔触发 + 独立概率）
     scheduleMusicInvite();
+    // 刷新页面时若一起听仍在进行，恢复联系人随机切歌定时器
+    try {
+      if ("1" === localStorage.getItem("akini_music_listening_active")) scheduleContactSkip();
+    } catch (e) {}
 
     // Music home
     var startBtn = $("musicHomeStartBtn");
