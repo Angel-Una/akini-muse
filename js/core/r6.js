@@ -651,9 +651,11 @@
       } catch (e) {}
       if (!ta || !ta.id) ta = getDefaultContact();
       var listening = "1" === localStorage.getItem("akini_music_listening_active");
-      localStorage.setItem("akini_music_invited_by_ta", "1");
-      if (!listening || !_musicSessionStart) startMusicSessionTracking(true);
-      if (window.navTo) window.navTo("music");
+      if (!listening) {
+        localStorage.setItem("akini_music_invited_by_ta", "1");
+        startMusicSessionTracking(true);
+        if (window.navTo) window.navTo("music");
+      }
       setTimeout(function () {
         var played = false;
         try {
