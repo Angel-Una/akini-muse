@@ -5022,11 +5022,6 @@ function fe() {
         }
       }
 function xe() {
-        try {
-          ("function" == typeof closeSurveyList && closeSurveyList(),
-            "function" == typeof closeSurveyCreate && closeSurveyCreate(),
-            "function" == typeof closeSurveyCreatedList && closeSurveyCreatedList());
-        } catch (t) {}
         (s("chat-list"), me());
       }
 function Te() {
@@ -10980,11 +10975,6 @@ Ce &&
 Ee = document.getElementById("chatBackBtn");
 Ee &&
         c(Ee, function (t) {
-          try {
-            ("function" == typeof closeSurveyList && closeSurveyList(),
-              "function" == typeof closeSurveyCreate && closeSurveyCreate(),
-              "function" == typeof closeSurveyCreatedList && closeSurveyCreatedList());
-          } catch (t) {}
           $();
           try {
             window.akiniContacts && window.akiniContacts.setActiveChatId && window.akiniContacts.setActiveChatId(null);

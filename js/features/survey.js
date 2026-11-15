@@ -247,13 +247,6 @@ window.__akiniDefer(function () {
     }
 
     // ===== 我创建的问卷列表（从右上角菜单进入）=====
-    function openSurveyCreatedList() {
-      var modal = document.getElementById("surveyCreatedListModal");
-      if (!modal) return;
-      modal.style.display = "flex";
-      modal.style.zIndex = "8600";
-      renderSurveyCreatedList();
-    }
     function closeSurveyCreatedList() {
       var modal = document.getElementById("surveyCreatedListModal");
       if (modal) modal.style.display = "none";
@@ -820,7 +813,6 @@ window.__akiniDefer(function () {
     function applySurveyChatContext() {
       var activeId = getCurrentSurveyChatId();
       if (activeId) loadSurveys(activeId);
-      var activeTarget = activeId ? window.akiniContacts.getChatTarget(activeId) : null;
       /* 单人对单聊：无群成员选择，成员选择条永远隐藏 */
       var memberSelect = document.getElementById("surveyMemberSelect");
       if (memberSelect) {
@@ -1717,26 +1709,6 @@ window.__akiniDefer(function () {
       editingSurveyId = null;
     }
 
-    function sendSurveyEdit() {
-      if (!editingSurveyId) return;
-      var existIdx = surveys.findIndex(function (s) {
-        return s.id === editingSurveyId;
-      });
-      if (existIdx < 0) return;
-      sendExistingSurvey(existIdx);
-    }
-
-    function deleteSurveyEdit() {
-      if (!editingSurveyId) return;
-      var idx = surveys.findIndex(function (s) {
-        return s.id === editingSurveyId;
-      });
-      if (idx < 0) return;
-      deleteSurvey(idx);
-      closeSurveyCreate();
-      openSurveyCreatedList();
-    }
-
     // ===== Simulate contact reply =====
     // ===== 问卷延迟回答 catch-up——刷新/重进后补投未到点的 TA 回答 =====
     window.__akiniCatchUpSurveyReplies = function () {
@@ -1951,10 +1923,6 @@ window.__akiniDefer(function () {
       if (createdBackBtn) createdBackBtn.addEventListener("click", closeSurveyCreatedList);
       var editSaveBtn = document.getElementById("surveyEditSaveBtn");
       if (editSaveBtn) editSaveBtn.addEventListener("click", saveSurveyEdit);
-      var editSendBtn = document.getElementById("surveyEditSendBtn");
-      if (editSendBtn) editSendBtn.addEventListener("click", sendSurveyEdit);
-      var editDeleteBtn = document.getElementById("surveyEditDeleteBtn");
-      if (editDeleteBtn) editDeleteBtn.addEventListener("click", deleteSurveyEdit);
     }
 
     /* 导出核心函数供字卡库问卷引擎与自动化触发使用（闭包内函数不导出则外部全部失效） */
