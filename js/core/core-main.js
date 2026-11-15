@@ -28,6 +28,41 @@
       Array.prototype.forEach.call(imgs, resolveOne);
     } catch (e) {}
   };
+  /* 单聊头像统一：历史消息把当时的头像 HTML 直接存进了聊天记录，
+     换过头像后老消息显示旧头像、新消息显示新头像，同一个人出现两个头像。
+     这里在渲染后把默认联系人单聊里的对方头像统一成当前头像。 */
+  function normalizeOtherAvatars(root) {
+    try {
+      if (!root || !root.querySelector) return;
+      var rootIsRow = root.matches && root.matches(".msg-row.other");
+      var rootIsAvatar =
+        root.matches && root.matches(".msg-avatar") && root.closest(".msg-row.other");
+      if (!rootIsRow && !rootIsAvatar && !root.querySelector(".msg-row.other")) return;
+      if (!window.__akiniDefaultContact) return;
+      var c = window.__akiniDefaultContact();
+      if (!c || !c.id) return;
+      var active =
+        window.akiniContacts && window.akiniContacts.getActiveChatId
+          ? window.akiniContacts.getActiveChatId()
+          : c.id;
+      if (active && active !== c.id) return; // 只处理默认联系人的单聊，不动群聊/其他联系人
+      var current =
+        window.akiniContacts && window.akiniContacts.getChatTarget
+          ? window.akiniContacts.getChatTarget(c.id) || c
+          : c;
+      var avatar = current.avatar && String(current.avatar).trim();
+      if (!window.__akiniAvatarHtml) return;
+      var html = window.__akiniAvatarHtml(avatar || current.name || "", 38);
+      var avs = rootIsAvatar
+        ? [root]
+        : root.querySelectorAll(".msg-row.other .msg-avatar");
+      Array.prototype.forEach.call(avs, function (av) {
+        if (av.innerHTML !== html) av.innerHTML = html;
+        if (current.name) av.setAttribute("data-sender-name", current.name);
+      });
+    } catch (e) {}
+  }
+  window.__akiniNormalizeChatAvatars = normalizeOtherAvatars;
   /* 全局兜底：通知列表、评论表情、iCity 等渲染路径都会插入
      src="akini-ref:..." 的图片，这里统一在插入后异步换成真实图片。
      取不到的引用保持原样，等 IndexedDB 可用时还能再补。 */
@@ -39,6 +74,7 @@
         if (!n || n.nodeType !== 1) return;
         if (n.tagName === "IMG") resolveOne(n);
         else window.__akiniResolvePostImgs(n);
+        normalizeOtherAvatars(n);
       } catch (e) {}
     }
     try {
@@ -3964,6 +4000,7 @@ function zt(t, e) {
                   ? '<span style="font-size:' + Math.round(0.55 * e) + 'px;">' + t + "</span>"
                   : window.__akiniLineAvatarImg());
       }
+window.__akiniAvatarHtml = zt;
 function jt(t, e) {
         if (((e = e || ""), !t || "string" != typeof t))
           return window.__akiniIsGroupAvatarToken &&

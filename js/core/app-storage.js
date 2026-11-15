@@ -311,20 +311,23 @@
       });
     });
   }
-  function _chatSaveFile(text, fileName) {
-    var blob = new Blob([text], { type: "application/json" });
-    /* 同上：大聊天记录不走 iOS 分享面板，否则直接卡死 */
-    if (blob.size > 768 * 1024) return void _chatDownload(blob, fileName);
-    try {
-      var file = new File([blob], fileName, { type: "application/json" });
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], title: "Akini 聊天记录备份" }).catch(function () {
-          _chatDownload(blob, fileName);
-        });
-        return;
-      }
-    } catch (e) {}
+  function _chatSaveFile(parts, fileName) {
+    var blob = new Blob(parts, { type: "application/json;charset=utf-8" });
+    var finish = function (how) {
+      try {
+        if (!window.__akiniCenterModal) return;
+        window.__akiniCenterModal(
+          "聊天记录",
+          how === "share"
+            ? "已导出聊天记录，请在系统面板中选择「保存到文件」。"
+            : "已导出聊天记录，文件保存在「下载 / Download」目录。",
+        );
+      } catch (e) {}
+    };
+    /* 与全量备份共用同一套保存逻辑：手机走系统分享面板，桌面走下载 */
+    if (window.__akiniSaveBlob) return void window.__akiniSaveBlob(blob, fileName, finish);
     _chatDownload(blob, fileName);
+    finish("download");
   }
   function _chatDownload(blob, fileName) {
     var url = URL.createObjectURL(blob);
@@ -352,10 +355,33 @@
         var pad = function (x) {
           return (x < 10 ? "0" : "") + x;
         };
-        _chatSaveFile(
-          JSON.stringify(bundle, null, 2),
-          "akini-chat-" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + ".json",
-        );
+        /* 不 JSON.stringify 整个 bundle：那会再复制出一份等长的巨型字符串，
+           与原始历史、Blob 同时存在，手机上直接内存爆掉闪退。
+           改为分段转义后交给 Blob 拼接，峰值内存立省一份完整 JSON。 */
+        var parts = [
+          '{"app":"akini-chat","v":2,"exportedAt":',
+          JSON.stringify(bundle.exportedAt),
+          ',"contact":',
+          JSON.stringify(bundle.contact),
+          ',"rows":',
+          String(bundle.rows || 0),
+          ',"history":"',
+        ];
+        var hist = bundle.history;
+        var CHUNK = 262144;
+        var pos = 0;
+        while (pos < hist.length) {
+          var end = Math.min(pos + CHUNK, hist.length);
+          /* 不把 emoji 的代理对从中间劈开，否则转义后会变成乱码 */
+          if (end < hist.length) {
+            var code = hist.charCodeAt(end - 1);
+            if (code >= 0xd800 && code <= 0xdbff) end -= 1;
+          }
+          parts.push(JSON.stringify(hist.slice(pos, end)).slice(1, -1));
+          pos = end;
+        }
+        parts.push('"}');
+        _chatSaveFile(parts, "akini-chat-" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + ".json");
       })
       .catch(function (e) {
         try {

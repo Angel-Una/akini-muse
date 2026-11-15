@@ -22,10 +22,20 @@
     var isB64 = /;base64/i.test(header);
     if (isB64) {
       try {
-        var binary = atob(body);
-        var len = binary.length;
+        /* 分块解码：一次性 atob 整段 base64 会同时存在 base64 字符串 +
+           等长二进制字符串 + Uint8Array 三份数据，大备份在手机上直接闪退。 */
+        var clean = body;
+        var pad = 0;
+        if (clean.slice(-2) === "==") pad = 2;
+        else if (clean.slice(-1) === "=") pad = 1;
+        var len = Math.floor((clean.length * 3) / 4) - pad;
         var bytes = new Uint8Array(len);
-        for (var i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+        var offset = 0;
+        var B64_CHUNK = 262144; // 必须是 4 的倍数
+        for (var i = 0; i < clean.length; i += B64_CHUNK) {
+          var bin = atob(clean.slice(i, Math.min(i + B64_CHUNK, clean.length)));
+          for (var j = 0; j < bin.length; j++) bytes[offset++] = bin.charCodeAt(j);
+        }
         return { mime: mime, bytes: bytes };
       } catch (e) {
         return null;
@@ -401,6 +411,40 @@
       return false;
     }
   }
+  /* 系统分享面板（保存到文件）。返回是否已发起分享流程。 */
+  function tryShareFile(blob, fileName, onOk, onFail) {
+    var failed = false;
+    function fail(e) {
+      if (failed) return;
+      failed = true;
+      try {
+        onFail && onFail(e);
+      } catch (e2) {}
+    }
+    try {
+      if (!navigator.share || !navigator.canShare) return false;
+      var type = (blob && blob.type) || (/\.zip$/i.test(fileName) ? "application/zip" : "application/octet-stream");
+      var f = new File([blob], fileName, { type: type });
+      if (!navigator.canShare({ files: [f] })) return false;
+      var p;
+      try {
+        p = navigator.share({ files: [f], title: fileName, text: "请选择「保存到文件」" });
+      } catch (e0) {
+        return false;
+      }
+      if (!p || typeof p.then !== "function") return false;
+      p.then(function () {
+        onOk && onOk();
+      }).catch(function (e) {
+        if (e && e.name === "AbortError") return; // 用户主动取消分享，不算失败
+        fail(e);
+      });
+      return true;
+    } catch (e) {
+      fail(e);
+      return false;
+    }
+  }
   function offerSaveManually(blob, fileName, done) {
     var modal = window.__akiniCenterModal;
     if (typeof modal !== "function") return false;
@@ -409,13 +453,28 @@
         "导出完成",
         "文件已生成：" +
           fileName +
-          "\n\n点击「保存文件」后选择保存位置（安卓建议选「下载 / Download」）。保存后即可在手机文件管理里看到。",
+          "\n\n点击「保存文件」，在系统面板中选择「保存到文件」（安卓建议选「下载 / Download」）。保存后即可在手机文件管理里看到。",
         {
           confirm: true,
           okText: "保存文件",
           cancelText: "关闭",
           onClose: function (ok) {
             if (!ok) return;
+            /* 按钮点击是有效用户手势：这里再试一次系统分享，失败才退回下载 */
+            if (isMobileUA()) {
+              var started = tryShareFile(
+                blob,
+                fileName,
+                function () {
+                  done && done("share");
+                },
+                function () {
+                  downloadBlob(blob, fileName);
+                  done && done("download");
+                },
+              );
+              if (started) return;
+            }
             downloadBlob(blob, fileName);
             done && done("download");
           },
@@ -427,42 +486,29 @@
     }
   }
   function saveBlobSmart(blob, fileName, done) {
-    var type = (blob && blob.type) || (/\.zip$/i.test(fileName) ? "application/zip" : "application/octet-stream");
-    /* iOS 的 navigator.share(files) 对大文件会直接卡死 WebView：
-       全局备份动不动就几十 MB，超过阈值一律走普通下载，不进分享面板。 */
-    if (blob && blob.size > 768 * 1024) {
-      downloadBlob(blob, fileName);
-      done && done("download");
-      return;
+    /* 对齐 milk：手机端不按大小改走 a[download]，一律优先系统分享面板。
+       iOS 主屏幕 PWA / WebView 不支持 blob 下载，直接 a[download] 会白屏闪退、
+       文件也不落盘，这正是“点导出就闪退、根本导不出来”的原因。 */
+    if (isMobileUA()) {
+      var started = tryShareFile(
+        blob,
+        fileName,
+        function () {
+          done && done("share");
+        },
+        function () {
+          if (offerSaveManually(blob, fileName, done)) return;
+          downloadBlob(blob, fileName);
+          done && done("download");
+        },
+      );
+      if (started) return;
+      if (offerSaveManually(blob, fileName, done)) return;
     }
-    try {
-      var f = new File([blob], fileName, { type: type });
-      if (navigator.canShare && navigator.canShare({ files: [f] })) {
-        var p;
-        try {
-          p = navigator.share({ files: [f], title: fileName });
-        } catch (e0) {
-          p = null;
-        }
-        if (p && typeof p.then === "function") {
-          p.then(function () {
-            done && done("share");
-          }).catch(function (e) {
-            if (e && e.name === "AbortError") return; // 用户主动取消分享，不算失败
-            /* NotAllowedError：异步生成导致手势过期，分享被拒 → 交给手动保存按钮 */
-            if (!offerSaveManually(blob, fileName, done)) {
-              downloadBlob(blob, fileName);
-              done && done("download");
-            }
-          });
-          return;
-        }
-      }
-    } catch (e) {}
-    if (isMobileUA() && offerSaveManually(blob, fileName, done)) return;
     downloadBlob(blob, fileName);
     done && done("download");
   }
+  global.__akiniSaveBlob = saveBlobSmart;
 
   function notify(title, body, type) {
     try {
@@ -674,6 +720,9 @@
               mimeType: "application/zip",
               compression: "DEFLATE",
               compressionOptions: { level: 6 },
+              /* 流式打包：不为每个媒体文件再生成一份完整 base64 中间串，
+                 大幅降低大备份时的内存峰值（手机导出闪退的主因之一）。 */
+              streamFiles: true,
             })
             .then(function (zipBlob) {
               var countMsg =
