@@ -2,10 +2,9 @@
  * TA的手机 - Akini 版
  * - 小手机样式的居中弹窗
  * - 打开后首先显示「所有创建过的联系人」网格：头像在上，名字在下
- * - 点击联系人后进入该联系人的桌面，显示三个应用：聊天 / 朋友圈 / iCity
- * - 点击应用后查看 TA 自动收藏的该联系人的对应数据
+ * - 点击联系人后进入该联系人的桌面，查看聊天、朋友圈、iCity、通话和信箱
  * - 收藏逻辑参考 compat ta-phone.js：系统按概率自动收藏用户发过的聊天消息与朋友圈/iCity
- * - 数据按联系人维度存储：akini_ta_phone_<contactId> = { chat:[], moments:[], icity:[] }
+ * - 数据按联系人维度存储：akini_ta_phone_<contactId>
  */
 (function () {
   "use strict";
@@ -13,12 +12,10 @@
   var CHAT_CHANCE = 0.02; // 聊天实时收藏概率 2%
   var MOMENTS_CHANCE = 0.1; // 朋友圈实时收藏概率 10%
   var ICITY_CHANCE = 0.1; // iCity 实时收藏概率 10%
-  var MUSIC_CHANCE = 0.1; // 网易云收藏概率 10%
   var MAIL_CHANCE = 0.1; // 信件收藏概率 10%（与朋友圈一致）
   var CHAT_HISTORY_CHANCE = 0.02; // 历史聊天收藏概率（跟随自定义概率）
   var MOMENTS_HISTORY_CHANCE = 0.1; // 历史朋友圈收藏概率（跟随自定义概率）
   var ICITY_HISTORY_CHANCE = 0.1; // 历史 iCity 收藏概率（跟随自定义概率）
-  var MUSIC_HISTORY_CHANCE = 0.1; // 历史网易云收藏概率（跟随自定义概率）
 
   /* 自定义概率：设置页 akini_prob_taPhone<Key>（0-100），实时与历史扫描共用 */
   function taProb(key, def) {
@@ -82,8 +79,8 @@
     return "akini_ta_phone_" + contactId;
   }
 
-  /* 卡片不是正文，收藏夹只收文字/音乐：带【标签】的条目在收藏逻辑里直接拒绝 */
-  var _CARD_FAV_RE = /^【(问卷|一起听邀请|一起听总结|转账|红包|物品赠送|物品代付|表情包|图片)】$/;
+  /* 卡片不是正文，收藏夹只收文字：带【标签】的条目在收藏逻辑里直接拒绝 */
+  var _CARD_FAV_RE = /^【(问卷|一起听邀请|一起听总结|推歌|转账|红包|物品赠送|物品代付|表情包|图片)】$/;
   function isCardFavContent(c) {
     return _CARD_FAV_RE.test(String(c == null ? "" : c).trim());
   }
@@ -103,7 +100,6 @@
           chat: Array.isArray(parsed.chat) ? parsed.chat.filter(_keepFav) : [],
           moments: Array.isArray(parsed.moments) ? parsed.moments.filter(_keepFav) : [],
           icity: Array.isArray(parsed.icity) ? parsed.icity.filter(_keepFav) : [],
-          music: Array.isArray(parsed.music) ? parsed.music : [],
           calls: Array.isArray(parsed.calls) ? parsed.calls : [],
           /* 旧版本把"TA 的回信"也收进了 TA 的手机：读入时清掉 */
           mail: Array.isArray(parsed.mail)
@@ -116,7 +112,7 @@
       }
     } catch (e) {}
     _colCache[contactId] =
-      _colCache[contactId] || { chat: [], moments: [], icity: [], music: [], calls: [], mail: [] };
+      _colCache[contactId] || { chat: [], moments: [], icity: [], calls: [], mail: [] };
     return _colCache[contactId];
   }
   /* 旧数据里残留的卡片收藏：读取时静默过滤，不提示、不回写 */
@@ -133,6 +129,38 @@
     try {
       localStorage.setItem("akini_ta_fav_at_" + contactId, String(Date.now()));
     } catch (e) {}
+  }
+
+  function purgeLegacyMusicCollections() {
+    try {
+      localStorage.removeItem("akini_prob_taPhoneMusic");
+    } catch (e) {}
+    var ids = {};
+    try {
+      getContacts().forEach(function (c) {
+        if (c && c.id) ids[c.id] = true;
+      });
+      for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i) || "";
+        if (key.indexOf("akini_ta_phone_") === 0) ids[key.slice(15)] = true;
+      }
+    } catch (e) {}
+    Object.keys(ids).forEach(function (contactId) {
+      if (!contactId) return;
+      try {
+        var raw =
+          window.akiniStore && window.akiniStore.getSync
+            ? window.akiniStore.getSync(storageKey(contactId), null)
+            : localStorage.getItem(storageKey(contactId));
+        var data = raw && typeof raw === "string" ? JSON.parse(raw) : raw;
+        if (!data || !Object.prototype.hasOwnProperty.call(data, "music")) return;
+        delete data.music;
+        if (_colCache[contactId]) delete _colCache[contactId].music;
+        saveCollections(contactId, data);
+        if (window.akiniStore && window.akiniStore.setJson)
+          window.akiniStore.setJson(storageKey(contactId), data);
+      } catch (e) {}
+    });
   }
 
   /* 从字卡库随机抽一张字卡作为收藏备注 */
@@ -241,6 +269,7 @@
     if (c.contains("survey-bubble")) return "【问卷】";
     if (c.contains("music-invite-bubble")) return "【一起听邀请】";
     if (c.contains("music-end-bubble")) return "【一起听总结】";
+    if (c.contains("music-recommend-bubble")) return "【推歌】";
     if (c.contains("transfer-bubble")) return "【转账】";
     if (c.contains("redpacket-bubble")) return "【红包】";
     if (c.contains("shop-card-bubble")) {
@@ -370,40 +399,6 @@
       addCollection(contactId, "icity", String(text).trim(), timestamp || Date.now(), images);
   };
 
-  // 联系人收藏用户添加的歌曲：track = {title, artist, cover, ...}
-  function addMusicCollection(contactId, track, originalTime) {
-    if (!track || !(track.title || track.name)) return false;
-    var targetId = contactId;
-    if (!targetId) return false;
-    var data = loadCollections(targetId);
-    var title = String(track.title || track.name || "").trim();
-    var artist = String(track.artist || track.singer || "").trim();
-    var cover = track.cover || track.pic || "";
-    for (var i = 0; i < data.music.length; i++) {
-      var it = data.music[i];
-      if (it && it.track && it.track.title === title && it.track.artist === artist) return false;
-    }
-    data.music.unshift({
-      id: Date.now() + Math.random(),
-      track: { title: title, artist: artist, cover: cover },
-      remark: pickWordcardRemark(),
-      originalTime: originalTime || Date.now(),
-      collectedTime: Date.now(),
-    });
-    saveCollections(targetId, data);
-    return true;
-  }
-
-  window.akiniTaPhoneCollectMusic = function (track, timestamp) {
-    if (!track) return;
-    /* 每个联系人独立判定是否收藏（各自 10% 概率），收藏到各自的手机 */
-    var all = getContacts();
-    for (var i = 0; i < all.length; i++) {
-      if (all[i] && all[i].id && Math.random() < taProb("Music", MUSIC_CHANCE))
-        addMusicCollection(all[i].id, track, timestamp || Date.now());
-    }
-  };
-
   var _lastScanAt = 0;
   function scanHistory() {
     /* 节流：30 分钟内最多全量扫描一次，避免频繁打开 TA 手机时反复解析全部聊天 DOM 导致卡顿 */
@@ -458,15 +453,6 @@
           else myPosts.push(post);
         });
       }
-      var plist = [];
-      try {
-        var plistRaw =
-          window.akiniStore && window.akiniStore.getSync
-            ? window.akiniStore.getSync("akini_music_playlist", null)
-            : localStorage.getItem("akini_music_playlist");
-        plist = plistRaw ? JSON.parse(plistRaw) : [];
-      } catch (e) {}
-      if (!Array.isArray(plist)) plist = [];
       /* 读历史信件：只有我寄出/我回复的信会进 TA 手机的信箱 */
       var mailSent = [];
       try {
@@ -477,7 +463,7 @@
         mailSent = _msRaw ? (typeof _msRaw === "string" ? JSON.parse(_msRaw) : _msRaw) : [];
       } catch (eMailScan) {}
       Array.isArray(mailSent) || (mailSent = []);
-      /* 朋友圈/iCity/网易云/信箱：每个联系人独立判定、各自收藏到自己的手机；
+      /* 朋友圈/iCity/信箱：每个联系人独立判定、各自收藏到自己的手机；
          每类每次扫描最多 1 条（从最新往旧扫，命中即停），不会一口气收藏一堆 */
       contacts.forEach(function (c) {
         if (!c || !c.id) return;
@@ -490,14 +476,6 @@
         for (var di = myDiaries.length - 1; di >= 0; di--) {
           if (Math.random() < taProb("Icity", ICITY_HISTORY_CHANCE)) {
             addCollection(c.id, "icity", myDiaries[di].text, myDiaries[di].ts || Date.now());
-            break;
-          }
-        }
-        for (var si = plist.length - 1; si >= 0; si--) {
-          var t = plist[si];
-          if (!t || !(t.title || t.name)) continue;
-          if (Math.random() < taProb("Music", MUSIC_HISTORY_CHANCE)) {
-            addMusicCollection(c.id, t, Date.now());
             break;
           }
         }
@@ -649,7 +627,6 @@
     var tabTitle = "收藏";
     if (tab === "chat") tabTitle = "聊天";
     else if (tab === "moments") tabTitle = "朋友圈";
-    else if (tab === "music") tabTitle = "网易云";
     else if (tab === "icity") tabTitle = "iCity";
     else if (tab === "calls") tabTitle = "通话记录";
     else if (tab === "mail") tabTitle = "信箱";
@@ -935,45 +912,6 @@
         .join("");
       return;
     }
-    if (currentTab === "music") {
-      el.innerHTML = sorted
-        .map(function (item) {
-          var t = item.track || {};
-          var cover = t.cover
-            ? '<img src="' +
-              t.cover +
-              '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="封面"/>'
-            : '<span style="font-size:20px;line-height:1;">🎵</span>';
-          return (
-            '<div class="akini-ta-phone-item akini-ta-phone-music-item">' +
-            '<button class="akini-ta-phone-item-delete" onclick="window.AkiniTaPhone.deleteCollection(\'' +
-            currentContactId +
-            "','music'," +
-            item.id +
-            ')" title="删除">×</button>' +
-            '<div class="akini-ta-phone-music-row">' +
-            '<div class="akini-ta-phone-music-disc">' +
-            cover +
-            "</div>" +
-            '<div class="akini-ta-phone-music-meta">' +
-            '<div class="akini-ta-phone-music-title">' +
-            escapeHtml(t.title || "未知歌曲") +
-            "</div>" +
-            '<div class="akini-ta-phone-music-artist">' +
-            escapeHtml(t.artist || "未知歌手") +
-            "</div>" +
-            "</div>" +
-            "</div>" +
-            (item.remark ? '<div class="akini-ta-phone-item-remark">备注：' + escapeHtml(item.remark) + "</div>" : "") +
-            '<div class="akini-ta-phone-item-meta">收藏于: ' +
-            formatTime(item.collectedTime) +
-            "</div>" +
-            "</div>"
-          );
-        })
-        .join("");
-      return;
-    }
     el.innerHTML = sorted
       .map(function (item) {
         var _content = String(item.content || "").trim();
@@ -1117,11 +1055,6 @@ window._akiniAllowRemove = false;
       ".akini-ta-phone-item-delete{position:absolute;top:8px;right:8px;background:none;border:none;color:#ccc;font-size:18px;cursor:pointer;line-height:1;}",
       ".akini-ta-phone-item-delete:hover{color:#ef4444;}",
       ".akini-ta-phone-empty{text-align:center;padding:40px 20px;color:#bbb;font-size:14px;}",
-      ".akini-ta-phone-music-row{display:flex;align-items:center;gap:10px;padding-right:18px;}",
-      ".akini-ta-phone-music-disc{width:44px;height:44px;flex-shrink:0;border-radius:50%;background:repeating-radial-gradient(#111 0,#111 3px,#222 4px,#222 5px);box-shadow:inset 0 0 0 4px #1a1a1a;display:flex;align-items:center;justify-content:center;overflow:hidden;}",
-      ".akini-ta-phone-music-meta{min-width:0;flex:1;}",
-      ".akini-ta-phone-music-title{font-size:14px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
-      ".akini-ta-phone-music-artist{font-size:12px;color:#888;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
       /* 信箱：信件卡片 + 详情（黑白纸笺风格） */
       ".akini-ta-mail-item{position:relative;background:#fff;border:1px solid #e6e6e2;border-radius:14px;padding:14px 14px 12px;margin-bottom:10px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.04);transition:transform .16s ease,box-shadow .16s ease;}",
       ".akini-ta-mail-item:active{transform:scale(.985);box-shadow:0 1px 4px rgba(0,0,0,.05);}",
@@ -1202,10 +1135,6 @@ window._akiniAllowRemove = false;
       '<div class="akini-ta-phone-app-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>' +
       '<span class="akini-ta-phone-app-name">iCity</span>' +
       "</div>" +
-      '<div class="akini-ta-phone-app" onclick="window.AkiniTaPhone.showApp(\'music\')">' +
-      '<div class="akini-ta-phone-app-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>' +
-      '<span class="akini-ta-phone-app-name">网易云</span>' +
-      "</div>" +
       '<div class="akini-ta-phone-app" onclick="window.AkiniTaPhone.showApp(\'calls\')">' +
       '<div class="akini-ta-phone-app-icon"><svg fill="none" height="42" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="42"><path d="m22 8-6 4 6 4V8Z"/><rect height="12" rx="2" width="14" x="2" y="6"/></svg></div>' +
       '<span class="akini-ta-phone-app-name">通话记录</span>' +
@@ -1227,6 +1156,7 @@ window._akiniAllowRemove = false;
   function init() {
     injectStyles();
     injectDOM();
+    purgeLegacyMusicCollections();
     if (!_scanned) {
       _scanned = true;
       setTimeout(scanHistory, 2500);

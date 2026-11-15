@@ -62,7 +62,6 @@
       });
     } catch (e) {}
   }
-  window.__akiniNormalizeChatAvatars = normalizeOtherAvatars;
   /* 全局兜底：通知列表、评论表情、iCity 等渲染路径都会插入
      src="akini-ref:..." 的图片，这里统一在插入后异步换成真实图片。
      取不到的引用保持原样，等 IndexedDB 可用时还能再补。 */
@@ -272,7 +271,8 @@
       missCall: 0.3,
       refundTransfer: 0.2,
       poke: 0.03,
-      pinyinCard: 0.35,
+      pinyinCard: 0.3,
+      musicRecommend: 0.05,
       emojiMixMsg: 0.2,
       replySticker: 0.2,
       postWithSticker: 0.1,
@@ -1973,7 +1973,7 @@ function G(t, e, n, i, a) {
           b = null;
         if (
           window.__akiniToggleOn("pinyinCardToggle", !1) &&
-          Math.random() < (window.AKR ? window.AKR.getProb("pinyinCard") : 0.35) &&
+          Math.random() < (window.AKR ? window.AKR.getProb("pinyinCard") : 0.3) &&
           window.pickWordCards
         ) {
           var S = Math.max(2, parseInt(localStorage.getItem("akini_num_pinyinCardMin") || "2", 10) || 2),
@@ -9415,8 +9415,7 @@ try {
 try {
         window.__akiniFmtTs = u;
       } catch (_eft) {}
-((window.__akiniProcessMsgMeta = g),
-        (window.__akiniApplyReadMark = p));
+window.__akiniProcessMsgMeta = g;
 k = null;
 window.__akiniCleanGhostBubbles = function (root) {
         try {
@@ -15542,7 +15541,8 @@ Vi = document.getElementById("transferBtn"),
                   t.classList.contains("transfer-bubble") ||
                   t.classList.contains("shop-card-bubble") ||
                   t.classList.contains("music-invite-bubble") ||
-                  t.classList.contains("music-end-bubble"))
+                  t.classList.contains("music-end-bubble") ||
+                  t.classList.contains("music-recommend-bubble"))
               )
                 return void o();
               let e = "",
@@ -22028,9 +22028,6 @@ window.__akiniPatchAvatarCell = function (t, e) {
               if (0 !== r) {
                 window.akiniStore && window.akiniStore.setJson && window.akiniStore.setJson("akini_music_playlist", o);
                 try {
-                  r > 0 && c && window.akiniTaPhoneCollectMusic && window.akiniTaPhoneCollectMusic(c);
-                } catch (t) {}
-                try {
                   localStorage.setItem("akini_music_playlist", JSON.stringify(o));
                 } catch (t) {}
                 ((N = o),
@@ -22837,10 +22834,6 @@ window.__akiniPatchAvatarCell = function (t, e) {
             var c = "一起听了 " + (r += (a % 60) + " 分钟"),
               s = "TA就在你的身边 " + c;
             D.distanceText && (D.distanceText.textContent = s);
-            var l = c;
-            try {
-              ((window.__akiniMusicListenText = l), (window.__akiniMusicListenTextAt = Date.now()));
-            } catch (t) {}
           }
           function Kt() {
             var t = [
@@ -23461,7 +23454,48 @@ window.__akiniPatchAvatarCell = function (t, e) {
           }
           ((window._renderPlaylist = w),
             (window.Bt = w),
-            (window._plSwitchTo = d));
+            (window._plSwitchTo = d),
+            (window.__akiniPlayRecommendedTrack = function (t, e, n) {
+              var i = l(),
+                a = null;
+              for (var o = 0; o < i.length; o++)
+                if (i[o] && String(i[o].key) === String(t)) {
+                  a = i[o];
+                  break;
+                }
+              var r = a && Array.isArray(a.tracks) ? a.tracks : [],
+                c = parseInt(e, 10);
+              if (!a || c < 0 || c >= r.length || !r[c]) return false;
+              ((N = r), (O = c));
+              if (n && n.id)
+                rt = [
+                  {
+                    id: n.id,
+                    name: n.name || "TA",
+                    avatar: n.avatar || "",
+                  },
+                ];
+              (Ct(), I(!0));
+              try {
+                (localStorage.setItem("akini_music_playlist", JSON.stringify(N)),
+                  localStorage.setItem("akini_music_index", String(O)),
+                  localStorage.setItem("akini_music_playlist_cur", String(a.key)),
+                  localStorage.setItem("akini_music_current_time", "0"));
+              } catch (t) {}
+              try {
+                window._idbStore && window._idbStore.set("akini_music_playlist", JSON.stringify(N));
+              } catch (t) {}
+              ((H = !1), (lt = !0), (G = 0), (V = null), (X = 0), (Q = null));
+              if (F)
+                try {
+                  (F.pause(), F.removeAttribute("src"), F.load());
+                } catch (t) {}
+              (de(), we(), w(), v(), window.syncAvatars && window.syncAvatars(), ge());
+              try {
+                window.__akiniMusicTrackSwitch && window.__akiniMusicTrackSwitch();
+              } catch (t) {}
+              return true;
+            }));
           var me =
             'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" fill="%23222228"/><circle cx="100" cy="100" r="70" fill="%23111114" stroke="%23333338" stroke-width="2"/><circle cx="100" cy="100" r="50" fill="%2318181c"/><circle cx="100" cy="100" r="28" fill="%23e60026"/><circle cx="100" cy="100" r="8" fill="%23fff"/></svg>';
           function we() {

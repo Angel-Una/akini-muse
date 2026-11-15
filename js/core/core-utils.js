@@ -24,7 +24,8 @@ function __akiniIsCardBubble(b) {
       l.contains("shop-card-bubble") ||
       l.contains("survey-bubble") ||
       l.contains("music-invite-bubble") ||
-      l.contains("music-end-bubble")
+      l.contains("music-end-bubble") ||
+      l.contains("music-recommend-bubble")
     )
       return !0;
     for (var i = 0; i < l.length; i++) {

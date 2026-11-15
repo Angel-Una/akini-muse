@@ -187,30 +187,30 @@
   function translateSelectors(css) {
     if (!css) return "";
     var meBases = [
-      "html body.bubble-css-on #app-chat .chat-body .msg-row.me .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
-      "html body.bubble-css-on #app-chat .msg-row.me .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
+      "html body.bubble-css-on #app-chat .chat-body .msg-row.me .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
+      "html body.bubble-css-on #app-chat .msg-row.me .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
       "html body.bubble-css-on #bubbleCssPreview .msg-row.me .bubble",
       "html body.bubble-css-on #bubbleCssPreview .bubble.me",
-      "html body.bubble-css-on #companionMsgs .msg-row.me .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
-      "html body.bubble-css-on #watchChatBody .msg-row.me .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
+      "html body.bubble-css-on #companionMsgs .msg-row.me .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
+      "html body.bubble-css-on #watchChatBody .msg-row.me .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
     ];
     var otherBases = [
-      "html body.bubble-css-on #app-chat .chat-body .msg-row.other .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
-      "html body.bubble-css-on #app-chat .msg-row.other .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
-      "html body.bubble-css-on #app-chat .msg-row.ta .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
+      "html body.bubble-css-on #app-chat .chat-body .msg-row.other .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
+      "html body.bubble-css-on #app-chat .msg-row.other .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
+      "html body.bubble-css-on #app-chat .msg-row.ta .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
       "html body.bubble-css-on #bubbleCssPreview .msg-row.other .bubble",
       "html body.bubble-css-on #bubbleCssPreview .bubble.other",
-      "html body.bubble-css-on #companionMsgs .msg-row.other .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
-      "html body.bubble-css-on #companionMsgs .msg-row.ta .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
-      "html body.bubble-css-on #watchChatBody .msg-row.other .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
-      "html body.bubble-css-on #watchChatBody .msg-row.ta .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
+      "html body.bubble-css-on #companionMsgs .msg-row.other .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
+      "html body.bubble-css-on #companionMsgs .msg-row.ta .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
+      "html body.bubble-css-on #watchChatBody .msg-row.other .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
+      "html body.bubble-css-on #watchChatBody .msg-row.ta .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
     ];
     var anyBases = [
-      "html body.bubble-css-on #app-chat .chat-body .msg-row .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
-      "html body.bubble-css-on #app-chat .msg-row .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
+      "html body.bubble-css-on #app-chat .chat-body .msg-row .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
+      "html body.bubble-css-on #app-chat .msg-row .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
       "html body.bubble-css-on #bubbleCssPreview .bubble",
-      "html body.bubble-css-on #companionMsgs .msg-row .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
-      "html body.bubble-css-on #watchChatBody .msg-row .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble)",
+      "html body.bubble-css-on #companionMsgs .msg-row .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
+      "html body.bubble-css-on #watchChatBody .msg-row .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble)",
     ];
 
     try {
@@ -276,7 +276,7 @@
     var hasCss = !!(raw && raw.trim());
     if (hasCss) {
       final =
-        "\nbody.bubble-css-on #app-chat .bubble:not(.transfer-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.survey-bubble), body.bubble-css-on #companionMsgs .bubble:not(.transfer-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.survey-bubble), body.bubble-css-on #watchChatBody .bubble:not(.transfer-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.survey-bubble) { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }\n";
+        "\nbody.bubble-css-on #app-chat .bubble:not(.transfer-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble):not(.survey-bubble), body.bubble-css-on #companionMsgs .bubble:not(.transfer-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble):not(.survey-bubble), body.bubble-css-on #watchChatBody .bubble:not(.transfer-bubble):not(.shop-card-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble):not(.survey-bubble) { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }\n";
       var _clean = stripNoise(raw);
       if (!_clean) {
         _clean = "";

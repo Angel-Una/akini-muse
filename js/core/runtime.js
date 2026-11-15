@@ -540,9 +540,8 @@ window.__akiniDefer2(function () {
         return true;
       }
 
-      /* 每项概率都是「每次回复独立判定」的字面百分比，100 就必定命中。
-       一次回复最多发一张卡：按 一起听邀请 → 问卷邀请 → 商店卡片 的顺序取第一个真正发出的。
-       三者与回复一样走「回复触发」，不受主动发消息开关约束。 */
+      /* 一次回复最多发一张卡。推歌固定独立判定 5%，其余按自定义概率触发；
+       所有卡片都与回复一样走「回复触发」，不受主动发消息开关约束。 */
       function triggerCards(chatId) {
         if (!chatId || chatId !== activeChatId()) return;
         if (window.__akiniCardTriggering) return;
@@ -550,6 +549,12 @@ window.__akiniDefer2(function () {
         if (!AKR || typeof AKR.getProb !== "function") return;
         window.__akiniCardTriggering = true;
         try {
+          if (
+            Math.random() < (AKR ? AKR.getProb("musicRecommend") : 0.05) &&
+            window.__akiniSendMusicRecommendCard &&
+            window.__akiniSendMusicRecommendCard(chatId)
+          )
+            return;
           if (Math.random() < AKR.getProb("invite") && sendMusicInvite(chatId)) return;
           if (Math.random() < AKR.getProb("surveyInvite") && sendSurveyInvite(chatId)) return;
           if (Math.random() < AKR.getProb("shopCard")) sendShopCard(chatId);
@@ -602,6 +607,7 @@ window.__akiniDefer2(function () {
         "shop-card-bubble",
         "music-invite-bubble",
         "music-end-bubble",
+        "music-recommend-bubble",
         "transfer-bubble",
         "sticker-bubble",
         "redpacket-bubble",

@@ -1043,10 +1043,10 @@
     shopCard: "akini_prob_shopCard",
     musicInvite: "akini_prob_invite",
     musicSkip: "akini_prob_skip",
+    musicRecommend: "akini_prob_musicRecommend",
     taPhoneChat: "akini_prob_taPhoneChat",
     taPhoneMoments: "akini_prob_taPhoneMoments",
     taPhoneIcity: "akini_prob_taPhoneIcity",
-    taPhoneMusic: "akini_prob_taPhoneMusic",
     taPhoneMail: "akini_prob_taPhoneMail",
   };
   var DEFAULT_PROBS = {
@@ -1068,17 +1068,17 @@
     groupTransferOther: 15,
     groupTransferMe: 15,
     replySticker: 20,
-    pinyinCard: 35,
+    pinyinCard: 30,
     emojiMixMsg: 20,
     postWithSticker: 10,
     surveyInvite: 10,
     shopCard: 10,
     musicInvite: 10,
     musicSkip: 5,
+    musicRecommend: 5,
     taPhoneChat: 2,
     taPhoneMoments: 10,
     taPhoneIcity: 10,
-    taPhoneMusic: 10,
     taPhoneMail: 10,
   };
   /* 概率值一旦被用户改过就必须尊重：旧代码会把 20/2 强行改回 10，
@@ -1206,11 +1206,11 @@
     });
   }
   function resetProbDefaultsIfNeeded() {
-    var CURR = "20261102ac";
+    var CURR = "20261115b";
     /* 问卷邀请 / 商店卡片的默认值在 56c8aa0 已从 20 改成 10，但当时没把这两项收进 RESET_KEYS，
        老存档里写死的 20 一直没被迁掉，设置页读的又是存档值 → 用户看到的还是 20%。
        补进 RESET_KEYS 并升版本，让存量安装一次性回到 10%。 */
-    var RESET_KEYS = ["noReply", "taTransfer", "emoji", "quote", "poke", "miniBubble", "surveyInvite", "shopCard"];
+    var RESET_KEYS = ["noReply", "taTransfer", "emoji", "quote", "poke", "miniBubble", "surveyInvite", "shopCard", "pinyinCard"];
     var applyValues = function (forceReset) {
       try {
         for (var k in DEFAULT_PROBS) {
@@ -1272,10 +1272,8 @@
     bindProbInput("probNoReply", "noReply");
     bindProbInput("probMusicInvite", "musicInvite");
     bindProbInput("probMusicSkip", "musicSkip");
-    bindProbInput("probMissCall", "missCall");
-    bindProbInput("probAnswerCall", "answerCall");
+    bindProbInput("probMusicRecommend", "musicRecommend");
     bindProbInput("probIncomingCall", "incomingCall");
-    bindProbInput("probRefundTransfer", "refundTransfer");
     bindProbInput("probCollectTransfer", "collectTransfer");
     bindProbInput("probMeaningfulNumber", "meaningfulNumber");
     bindProbInput("probReplySticker", "replySticker");
@@ -1293,7 +1291,6 @@
     bindProbInput("probTaChat", "taPhoneChat");
     bindProbInput("probTaMoments", "taPhoneMoments");
     bindProbInput("probTaIcity", "taPhoneIcity");
-    bindProbInput("probTaMusic", "taPhoneMusic");
     bindProbInput("probTaMail", "taPhoneMail");
     bindTimeInput("timeReplyStart", "reply", 0);
     bindTimeInput("timeReplyEnd", "reply", 1);

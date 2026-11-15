@@ -146,12 +146,16 @@ html.ios-lite .top-card {
    用双写 .msg-row.system 提特异性，压过 akini-perf-lite.css 里的 max-width:70%，
    否则 nowrap 文字会溢出 70% 宽的灰底气泡。 */
 html body #app-chat .chat-body .msg-row.system.msg-row.system .bubble-wrap { max-width:none !important; width:fit-content !important; }
-html body #app-chat .chat-body .msg-row.system.msg-row.system .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.img-bubble):not(.video-bubble):not(.voice-bubble):not(.music-invite-bubble):not(.music-end-bubble) {
+html body #app-chat .chat-body .msg-row.system.msg-row.system .bubble:not(.transfer-bubble):not(.sticker-bubble):not(.survey-bubble):not(.shop-card-bubble):not(.img-bubble):not(.video-bubble):not(.voice-bubble):not(.music-invite-bubble):not(.music-end-bubble):not(.music-recommend-bubble) {
   white-space:nowrap !important;
   max-width:none !important;
   width:auto !important;
   display:inline-block !important;
 }
+
+/* 推歌卡内的 bubble-widget 是空占位，会作为 flex 子项产生 gap，把右侧播放图标挤出内边距；
+   该卡片本身不参与自定义气泡美化，直接隐藏占位即可。 */
+html body #app-chat .chat-body .msg-row .bubble.music-recommend-bubble > .bubble-widget { display:none !important; }
 
 /* 组件样式 */
 /* 直接更换输入框立即可点 */

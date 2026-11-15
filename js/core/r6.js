@@ -154,6 +154,14 @@
       return "我";
     }
   }
+  function escapeCardHtml(text) {
+    return String(text == null ? "" : text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
 
   /* ============ PROBABILITIES (可在设置自定义) ============ */
   function getProb(key, def) {
@@ -493,6 +501,136 @@
     return false;
   }
 
+  function pickMusicRecommendation() {
+    var lists = [];
+    try {
+      var raw =
+        window.akiniStore && window.akiniStore.getSync
+          ? window.akiniStore.getSync("akini_music_playlists_v2", null)
+          : localStorage.getItem("akini_music_playlists_v2");
+      lists = raw && typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (!Array.isArray(lists)) lists = [];
+    } catch (e) {
+      lists = [];
+    }
+    if (!lists.length)
+      try {
+        var oldRaw =
+          window.akiniStore && window.akiniStore.getSync
+            ? window.akiniStore.getSync("akini_music_playlist", null)
+            : localStorage.getItem("akini_music_playlist");
+        var oldTracks = oldRaw && typeof oldRaw === "string" ? JSON.parse(oldRaw) : oldRaw;
+        if (Array.isArray(oldTracks) && oldTracks.length)
+          lists = [{ key: "pl_default", name: "默认歌单", tracks: oldTracks }];
+      } catch (e) {}
+    var candidates = [];
+    lists.forEach(function (pl) {
+      if (!pl || !Array.isArray(pl.tracks)) return;
+      var indices = [];
+      pl.tracks.forEach(function (track, index) {
+        if (track && (track.title || track.name)) indices.push(index);
+      });
+      if (indices.length) candidates.push({ playlist: pl, indices: indices });
+    });
+    if (!candidates.length) return null;
+    var picked = candidates[Math.floor(Math.random() * candidates.length)];
+    var trackIndex = picked.indices[Math.floor(Math.random() * picked.indices.length)];
+    return {
+      playlistKey: picked.playlist.key || "pl_default",
+      trackIndex: trackIndex,
+      track: picked.playlist.tracks[trackIndex],
+    };
+  }
+
+  function sendMusicRecommendCard(chatId) {
+    try {
+      if (!chatId || !window.__akiniAppendMessageHTML) return false;
+      var picked = pickMusicRecommendation();
+      if (!picked) return false;
+      var ta = null;
+      try {
+        ta = window.akiniContacts && window.akiniContacts.getChatTarget
+          ? window.akiniContacts.getChatTarget(chatId)
+          : null;
+      } catch (e) {}
+      if (!ta || !ta.id) ta = getDefaultContact();
+      if (!ta || !ta.id) return false;
+      var track = picked.track || {};
+      var title = String(track.title || track.name || "未知歌曲");
+      var artist = String(track.artist || "未知歌手");
+      var cover = track.cover || track.pic || window.__akiniDefaultCover || "";
+      var coverHtml = cover
+        ? '<img src="' + escapeCardHtml(cover) + '" alt="歌曲封面" style="width:52px;height:52px;min-width:52px;max-width:52px;display:block;object-fit:cover;border-radius:9px;background:#eee;" onerror="this.onerror=null;this.src=window.__akiniDefaultCover||this.src"/>'
+        : '<div style="width:52px;height:52px;min-width:52px;border-radius:9px;background:#eee;display:flex;align-items:center;justify-content:center;color:#888;font-size:25px;line-height:1;">♪</div>';
+      var bubble =
+        '<div class="bubble music-recommend-bubble" data-playlist-key="' +
+        escapeCardHtml(picked.playlistKey) +
+        '" data-track-index="' +
+        picked.trackIndex +
+        '" data-contact-id="' +
+        escapeCardHtml(ta.id) +
+        '" onclick="event.stopPropagation();window.__akiniOpenMusicRecommendCard &amp;&amp; window.__akiniOpenMusicRecommendCard(this)" style="box-sizing:border-box !important;width:236px !important;min-width:236px !important;max-width:236px !important;height:76px !important;min-height:76px !important;max-height:76px !important;overflow:hidden !important;display:flex !important;align-items:center !important;gap:12px !important;background:#fff !important;border:1px solid #e8e8e8 !important;border-radius:16px !important;padding:11px 12px !important;cursor:pointer;color:#1a1a1a !important;box-shadow:0 4px 14px rgba(0,0,0,.07) !important;text-shadow:none !important;">' +
+        coverHtml +
+        '<div style="flex:1;min-width:0;width:0;overflow:hidden;">' +
+        '<div style="font-size:11px;color:#888;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">对方推了一首歌</div>' +
+        '<div title="' + escapeCardHtml(title) + '" style="font-size:14px;font-weight:600;color:#1a1a1a;line-height:18px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
+        escapeCardHtml(title) +
+        "</div>" +
+        '<div title="' + escapeCardHtml(artist) + '" style="font-size:11px;color:#999;line-height:15px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
+        escapeCardHtml(artist) +
+        "</div></div>" +
+        '<div class="music-recommend-play" style="flex-shrink:0;width:22px;height:22px;display:flex;align-items:center;justify-content:center;">' +
+        '<svg width="22" height="22" viewBox="0 0 24 24" fill="#1a1a1a" aria-hidden="true" style="display:block;"><path d="M8 5v14l11-7z"/></svg>' +
+        "</div></div>";
+      var taName = ta.name || "TA";
+      var html =
+        '<div class="msg-row other" data-ts="' + __akiniNextTs() + '">' +
+        '<div class="msg-avatar" data-sender-name="' + escapeCardHtml(taName) + '" style="background:transparent;border-radius:50%;padding:0;">' +
+        avHTML(ta.avatar || "", 38) +
+        '</div><div class="msg-content-line">' + bubble + "</div></div>";
+      window.__akiniAppendMessageHTML(chatId, html, {
+        lastMsg: "给你推了一首歌 · " + title,
+        lastSenderName: taName,
+      });
+      var body = $("chatBody");
+      if (body) body.scrollTop = body.scrollHeight;
+      return true;
+    } catch (e) {
+      console.warn("[r6] recommend card error", e);
+      return false;
+    }
+  }
+
+  window.__akiniOpenMusicRecommendCard = function (card) {
+    try {
+      if (!card) return;
+      var playlistKey = card.getAttribute("data-playlist-key") || "pl_default";
+      var trackIndex = card.getAttribute("data-track-index");
+      var contactId = card.getAttribute("data-contact-id") || "";
+      var ta = null;
+      try {
+        if (window.akiniContacts && contactId)
+          ta = window.akiniContacts.getChatTarget
+            ? window.akiniContacts.getChatTarget(contactId)
+            : window.akiniContacts.getContactById(contactId);
+      } catch (e) {}
+      if (!ta || !ta.id) ta = getDefaultContact();
+      var listening = "1" === localStorage.getItem("akini_music_listening_active");
+      localStorage.setItem("akini_music_invited_by_ta", "1");
+      if (!listening || !_musicSessionStart) startMusicSessionTracking(true);
+      if (window.navTo) window.navTo("music");
+      setTimeout(function () {
+        var played = false;
+        try {
+          played = window.__akiniPlayRecommendedTrack
+            ? window.__akiniPlayRecommendedTrack(playlistKey, trackIndex, ta)
+            : false;
+        } catch (e) {}
+        if (!played && window.__akiniToast) window.__akiniToast("这首歌曲已不在歌单中");
+      }, 0);
+    } catch (e) {}
+  };
+
   function disableInviteCards() {
     try {
       var body = $("chatBody");
@@ -831,9 +969,9 @@
     if (ov) ov.style.display = "none";
   }
 
-  /* 一起听总结卡片：core 在 document 冒泡阶段把任何 .bubble 的点击转成消息右键菜单，
-     会抢掉卡片自身的详情点击。这里在 document 捕获阶段先接住（捕获一定先于冒泡），
-     直接打开详情并阻止事件继续传播，历史旧卡片（没有内联 onclick）也照样能点开。 */
+  /* 推歌和一起听总结卡片：core 在 document 冒泡阶段把任何 .bubble 的点击转成消息右键菜单，
+     会抢掉卡片自身的点击。这里在 document 捕获阶段先接住并阻止事件继续传播，
+     历史旧卡片（没有内联 onclick）也照样能点开。 */
   (function () {
     if (window.__akiniMusicEndClickBound) return;
     window.__akiniMusicEndClickBound = true;
@@ -842,6 +980,13 @@
       function (e) {
         try {
           if (!e.target || !e.target.closest) return;
+          var recommend = e.target.closest(".music-recommend-bubble");
+          if (recommend) {
+            e.stopPropagation();
+            e.preventDefault();
+            if (window.__akiniOpenMusicRecommendCard) window.__akiniOpenMusicRecommendCard(recommend);
+            return;
+          }
           var card = e.target.closest(".music-end-bubble");
           if (!card) return;
           e.stopPropagation();
@@ -871,7 +1016,7 @@
             if (!e.target || !e.target.closest) return;
             if (
               !e.target.closest(
-                ".shop-card-bubble,.survey-bubble,.music-invite-bubble,.music-end-bubble,.transfer-bubble,.sticker-bubble,.redpacket-bubble",
+                ".shop-card-bubble,.survey-bubble,.music-invite-bubble,.music-end-bubble,.music-recommend-bubble,.transfer-bubble,.sticker-bubble,.redpacket-bubble",
               )
             )
               return;
@@ -893,17 +1038,18 @@
   var _musicSessionMyMsgs = 0;
   var _musicSessionTaMsgs = 0;
 
-  function startMusicSessionTracking() {
+  function startMusicSessionTracking(skipCurrent) {
     _musicSessionStart = Date.now();
     _musicSessionSongCount = 0;
     _musicSessionMyMsgs = 0;
     _musicSessionTaMsgs = 0;
     /* 进会话时如果已经有一首歌在播（或列表已选好），先把这一首算上，
-       否则只听了这一首就退出时仍然是 0 首。 */
-    try {
-      var cur = window.getMusicCurrentTrack && window.getMusicCurrentTrack();
-      if (cur && (cur.id || cur.name || cur.url)) _musicSessionSongCount = 1;
-    } catch (e) {}
+       否则只听了这一首就退出时仍然是 0 首。推歌会另计实际播放的推荐歌曲。 */
+    if (!skipCurrent)
+      try {
+        var cur = window.getMusicCurrentTrack && window.getMusicCurrentTrack();
+        if (cur && (cur.id || cur.name || cur.url)) _musicSessionSongCount = 1;
+      } catch (e) {}
     try {
       localStorage.setItem("akini_music_listening_active", "1");
     } catch (e) {}
@@ -1366,6 +1512,7 @@
     if (probClose) probClose.addEventListener("click", closeProbSettings);
 
     window.__akiniSendMusicInviteCard = sendMusicInviteCard;
+    window.__akiniSendMusicRecommendCard = sendMusicRecommendCard;
   }
 
   if (document.readyState === "loading") {

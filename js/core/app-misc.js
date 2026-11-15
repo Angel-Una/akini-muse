@@ -571,7 +571,7 @@
     var bubble = row.querySelector(".bubble");
     if (!bubble) return;
     /* 小气泡只禁止出现在转账/问卷/商店/音乐卡片上；表情包、图片、视频、语音气泡允许贴小气泡 */
-    var CARD_CLS = /transfer-bubble|survey-bubble|shop-card-bubble|music-invite-bubble|music-end-bubble/;
+    var CARD_CLS = /transfer-bubble|survey-bubble|shop-card-bubble|music-invite-bubble|music-end-bubble|music-recommend-bubble/;
     if (CARD_CLS.test(bubble.className)) {
       if (bubble.hasAttribute("data-mb")) bubble.removeAttribute("data-mb");
       row.classList.remove("has-mini-bubble");
@@ -620,7 +620,7 @@
         var b = r.querySelector(".bubble");
         if (!b) return;
         /* 只有转账/问卷/商店/音乐卡片不参与小气泡；表情包/图片/视频/语音允许 */
-        if (/transfer-bubble|survey-bubble|shop-card-bubble|music-invite-bubble|music-end-bubble/.test(b.className))
+        if (/transfer-bubble|survey-bubble|shop-card-bubble|music-invite-bubble|music-end-bubble|music-recommend-bubble/.test(b.className))
           return;
         /* 联系人每条消息只摇一次（不论我是否手动贴过），用 PROCESSED_KEY 记录 */
         if (_notReady || pp[ts]) return;

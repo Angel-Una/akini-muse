@@ -827,9 +827,6 @@ window.__akiniDefer(function () {
         memberSelect.style.display = "none";
         memberSelect.innerHTML = "";
       }
-      window.akiniSurveyContext = activeTarget
-        ? { targetId: activeId, chatType: activeTarget.type || "contact" }
-        : null;
     }
 
     function openSurveyCreate(mode) {

@@ -690,7 +690,7 @@ if (window.__navBack) {
   window.__akiniBubbleTagBooted = true;
 
   var SKIP =
-    /(transfer-bubble|sticker-bubble|survey-bubble|shop-card-bubble|music-invite-bubble|music-end-bubble|system)/;
+    /(transfer-bubble|sticker-bubble|survey-bubble|shop-card-bubble|music-invite-bubble|music-end-bubble|music-recommend-bubble|system)/;
 
   function tagOne(row) {
     if (!row || row.nodeType !== 1 || !row.classList) return;

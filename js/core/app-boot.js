@@ -73,6 +73,7 @@ window._akiniActiveMsgAction = null;
           if (
             b.classList.contains("music-end-bubble") ||
             b.classList.contains("music-invite-bubble") ||
+            b.classList.contains("music-recommend-bubble") ||
             b.classList.contains("shop-card-bubble") ||
             b.classList.contains("survey-bubble") ||
             b.classList.contains("transfer-bubble") ||

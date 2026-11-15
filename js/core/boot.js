@@ -23,14 +23,6 @@
         flush();
       } catch (e) {}
     };
-    window.__akiniBootTraceReady = function () {
-      try { trace.ready = true; flush(); } catch (e) {}
-    };
-    window.__akiniGetBootDiag = function () {
-      var last = null;
-      try { last = JSON.parse(localStorage.getItem("akini_boot_trace_last") || "null"); } catch (e) {}
-      return { current: trace, lastCrash: last };
-    };
     flush();
     window.__akiniBootTrace("boot_js_start");
     /* 全局错误也记入 trace */
