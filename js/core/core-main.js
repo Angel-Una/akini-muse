@@ -15411,11 +15411,13 @@ Vi = document.getElementById("transferBtn"),
           function a(e, a) {
             if (!e || !a) return;
             ((n = a), (i = e), (window.__akiniMbCtxRow = a), (t.style.display = "block"));
-            /* 陪伴 / 观影聊天只保留 复制 / 引用 / 小气泡 / 删除，收藏不可用 */
+            /* 陪伴 / 观影聊天只保留 复制 / 引用 / 删除，收藏和小气泡不可用 */
             try {
               var _cw = !!(a.closest && a.closest("#companionMsgs,#watchChatBody")),
-                _fav = document.getElementById("ctxFav");
+                _fav = document.getElementById("ctxFav"),
+                _mb = document.getElementById("ctxMiniBubble");
               _fav && (_fav.style.display = _cw ? "none" : "");
+              _mb && (_mb.style.display = _cw ? "none" : "");
             } catch (e1) {}
             const o = e.getBoundingClientRect(),
               r = t.offsetWidth || 120,
