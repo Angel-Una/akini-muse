@@ -390,6 +390,25 @@
     if (ov) ov.style.display = "none";
   }
 
+  function appendMusicSystemMessage(chatId, text) {
+    if (!chatId || !text || !window.__akiniAppendMessageHTML) return;
+    var html =
+      '<div class="msg-row system" data-ts="' +
+      __akiniNextTs() +
+      '"><div class="msg-content-line"><div class="bubble-wrap"><div class="bubble">' +
+      escapeCardHtml(text) +
+      "</div></div></div></div>";
+    window.__akiniAppendMessageHTML(chatId, html, { lastMsg: text, lastTime: Date.now() });
+  }
+
+  function sendContactSongChangeMessages(track) {
+    var title = track && String(track.title || track.name || "").trim();
+    var ta = getDefaultContact();
+    if (!title || !ta || !ta.id) return;
+    appendMusicSystemMessage(ta.id, "对方切换了歌曲");
+    appendMusicSystemMessage(ta.id, "《" + title + "》");
+  }
+
   /* ============ CONTACT AUTO-SKIP SONG (概率) ============ */
   var _contactSkipTimer = null;
   function scheduleContactSkip() {
@@ -410,12 +429,15 @@
         if (active && app && app.style.display !== "none") {
           var prob = getSkipProb();
           if (Math.random() * 100 < prob) {
+            var beforeTrack = window.getMusicCurrentTrack ? window.getMusicCurrentTrack() : null;
             if (typeof window.musicControlNext === "function") {
               window.musicControlNext();
             } else {
               var nb = $("musicNextBtn");
               if (nb) nb.click();
             }
+            var afterTrack = window.getMusicCurrentTrack ? window.getMusicCurrentTrack() : null;
+            if (afterTrack && afterTrack !== beforeTrack) sendContactSongChangeMessages(afterTrack);
           }
         }
       } catch (e) {}
@@ -592,6 +614,19 @@
         lastMsg: "给你推了一首歌 · " + title,
         lastSenderName: taName,
       });
+      if (typeof window.showInAppNotif === "function") {
+        window.showInAppNotif({
+          app: "微信",
+          avatar: ta.avatar || "",
+          name: taName,
+          msg: "对方给你推了一首歌《" + title + "》",
+          fullContent: true,
+          chatId: chatId,
+          onTap: function () {
+            if (window.openChat) window.openChat(chatId, true);
+          },
+        });
+      }
       var body = $("chatBody");
       if (body) body.scrollTop = body.scrollHeight;
       return true;

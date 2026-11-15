@@ -18932,7 +18932,11 @@ window.__akiniPatchAvatarCell = function (t, e) {
               d && (d.textContent = e.name ? g + " · " + e.name : g);
               let f = (e.msg || "").trim();
               const y = !1 !== e.fullContent;
-              if ((u && ((u.textContent = f), u.classList.toggle("full", y)), m && m.classList.toggle("full", y), w)) {
+              if (
+                (u && ((u.textContent = f), u.classList.toggle("full", y)),
+                m && m.classList.toggle("full", y),
+                w)
+              ) {
                 var p = Date.now();
                 w.textContent = window.__akiniNaturalTime ? window.__akiniNaturalTime(e.ts || p) : "刚刚";
               }
