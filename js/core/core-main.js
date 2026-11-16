@@ -301,8 +301,7 @@
         return !0;
       },
       getReplyCount: function () {
-        var t = Math.random();
-        return t < 0.75 ? 1 : t < 0.95 ? 2 : 3;
+        return Math.random() < 0.75 ? 1 : Math.random() < 0.95 ? 2 : 3;
       },
       pickReplyBehavior: function () {
         var t = !1;
@@ -1480,10 +1479,21 @@ function z(t) {
           H()),
           R(t));
       }
+function replyRoundBusy(t) {
+        var pending = window.__akiniPendingReplyMap && window.__akiniPendingReplyMap[t];
+        if (pending && pending.count > 0) return !0;
+        var round = window.__akiniReplyRoundMap && window.__akiniReplyRoundMap[t];
+        return !!(round && !round.done && !round.cancelled);
+      }
+function cancelReplyRound(t) {
+        var round = window.__akiniReplyRoundMap && window.__akiniReplyRoundMap[t];
+        if (round) round.cancelled = !0;
+      }
 function j(t, e, n, i) {
         if (t && window.akiniContacts) {
           var a = window.akiniContacts.getChatTarget(t);
           if (a) {
+            cancelReplyRound(t);
             window.__akiniPendingReplyMap = window.__akiniPendingReplyMap || {};
             var o = window.__akiniPendingReplyMap[t];
             (o
@@ -2008,6 +2018,9 @@ function G(t, e, n, i, a) {
           } catch (t) {}
           return void (i ? z(t) : R(t));
         }
+        var rounds = (window.__akiniReplyRoundMap = window.__akiniReplyRoundMap || {});
+        rounds[t] && (rounds[t].cancelled = !0);
+        var round = (rounds[t] = { done: !1, cancelled: !1 });
         let N = "";
         if (k) {
           var H = m
@@ -2133,55 +2146,7 @@ function G(t, e, n, i, a) {
             (e.replyDelayMin && parseFloat(e.replyDelayMin) > 0 && (replyMin = parseFloat(e.replyDelayMin)),
             e.replyDelayMax && parseFloat(e.replyDelayMax) > 0 && (replyMax = parseFloat(e.replyDelayMax)),
             replyMax >= replyMin || (replyMax = replyMin)));
-        function nn(a) {
-          if (a >= A.length) return void (i ? z(t) : R(t));
-          let o = A[a];
-          if (
-            ((o = (function (t) {
-              if (!t) return t;
-              try {
-                if (Math.random() < (window.AKR ? window.AKR.getProb("emoji") : 0.2)) {
-                  var _ew = (
-                    (window.__wbRead
-                      ? window.__wbRead("akini_wordbank", [])
-                      : JSON.parse(localStorage.getItem("akini_wordbank") || "[]")) || []
-                  ).filter(function (t) {
-                    return t && "emoji" === (t.tab || "").toLowerCase() && t.text;
-                  });
-                  try {
-                    window.__wbFilter && (_ew = window.__wbFilter(_ew, null) || []);
-                  } catch (_ef) {}
-                  if (_ew.length) return _ew[Math.floor(Math.random() * _ew.length)].text;
-                }
-              } catch (_ee) {}
-              if (!f.emojiMix) return t;
-              if (Math.random() >= (window.AKR ? window.AKR.getProb("emojiMixMsg") : 0.2)) return t;
-              var e = [];
-              try {
-                var n = (JSON.parse(localStorage.getItem("akini_wordbank") || "[]") || []).filter(function (t) {
-                  return "emoji" === (t.tab || "").toLowerCase() && t.text;
-                });
-                if (window.__wbFilter) {
-                  var i =
-                      window.akiniContacts && window.akiniContacts.getActiveChatId
-                        ? window.akiniContacts.getActiveChatId()
-                        : null,
-                    a = i && window.akiniContacts.getChatTarget ? window.akiniContacts.getChatTarget(i) : null;
-                  n = window.__wbFilter(n, a && a.id);
-                }
-                e = n.map(function (t) {
-                  return t.text;
-                });
-              } catch (t) {}
-              if (!e.length) return t;
-              var o = e[Math.floor(Math.random() * e.length)];
-              return Math.random() < 0.5 ? o + " " + t : t + " " + o;
-            })(o)),
-            0 === a && window.__pendingQuote)
-          ) {
-            var r = window.__pendingQuote;
-            ((window.__pendingQuote = null), window.__akiniQuoteCardHtml(r.name, r.text || r.msg || ""));
-          }
+        function appendReplyText(o, quoteHtml) {
           const m =
             '<div class="msg-row other' +
             '" data-ts="' +
@@ -2195,9 +2160,9 @@ function G(t, e, n, i, a) {
             Qt(o) +
             "</div>" +
             "</div>" +
-            (0 === a && N
+            (quoteHtml
               ? '<div style="flex-basis:100%;width:100%;padding-left:46px;box-sizing:border-box;margin-top:2px;">' +
-                N +
+                quoteHtml +
                 "</div>"
               : "") +
             "</div>";
@@ -2244,8 +2209,57 @@ function G(t, e, n, i, a) {
             };
             window.showInAppNotif(p);
           }
+        }
+        function finishReplyRound() {
+          if (round.cancelled) return;
+          round.done = !0;
+          i ? z(t) : R(t);
+          try {
+            var pending = (window.__akiniPendingReplyMap || {})[t];
+            pending && ((pending.count = 0), H());
+          } catch (t) {}
+          J();
+        }
+        function nn(a) {
+          if (round.cancelled) return;
+          if (a >= A.length) return void finishReplyRound();
+          let o = A[a],
+            separateEmoji = "";
+          o = (function (text) {
+            if (!text || Math.random() >= (window.AKR ? window.AKR.getProb("emojiMixMsg") : 0.2)) return text;
+            var emojis = [];
+            try {
+              emojis = (
+                (window.__wbRead
+                  ? window.__wbRead("akini_wordbank", [])
+                  : JSON.parse(localStorage.getItem("akini_wordbank") || "[]")) || []
+              ).filter(function (item) {
+                return item && "emoji" === (item.tab || "").toLowerCase() && item.text;
+              });
+              if (window.__wbFilter) emojis = window.__wbFilter(emojis, e && e.id) || [];
+            } catch (t) {
+              emojis = [];
+            }
+            if (!emojis.length) return text;
+            var emoji = emojis[Math.floor(Math.random() * emojis.length)].text;
+            if (!f.emojiMix) {
+              separateEmoji = emoji;
+              return text;
+            }
+            return Math.random() < 0.5 ? emoji + " " + text : text + " " + emoji;
+          })(o);
+          if (0 === a && window.__pendingQuote) {
+            var r = window.__pendingQuote;
+            ((window.__pendingQuote = null), window.__akiniQuoteCardHtml(r.name, r.text || r.msg || ""));
+          }
+          appendReplyText(o, 0 === a ? N : "");
+          if (separateEmoji)
+            setTimeout(function () {
+              if (!round.cancelled) appendReplyText(separateEmoji, "");
+            }, 300 + 400 * Math.random());
           Math.random() < (window.AKR ? window.AKR.getProb("replySticker") : 0.2) &&
             setTimeout(function () {
+              if (round.cancelled) return;
               try {
                 sendReplySticker();
               } catch (stickerErr) {
@@ -2259,16 +2273,7 @@ function G(t, e, n, i, a) {
                 },
                 1e3 * (replyMin + Math.random() * Math.max(0, replyMax - replyMin)),
               )
-            : ((i ? z(t) : R(t),
-              /* 一轮回复结束后消费掉 pending 计数：count 只增不减会让 J() 再次触发，
-                 表现为「回复结束 typing 消失后又突然 typing 又继续回复」 */
-              (function () {
-                try {
-                  var _p = (window.__akiniPendingReplyMap || {})[t];
-                  _p && ((_p.count = 0), H());
-                } catch (t) {}
-              })(),
-              J()));
+            : finishReplyRound();
         }
         try {
           nn(0);
@@ -9612,7 +9617,7 @@ window.__akiniCleanGhostBubbles = function (root) {
             var t = window.akiniContacts && window.akiniContacts.getActiveChatId(),
               e = t && window.akiniContacts.getChatTarget(t);
             if (t && e && window.I) {
-              if (window.__akiniForceReplyInFlight) return;
+              if (replyRoundBusy(t) || window.__akiniForceReplyInFlight) return;
               window.__akiniForceReplyInFlight = !0;
               var n = 1500 + 2500 * Math.random(),
                 i = parseFloat(localStorage.getItem("akini_num_replyDelayMin") || "3"),
@@ -9642,11 +9647,13 @@ window.__akiniCleanGhostBubbles = function (root) {
                       window.akiniContacts.getActiveChatId &&
                       window.akiniContacts.getActiveChatId() === _frCid &&
                       !document.hidden &&
+                      !replyRoundBusy(_frCid) &&
                       O(_frCid, s);
                   } catch (t) {}
                 }, n),
                 void setTimeout(function () {
                   window.__akiniForceReplyInFlight = !1;
+                  if (replyRoundBusy(t)) return;
                   try {
                     window.I(t, e, null, !0);
                   } catch (t) {}
@@ -9663,6 +9670,7 @@ window.__akiniCleanGhostBubbles = function (root) {
             t = t || window.akiniContacts.getActiveChatId();
             var e = window.akiniContacts.getChatTarget(t);
             if (e) {
+              if (replyRoundBusy(t)) return;
               var n = P();
               if (n && "none" === n.type) {
                 var i = 1500 + 2500 * Math.random();
@@ -9717,8 +9725,7 @@ window.__akiniCleanGhostBubbles = function (root) {
                     }
                   })(),
                   setTimeout(function () {
-                    var i = document.getElementById("typingIndicator");
-                    i && (i.style.display = "none");
+                    if (replyRoundBusy(t)) return;
                     window.I(t, e, n, !0);
                   }, d));
               }
@@ -20279,38 +20286,35 @@ window.__akiniPatchAvatarCell = function (t, e) {
           if (!window.akiniContacts) return;
           t = t || window.akiniContacts.getActiveChatId();
           const n = window.akiniContacts.getChatTarget(t);
-          if (!n) return;
+          if (!n || replyRoundBusy(t)) return;
+          if (
+            window.__akiniHasReplyPool &&
+            !window.__akiniHasReplyPool(n.id || t)
+          ) {
+            window.__akiniNotifyEmptyReply && window.__akiniNotifyEmptyReply();
+            return;
+          }
           const i = t === window.akiniContacts.getActiveChatId();
-          var a = Math.random() < 0.75 ? 1 : Math.random() < 0.95 ? 2 : 3,
-            o = parseFloat(localStorage.getItem("akini_num_replyDelayMin") || "3"),
+          var o = parseFloat(localStorage.getItem("akini_num_replyDelayMin") || "3"),
             r = parseFloat(localStorage.getItem("akini_num_replyDelayMax") || "7");
           (o > 0 || (o = 3), r >= o || (r = Math.max(o, 7)));
-          var c = 600 + 900 * Math.random();
+          var c = Math.max(600 + 900 * Math.random(), 1e3 * (o + Math.random() * (r - o)));
           ("number" == typeof e && e > 0 && (c = Math.max(c, e)),
-            (function e(s) {
-              if (!(s >= a)) {
-                var l = P();
-                if (l && "none" !== l.type) {
-                  i && O(t, null);
-                  var d = 1e3 * (o + Math.random() * (r - o));
-                  window._akiniTimer.schedule(
-                    "activeMsgReply",
-                    function () {
-                      try {
-                        G(t, n, l);
-                      } catch (t) {}
-                      setTimeout(
-                        function () {
-                          e(s + 1);
-                        },
-                        500 + 700 * Math.random(),
-                      );
-                    },
-                    0 === s ? c : d,
-                  );
-                }
+            i && O(t, null),
+            window._akiniTimer.schedule("activeMsgReply", function () {
+              if (replyRoundBusy(t)) return;
+              if (
+                window.__akiniHasReplyPool &&
+                !window.__akiniHasReplyPool(n.id || t)
+              ) {
+                R(t);
+                window.__akiniNotifyEmptyReply && window.__akiniNotifyEmptyReply();
+                return;
               }
-            })(0));
+              var l = P();
+              if (!l || "none" === l.type) return void R(t);
+              window.I(t, n, l, !0);
+            }, c));
         }),
         (window.getContactStickersSync = function (t) {
           var e = "akini_stickers_" + t;

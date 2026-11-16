@@ -452,63 +452,6 @@
   }
   wForce.__akiniEngine = true;
 
-  /* ---- 主动发消息：原生 模型 —— 先验池，再输入中，再发，绝不空跑 ---- */
-  function wTaReply(cid, minDelay) {
-    try {
-      if (window.Ai && window.Ai.active) return;
-      if (window.__akiniToggleOn && !window.__akiniToggleOn("contactActiveMsgToggle", false)) return;
-      var contacts = window.akiniContacts;
-      if (!contacts) return;
-
-      cid = cid || activeId();
-      if (!cid) return;
-      var target = getTarget(cid);
-      if (!target) return;
-
-      /* 主动发消息同样先验池：空则提示，绝不空跑 */
-      if (!replyPool(cid).length) {
-        notifyEmpty();
-        return;
-      }
-
-      var dmin = num("akini_num_replyDelayMin", 3);
-      var dmax = num("akini_num_replyDelayMax", 7);
-      if (dmin <= 0) dmin = 3;
-      if (dmax < dmin) dmax = dmin + 1;
-      var delay = 1000 * (dmin + Math.random() * (dmax - dmin));
-      var floor = typeof minDelay === "number" && minDelay > 0 ? minDelay : 600 + 900 * Math.random();
-      if (delay < floor) delay = floor;
-
-      var active = activeId();
-      if (active === cid) showTyping(cid, target);
-
-      setTimeout(function () {
-        try {
-          if (!replyPool(cid).length) {
-            clearTyping(cid);
-            notifyEmpty();
-            return;
-          }
-          var behavior = null;
-          try {
-            behavior = window.AKR && window.AKR.pickReplyBehavior ? window.AKR.pickReplyBehavior() : null;
-          } catch (e) {}
-          if (!behavior || !behavior.type || behavior.type === "none") behavior = { type: "text", extra: {} };
-          window.I(cid, target, behavior, true);
-        } catch (e) {
-          reportErr("activeSend:send", e);
-          var text = pickReplyText(cid);
-          if (text) fallbackAppend(cid, target, text);
-          else notifyEmpty();
-          clearTyping(cid);
-        }
-      }, delay);
-    } catch (e) {
-      reportErr("triggerTaReplyOnce", e);
-    }
-  }
-  wTaReply.__akiniEngine = true;
-
   /* 安装（幂等）：core 已经有完整的「概率 → 输入中 → 延迟 → 1~3 条」回复链路，
      引擎不再并行挂第二套 autoReply（两套会各排一次定时器，表现为回复概率翻倍）。
      只有 core 的入口不存在时才用引擎兜底。 */
@@ -519,7 +462,6 @@
     if (capturedOrig.force) window.__akiniForceReply = capturedOrig.force;
     else if (window.__akiniForceReply !== wForce) window.__akiniForceReply = wForce;
     if (window.pickWordCards !== enginePick) window.pickWordCards = enginePick;
-    if (window.triggerTaReplyOnce !== wTaReply) window.triggerTaReplyOnce = wTaReply;
   }
 
   /* core 的 __akiniBootComplete 在它完成全部赋值之后才置 true；
