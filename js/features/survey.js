@@ -1577,16 +1577,6 @@ window.__akiniDefer(function () {
         closeSurveyCreate();
         selectedMembers.forEach(function (mid, idx) {
           var replyDelay = Math.min(20000, 10000 + idx * 1500 + Math.random() * 4000);
-          /* 在卡片发出前 4~8 秒提前展示「对方正在输入...」动态 */
-          var typingLead = Math.min(replyDelay * 0.35, 6000);
-          setTimeout(
-            function () {
-              try {
-                if (window.showTypingBubble) window.showTypingBubble(targetId, mid);
-              } catch (eTyp) {}
-            },
-            Math.max(1000, replyDelay - typingLead),
-          );
           setTimeout(function () {
             simulateReply(survey.id, targetId, mid);
           }, replyDelay);
@@ -1643,16 +1633,6 @@ window.__akiniDefer(function () {
         insertSurveyBubble(copy, false, "未回答", targetId);
         selectedMembers.forEach(function (mid, i) {
           var replyDelay = Math.min(20000, 10000 + i * 1500 + Math.random() * 4000);
-          /* 在卡片发出前 4~8 秒提前展示「对方正在输入...」动态 */
-          var typingLead = Math.min(replyDelay * 0.35, 6000);
-          setTimeout(
-            function () {
-              try {
-                if (window.showTypingBubble) window.showTypingBubble(targetId, mid);
-              } catch (eTyp) {}
-            },
-            Math.max(1000, replyDelay - typingLead),
-          );
           setTimeout(function () {
             simulateReply(copy.id, targetId, mid);
           }, replyDelay);

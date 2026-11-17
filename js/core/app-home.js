@@ -1131,49 +1131,35 @@ function syncDualScreensData() {
     ? document.addEventListener("DOMContentLoaded", window.loadS1SavedTexts)
     : window.loadS1SavedTexts());
 (!(function () {
-  /* 软键盘只压缩可视区域，不整体上移页面：
-     整屏贴住可见区域，聊天记录区随键盘收缩、输入栏留在键盘上方；
-     评论输入栏用 --akini-kb 单独抬起，页面其余部分保持不动。 */
-  if (window.__akiniKeyboardViewportBound) return;
-  window.__akiniKeyboardViewportBound = !0;
-  var vv = window.visualViewport;
-  if (!vv) return;
-  var root = document.documentElement,
-    raf = 0;
-
-  function apply() {
-    raf = 0;
+  if (window.visualViewport) {
+    var e = window.visualViewport,
+      t = 0,
+      _vvt = null;
+    (e.addEventListener("resize", function () {
+      (_vvt && cancelAnimationFrame(_vvt), (_vvt = requestAnimationFrame(i)));
+    }),
+      e.addEventListener("scroll", function () {
+        (_vvt && cancelAnimationFrame(_vvt), (_vvt = requestAnimationFrame(i)));
+      }),
+      window.__akiniOnVisible(function () { setTimeout(i, 120) }));
+  }
+  function i() {
     try {
-      var top = Math.max(0, Math.round(vv.offsetTop || 0)),
-        height = Math.round(vv.height || window.innerHeight),
-        kb = Math.round(window.innerHeight - vv.height - (vv.offsetTop || 0));
-      if (kb < 80) {
-        root.style.removeProperty("--akini-vv-top");
-        root.style.removeProperty("--akini-vv-h");
-        root.style.setProperty("--akini-kb", "0px");
-        return;
-      }
-      root.style.setProperty("--akini-vv-top", top + "px");
-      root.style.setProperty("--akini-vv-h", height + "px");
-      root.style.setProperty("--akini-kb", kb + "px");
-      if (window.scrollY) window.scrollTo(0, 0);
+      var i = document.getElementById("app-chat");
+      if (!i) return;
+      if (!("none" !== i.style.display && (null !== i.offsetParent || i.getClientRects().length > 0)))
+        return void (0 !== t && ((i.style.transform = ""), (i.style.paddingBottom = ""), (t = 0)));
+      var n = i.querySelector(".chat-input-bar-area") || i.querySelector(".chat-input-bar");
+      if (!n) return;
+      var a = n.getBoundingClientRect().bottom + t - (e.height + e.offsetTop),
+        o = a > 2 ? Math.min(a + 8, 420) : 0;
+      if (o !== t && ((i.style.transform = ""), (i.style.paddingBottom = o > 0 ? o + "px" : ""), (t = o), o > 0))
+        try {
+          var r = document.getElementById("chatBody");
+          r && (r.scrollTop = r.scrollHeight);
+        } catch (e) {}
     } catch (e) {}
   }
-
-  function schedule() {
-    raf || (raf = requestAnimationFrame(apply));
-  }
-
-  vv.addEventListener("resize", schedule);
-  vv.addEventListener("scroll", schedule);
-  window.addEventListener("resize", schedule);
-  window.addEventListener("orientationchange", schedule);
-  document.addEventListener("focusin", schedule, true);
-  document.addEventListener("focusout", function () {
-    setTimeout(schedule, 150);
-  }, true);
-  if (window.__akiniOnVisible) window.__akiniOnVisible(function () { setTimeout(schedule, 120); });
-  apply();
 })(),
   (window.__akiniFilterDelPosts = function (e) {
     try {
